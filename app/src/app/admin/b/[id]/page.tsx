@@ -35,7 +35,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
     include: { lead: true, users: true, payments: { orderBy: { createdAt: "desc" } }, _count: { select: { bookings: true } } },
   });
   if (!b) notFound();
-  const siteUrl = publicSiteUrl(b.slug, b.customDomain);
+  const siteUrl = publicSiteUrl(b.slug, b.customDomain, b.status);
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
   const siteBookings = await db.booking.count({ where: { businessId: id, source: "site" } });
 

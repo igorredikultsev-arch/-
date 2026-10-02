@@ -1,0 +1,22 @@
+# Caddy сам получает и продлевает сертификаты Let's Encrypt.
+{
+	email {$ACME_EMAIL}
+	# Сертификаты для поддоменов клиентов и их собственных доменов выпускаются при первом заходе,
+	# но только если приложение подтвердит, что такой клиент есть (защита от злоупотреблений).
+	on_demand_tls {
+		ask http://app:3000/api/tls-check
+	}
+}
+
+{$ROOT_DOMAIN}, www.{$ROOT_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+	reverse_proxy app:3000
+}

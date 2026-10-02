@@ -13,10 +13,14 @@ export function routeUrl(city: string, address: string, yandexMapsUrl?: string |
   return yandexMapsUrl || `https://yandex.ru/maps/?text=${encodeURIComponent(`${city}, ${address}`)}`;
 }
 
-/** Публичный адрес сайта клиента для ссылок из админки и сообщений. */
-export function publicSiteUrl(slug: string, customDomain?: string | null): string {
+/**
+ * Публичный адрес сайта клиента для ссылок из админки и сообщений.
+ * Демо живёт на основном домене (/s/<slug>): так не тратится лимит Let's Encrypt
+ * на сертификаты поддоменов. Поддомен и свой домен — только у подключённых клиентов.
+ */
+export function publicSiteUrl(slug: string, customDomain?: string | null, status?: string): string {
   if (customDomain) return `https://${customDomain}`;
   const root = process.env.ROOT_DOMAIN;
-  if (root && process.env.NODE_ENV === "production") return `https://${slug}.${root}`;
+  if (root && process.env.NODE_ENV === "production" && status !== "demo") return `https://${slug}.${root}`;
   return `${process.env.APP_URL || "http://localhost:3000"}/s/${slug}`;
 }
