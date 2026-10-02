@@ -1,7 +1,7 @@
 // Запись: расчёт окон по данным из базы и создание записи без двойного бронирования (раздел 4.3).
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "./db";
-import { dayBounds, daySlots, inHorizon, peakLoad, resolveDayWindow, type Interval, type Slot } from "./slots";
+import { dayBounds, daySlots, horizonDates, inHorizon, peakLoad, resolveDayWindow, type Interval, type Slot } from "./slots";
 import { newToken } from "./tokens";
 import { localToUtc, toLocal } from "./time";
 
@@ -24,10 +24,13 @@ async function lockBusiness(tx: Tx, businessId: string) {
 }
 
 async function loadDay(tx: Tx, businessId: string, date: string, tz: string) {
-  const bounds = dayBounds(date, tz);
+  return loadRange(tx, businessId, date, date, tz);
+}
+
+async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate: string, tz: string) {
   // Берём с запасом в сутки: длинная запись или закрытие могут начаться накануне
-  const from = new Date(bounds.start - 86400000);
-  const to = new Date(bounds.end + 86400000);
+  const from = new Date(dayBounds(firstDate, tz).start - 86400000);
+  const to = new Date(dayBounds(lastDate, tz).end + 86400000);
   const [bookings, blocks] = await Promise.all([
     tx.booking.findMany({
       where: { businessId, status: "active", startAt: { lt: to }, endAt: { gt: from } },
@@ -89,6 +92,23 @@ export async function getDaySlots(
     ...occ,
     nowMs,
     minLeadMin: biz.minLeadMin,
+  });
+}
+
+export type DaySummary = { date: string; closed: boolean; free: number };
+
+/** Сводка по дням горизонта для полоски дат: выходной или сколько свободных окон. Один запрос к базе. */
+export async function getHorizonSummary(biz: BusinessForSlots, durationMin: number, nowMs = Date.now()): Promise<DaySummary[]> {
+  const dates = horizonDates(nowMs, biz.timezone, biz.horizonDays);
+  const occ = await loadRange(db, biz.id, dates[0], dates[dates.length - 1], biz.timezone);
+  return dates.map((date) => {
+    const window = resolveDayWindow(date, biz.hours, biz.exceptions);
+    if (!window) return { date, closed: true, free: 0 };
+    const slots = daySlots({
+      date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts,
+      ...occ, nowMs, minLeadMin: biz.minLeadMin,
+    });
+    return { date, closed: false, free: slots.filter((s) => s.free).length };
   });
 }
 
