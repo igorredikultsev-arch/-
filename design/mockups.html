@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Макеты тем</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Russo+One&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: #eceef1;
+    --page-text: #1b1f24;
+    --page-muted: #5f6670;
+    --frame: #0d0f12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: #101215;
+      --page-text: #e9ebee;
+      --page-muted: #9aa1aa;
+      --frame: #000;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #101215;
+    --page-text: #e9ebee;
+    --page-muted: #9aa1aa;
+    --frame: #000;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-text);
+    font-family: Inter, system-ui, sans-serif;
+  }
+  .page { max-width: 1480px; margin: 0 auto; padding: 32px 16px 64px; }
+  .page h1 { font-size: 28px; margin: 0 0 8px; }
+  .page > p { color: var(--page-muted); margin: 0 0 28px; max-width: 760px; line-height: 1.5; }
+  .row { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .label { text-align: center; max-width: 340px; }
+  .label b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .label span { color: var(--page-muted); font-size: 14px; line-height: 1.4; }
+
+  .phone {
+    width: 360px; max-width: calc(100vw - 32px); height: 760px;
+    border-radius: 44px; padding: 10px; background: var(--frame);
+    box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  }
+  .screen {
+    height: 100%; border-radius: 34px; overflow-y: auto; overflow-x: hidden;
+    background: var(--bg); color: var(--text); font-family: var(--font-body);
+    scrollbar-width: none; position: relative;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ---------- темы ---------- */
+  .t-garage {
+    --bg: #14161a; --surface: #1e2126; --surface-2: #272b31; --line: #33383f;
+    --text: #f1f1ee; --muted: #9ba1a8; --accent: #ff8a00; --on-accent: #14161a;
+    --font-head: "Russo One", sans-serif; --font-body: Inter, sans-serif;
+    --radius: 10px; --head-case: none; --head-weight: 400;
+  }
+  .t-clean {
+    --bg: #f5f7fa; --surface: #ffffff; --surface-2: #eef2f7; --line: #e1e6ed;
+    --text: #111827; --muted: #6b7280; --accent: #2563eb; --on-accent: #ffffff;
+    --font-head: Manrope, sans-serif; --font-body: Manrope, sans-serif;
+    --radius: 16px; --head-case: none; --head-weight: 800;
+  }
+  .t-drive {
+    --bg: #ffffff; --surface: #ffffff; --surface-2: #f3f3f3; --line: #111111;
+    --text: #0b0b0b; --muted: #555555; --accent: #e3162b; --on-accent: #ffffff;
+    --font-head: Unbounded, sans-serif; --font-body: Inter, sans-serif;
+    --radius: 0px; --head-case: uppercase; --head-weight: 800;
+  }
+
+  /* ---------- сайт автосервиса ---------- */
+  .demo-bar {
+    background: repeating-linear-gradient(45deg, #ffd23f, #ffd23f 10px, #ffc400 10px, #ffc400 20px);
+    color: #111; font-size: 11px; font-weight: 600; text-align: center; padding: 5px 8px;
+  }
+  .hero { padding: 22px 18px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .t-drive .hero { background: var(--text); color: #fff; border-bottom: 6px solid var(--accent); }
+  .logo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: var(--radius); background: var(--accent);
+    color: var(--on-accent); display: grid; place-items: center;
+    font-family: var(--font-head); font-size: 20px; font-weight: 800;
+  }
+  .t-clean .logo { border-radius: 12px; }
+  .city { font-size: 12px; color: var(--muted); }
+  .t-drive .city { color: #bbb; }
+  .hero h2 {
+    font-family: var(--font-head); font-weight: var(--head-weight); text-transform: var(--head-case);
+    font-size: 26px; line-height: 1.12; margin: 0 0 10px; letter-spacing: -.01em;
+  }
+  .t-drive .hero h2 { font-size: 24px; }
+  .rating { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .t-drive .rating { color: #ccc; }
+  .stars { color: #ffb400; letter-spacing: 1px; }
+  .rating b { color: var(--text); }
+  .t-drive .rating b { color: #fff; }
+  .offer { font-size: 14px; line-height: 1.45; margin: 0 0 16px; color: var(--muted); }
+  .t-drive .offer { color: #ddd; }
+  .btns { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .btn {
+    border: 0; border-radius: var(--radius); padding: 14px 16px; font: 600 15px var(--font-body);
+    background: var(--accent); color: var(--on-accent); cursor: pointer; text-align: center;
+  }
+  .t-drive .btn { font-family: var(--font-head); font-size: 13px; text-transform: uppercase; letter-spacing: .02em; }
+  .btn.ghost { background: var(--surface-2); color: var(--text); }
+  .t-drive .btn.ghost { background: #fff; color: #000; }
+  .open-now { margin-top: 12px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .t-drive .open-now { color: #bbb; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+
+  .section { padding: 22px 18px; }
+  .section h3 {
+    font-family: var(--font-head); font-weight: var(--head-weight); text-transform: var(--head-case);
+    font-size: 18px; margin: 0 0 14px;
+  }
+  .t-drive .section h3 { font-size: 15px; }
+  .cats { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
+  .cat {
+    flex: none; padding: 7px 12px; border-radius: 999px; font-size: 13px;
+    background: var(--surface-2); color: var(--text); border: 1px solid transparent;
+  }
+  .t-drive .cat { border-radius: 0; border: 2px solid var(--text); background: #fff; font-weight: 600; }
+  .cat.on { background: var(--accent); color: var(--on-accent); }
+  .t-drive .cat.on { border-color: var(--accent); }
+  .svc {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 13px 14px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); margin-bottom: 8px;
+  }
+  .t-drive .svc { border-width: 2px; }
+  .svc .n { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  .svc .m { font-size: 12px; color: var(--muted); }
+  .svc .p { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .svc .p small { display: block; text-align: right; font-weight: 500; font-size: 11px; color: var(--accent); margin-top: 3px; }
+
+  .booking { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .t-drive .booking { border-top: 2px solid var(--text); border-bottom: 2px solid var(--text); }
+  .steps { display: flex; gap: 6px; margin-bottom: 16px; }
+  .step { flex: 1; font-size: 11px; color: var(--muted); }
+  .step i { display: block; height: 4px; border-radius: 2px; background: var(--surface-2); margin-bottom: 6px; }
+  .t-drive .step i { border-radius: 0; }
+  .step.done i, .step.cur i { background: var(--accent); }
+  .step.cur { color: var(--text); font-weight: 600; }
+  .chosen {
+    display: flex; justify-content: space-between; font-size: 13px; padding: 10px 12px;
+    background: var(--surface-2); border-radius: var(--radius); margin-bottom: 14px;
+  }
+  .chosen a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .days { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none; }
+  .day {
+    flex: none; width: 52px; padding: 8px 0; text-align: center; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--bg);
+  }
+  .t-drive .day { border-width: 2px; border-color: var(--text); }
+  .day small { display: block; font-size: 11px; color: var(--muted); }
+  .day b { font-size: 17px; }
+  .day.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .day.on small { color: var(--on-accent); opacity: .85; }
+  .day.off { opacity: .35; }
+  .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 16px; }
+  .slot {
+    padding: 10px 0; text-align: center; font-size: 14px; font-weight: 600;
+    border-radius: var(--radius); background: var(--surface-2); color: var(--text);
+  }
+  .t-drive .slot { border: 2px solid var(--text); background: #fff; }
+  .slot.busy { opacity: .3; text-decoration: line-through; font-weight: 400; }
+  .slot.on { background: var(--accent); color: var(--on-accent); }
+  .t-drive .slot.on { border-color: var(--accent); }
+  .btn.wide { width: 100%; }
+
+  .photos { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 90px 90px; gap: 6px; }
+  .ph { border-radius: var(--radius); background-size: cover; }
+  .ph1 { grid-row: span 2; background: linear-gradient(135deg, #3b4048, #1d2025); position: relative; }
+  .ph2 { background: linear-gradient(135deg, #59606b, #2b2f36); }
+  .ph3 { background: linear-gradient(135deg, #7a828e, #444a53); }
+  .ph1::after { content: "фото сервиса"; position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: #cfd3d8; }
+
+  .reviews { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .t-drive .reviews { border-width: 2px; }
+  .big-rate { font-family: var(--font-head); font-size: 34px; font-weight: 800; }
+  .reviews .src { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .reviews a {
+    font-size: 13px; color: var(--text); text-decoration: none; padding: 8px 10px;
+    background: var(--surface-2); border-radius: var(--radius); display: flex; justify-content: space-between;
+  }
+  .reviews a span { color: var(--muted); }
+
+  .contacts .line { display: flex; gap: 10px; font-size: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .contacts .line:last-of-type { border-bottom: 0; }
+  .contacts .k { width: 74px; color: var(--muted); flex: none; }
+  .map {
+    height: 120px; border-radius: var(--radius); margin: 12px 0;
+    background:
+      linear-gradient(90deg, transparent 48%, var(--line) 48%, var(--line) 52%, transparent 52%),
+      linear-gradient(0deg, transparent 58%, var(--line) 58%, var(--line) 62%, transparent 62%),
+      linear-gradient(30deg, transparent 70%, var(--line) 70%, var(--line) 73%, transparent 73%),
+      var(--surface-2);
+    position: relative;
+  }
+  .map::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px;
+    background: var(--accent); border: 3px solid #fff; border-radius: 50% 50% 50% 0;
+    transform: translate(-50%, -80%) rotate(-45deg); box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  footer.site {
+    padding: 18px; font-size: 11px; line-height: 1.6; color: var(--muted);
+    border-top: 1px solid var(--line); background: var(--surface);
+  }
+  footer.site a { color: var(--muted); }
+
+  /* ---------- кабинет владельца ---------- */
+  .t-cab {
+    --bg: #f4f5f7; --surface: #fff; --surface-2: #eef0f3; --line: #e3e6ea;
+    --text: #15181c; --muted: #6a717b; --accent: #ff8a00; --on-accent: #15181c;
+    --font-head: Inter, sans-serif; --font-body: Inter, sans-serif; --radius: 14px;
+  }
+  .cab-top { padding: 20px 18px 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .cab-top .d { font-size: 13px; color: var(--muted); }
+  .cab-top h2 { margin: 2px 0 14px; font-size: 24px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kpi { background: var(--surface-2); border-radius: 12px; padding: 10px; }
+  .kpi b { display: block; font-size: 18px; white-space: nowrap; }
+  .kpi span { font-size: 11px; color: var(--muted); }
+  .load { padding: 14px 18px 4px; }
+  .load .t { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .bars { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; align-items: end; height: 46px; }
+  .bars i { display: block; border-radius: 3px; background: var(--accent); }
+  .bars i.full { background: #e5484d; }
+  .bars i.lunch { background: repeating-linear-gradient(45deg, #c9ced5, #c9ced5 3px, transparent 3px, transparent 6px); }
+  .hours { display: grid; grid-template-columns: repeat(11, 1fr); font-size: 9px; color: var(--muted); margin-top: 4px; text-align: center; }
+  .list { padding: 10px 14px 90px; }
+  .bk {
+    display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; align-items: center;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px; margin-bottom: 8px;
+  }
+  .bk .tm { font-weight: 700; font-size: 16px; }
+  .bk .tm small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
+  .bk .who { font-size: 14px; font-weight: 600; }
+  .bk .what { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 1px; }
+  .tag.site { background: #e8f1ff; color: #1d4ed8; }
+  .tag.tel { background: #eef0f3; color: #4b5563; }
+  .call { width: 38px; height: 38px; border-radius: 50%; background: #e8f7ee; display: grid; place-items: center; color: #16a34a; font-size: 16px; }
+  .bk.block { background: repeating-linear-gradient(45deg, var(--surface), var(--surface) 8px, var(--surface-2) 8px, var(--surface-2) 16px); }
+  .bk.now { border: 2px solid var(--accent); }
+  .nav {
+    position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center;
+    background: var(--surface); border-top: 1px solid var(--line); padding: 8px 6px 14px; margin-top: -80px;
+  }
+  .nav div { text-align: center; font-size: 10px; color: var(--muted); }
+  .nav div b { display: block; font-size: 18px; margin-bottom: 2px; font-weight: 400; }
+  .nav .on { color: var(--text); font-weight: 600; }
+  .nav .plus b {
+    width: 50px; height: 50px; margin: -22px auto 2px; border-radius: 50%; background: var(--accent);
+    color: var(--on-accent); display: grid; place-items: center; font-size: 28px; box-shadow: 0 6px 16px rgba(255,138,0,.45);
+  }
+  .push {
+    margin: 12px 14px 0; background: rgba(30,32,36,.92); color: #fff; border-radius: 16px; padding: 10px 12px;
+    font-size: 12px; display: flex; gap: 10px; align-items: center;
+  }
+  .push .ic { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); flex: none; display: grid; place-items: center; color: #15181c; font-weight: 800; }
+  .push b { display: block; font-size: 12px; }
+  .push span { opacity: .8; }
+
+  .note { max-width: 900px; margin: 40px auto 0; color: var(--page-muted); font-size: 14px; line-height: 1.6; }
+  .note b { color: var(--page-text); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Макеты: сайт автосервиса и кабинет владельца</h1>
+  <p>Три темы одного и того же сайта: разметка общая, меняются только цвета, шрифты и форма элементов. Внутри телефонов можно прокручивать. Шиномонтаж «Колесо» вымышленный, все данные условные.</p>
+
+  <div class="row" id="sites"></div>
+
+  <h1 style="margin-top:56px">Кабинет владельца — экран «Сегодня»</h1>
+  <p>Так владелец видит день: загрузку постов по часам, все записи (с сайта и телефонные) и закрытое время. Кнопка «+» в центре добавляет запись после звонка. Сверху — пример push-уведомления: без имени и телефона клиента.</p>
+  <div class="row">
+    <div class="col">
+      <div class="phone"><div class="screen t-cab">
+        <div class="push"><div class="ic">К</div><div><b>Новая запись</b><span>Завтра 10:00 · Смена колёс R15</span></div></div>
+        <div class="cab-top">
+          <div class="d">Пятница, 3 октября</div>
+          <h2>Сегодня</h2>
+          <div class="kpis">
+            <div class="kpi"><b>9</b><span>записей</span></div>
+            <div class="kpi"><b>5</b><span>с сайта</span></div>
+            <div class="kpi"><b>17 400 ₽</b><span>примерно</span></div>
+          </div>
+        </div>
+        <div class="load">
+          <div class="t"><span>Загрузка постов (2 поста)</span><span>сейчас 11:20</span></div>
+          <div class="bars">
+            <i style="height:50%"></i><i class="full" style="height:100%"></i><i class="full" style="height:100%"></i><i style="height:50%"></i>
+            <i class="lunch" style="height:100%"></i><i class="full" style="height:100%"></i><i style="height:50%"></i><i style="height:50%"></i>
+            <i class="full" style="height:100%"></i><i style="height:15%;background:#d5d9de"></i><i style="height:15%;background:#d5d9de"></i>
+          </div>
+          <div class="hours"><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span></div>
+        </div>
+        <div class="list">
+          <div class="bk"><div class="tm">10:00<small>40 мин</small></div><div><div class="who">Андрей <span class="tag site">сайт</span></div><div class="what">Kia Rio · Смена колёс R15</div></div><div class="call">✆</div></div>
+          <div class="bk now"><div class="tm">11:00<small>60 мин</small></div><div><div class="who">Сергей <span class="tag tel">телефон</span></div><div class="what">Camry · Развал-схождение</div></div><div class="call">✆</div></div>
+          <div class="bk"><div class="tm">11:30<small>50 мин</small></div><div><div class="who">Ольга <span class="tag site">сайт</span></div><div class="what">Tiguan · Смена колёс R17</div></div><div class="call">✆</div></div>
+          <div class="bk block"><div class="tm">13:00<small>60 мин</small></div><div><div class="who">Обед</div><div class="what">Закрыто: весь сервис</div></div><div></div></div>
+          <div class="bk"><div class="tm">14:00<small>40 мин</small></div><div><div class="who">Без имени <span class="tag tel">телефон</span></div><div class="what">Lada Vesta · Замена масла</div></div><div class="call">✆</div></div>
+          <div class="bk"><div class="tm">14:00<small>30 мин</small></div><div><div class="who">Марат <span class="tag site">сайт</span></div><div class="what">Polo · Диагностика: «стучит спереди справа»</div></div><div class="call">✆</div></div>
+        </div>
+        <div class="nav">
+          <div class="on"><b>◷</b>Сегодня</div>
+          <div><b>▦</b>Неделя</div>
+          <div class="plus"><b>+</b>Запись</div>
+          <div><b>✎</b>Сайт</div>
+          <div><b>☰</b>Ещё</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Что выбрать:</b> одну тему как основную для демо или все три — тогда в админке будет переключатель, и под каждый автосервис можно подобрать подходящую. Акцентный цвет в любой теме меняется под логотип клиента.
+  </div>
+</div>
+
+<template id="site">
+  <div class="demo-bar">Демо-версия · не официальный сайт</div>
+  <div class="hero">
+    <div class="logo-row"><div class="logo">К</div><div><div style="font-weight:600;font-size:14px">Шиномонтаж «Колесо»</div><div class="city">Пермь, ул. Примерная, 12</div></div></div>
+    <h2>Шиномонтаж и развал без очереди</h2>
+    <div class="rating"><span class="stars">★★★★★</span><b>4,8</b> · 126 отзывов на картах</div>
+    <p class="offer">Выберите услугу и свободное время — запись за 1 минуту, без звонков.</p>
+    <div class="btns"><div class="btn">Записаться онлайн</div><div class="btn ghost">✆</div></div>
+    <div class="open-now"><span class="dot"></span>Открыто до 20:00</div>
+  </div>
+
+  <div class="section">
+    <h3>Услуги и цены</h3>
+    <div class="cats"><span class="cat on">Шиномонтаж</span><span class="cat">Развал</span><span class="cat">ТО и масло</span><span class="cat">Диагностика</span></div>
+    <div class="svc"><div><div class="n">Смена колёс R13–R16</div><div class="m">4 колеса · ~40 мин</div></div><div class="p">от 1 600 ₽<small>Записаться →</small></div></div>
+    <div class="svc"><div><div class="n">Смена колёс R17–R19</div><div class="m">4 колеса · ~50 мин</div></div><div class="p">от 2 200 ₽<small>Записаться →</small></div></div>
+    <div class="svc"><div><div class="n">Балансировка</div><div class="m">за колесо · ~10 мин</div></div><div class="p">от 200 ₽<small>Записаться →</small></div></div>
+    <div class="svc"><div><div class="n">Хранение шин</div><div class="m">комплект, сезон</div></div><div class="p">от 2 500 ₽<small>Записаться →</small></div></div>
+  </div>
+
+  <div class="section booking">
+    <h3>Запись</h3>
+    <div class="steps"><div class="step done"><i></i>Услуга</div><div class="step cur"><i></i>Время</div><div class="step"><i></i>Контакты</div></div>
+    <div class="chosen"><span>Смена колёс R13–R16 · 40 мин</span><a>Изменить</a></div>
+    <div class="days">
+      <div class="day"><small>пт</small><b>3</b></div>
+      <div class="day on"><small>сб</small><b>4</b></div>
+      <div class="day off"><small>вс</small><b>5</b></div>
+      <div class="day"><small>пн</small><b>6</b></div>
+      <div class="day"><small>вт</small><b>7</b></div>
+      <div class="day"><small>ср</small><b>8</b></div>
+    </div>
+    <div class="slots">
+      <div class="slot busy">10:00</div><div class="slot">10:30</div><div class="slot busy">11:00</div><div class="slot on">11:30</div>
+      <div class="slot">12:00</div><div class="slot busy">12:30</div><div class="slot busy">14:00</div><div class="slot">14:30</div>
+      <div class="slot">15:00</div><div class="slot busy">15:30</div><div class="slot">16:00</div><div class="slot">16:30</div>
+    </div>
+    <div class="btn wide">Далее — суббота, 11:30</div>
+  </div>
+
+  <div class="section">
+    <h3>Фото</h3>
+    <div class="photos"><div class="ph ph1"></div><div class="ph ph2"></div><div class="ph ph3"></div></div>
+  </div>
+
+  <div class="section">
+    <h3>Отзывы</h3>
+    <div class="reviews">
+      <div><div class="big-rate">4,8</div><div class="stars" style="font-size:12px">★★★★★</div></div>
+      <div class="src"><a>Яндекс Карты <span>98 →</span></a><a>2ГИС <span>28 →</span></a></div>
+    </div>
+  </div>
+
+  <div class="section contacts">
+    <h3>Контакты</h3>
+    <div class="map"></div>
+    <div class="line"><span class="k">Адрес</span><span>Пермь, ул. Примерная, 12</span></div>
+    <div class="line"><span class="k">Часы</span><span>Пн–Сб 9:00–20:00<br>Вс — выходной</span></div>
+    <div class="line"><span class="k">Телефон</span><span>+7 (342) 000-00-00</span></div>
+    <div class="two" style="margin-top:12px"><div class="btn ghost">Маршрут</div><div class="btn">Позвонить</div></div>
+  </div>
+
+  <footer class="site">
+    ИП Иванов И. И., ИНН 590000000000 — оператор персональных данных.<br>
+    <a>Политика обработки ПДн</a> · <a>Согласие на обработку ПДн</a><br>
+    Сайт работает на «Автослот»
+  </footer>
+</template>
+
+<script>
+  const themes = [
+    { cls: 't-garage', name: '1. «Гараж»', desc: 'Тёмная, графит и оранжевый. Выглядит «по-мужски» и технично, хорошо смотрится на шиномонтажах и СТО.' },
+    { cls: 't-clean', name: '2. «Чистый»', desc: 'Светлая и аккуратная, синий акцент. Ощущение порядка и сервиса — подходит дилерским и «чистым» сервисам.' },
+    { cls: 't-drive', name: '3. «Драйв»', desc: 'Контрастная, крупные заголовки, острые углы, красный акцент. Запоминается, подходит молодым и тюнинг-сервисам.' },
+  ];
+  const tpl = document.getElementById('site');
+  const row = document.getElementById('sites');
+  for (const t of themes) {
+    const col = document.createElement('div');
+    col.className = 'col';
+    col.innerHTML = `<div class="phone"><div class="screen ${t.cls}"></div></div>
+      <div class="label"><b>${t.name}</b><span>${t.desc}</span></div>`;
+    col.querySelector('.screen').appendChild(tpl.content.cloneNode(true));
+    row.appendChild(col);
+  }
+</script>
+</body>
+</html>
