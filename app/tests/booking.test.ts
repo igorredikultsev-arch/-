@@ -109,3 +109,27 @@ describe("отмена клиентом", () => {
     expect(again.id).not.toBe(b.id);
   });
 });
+
+import { runCleanup } from "@/lib/cleanup";
+
+describe("runCleanup", () => {
+  it("удаляет просроченные демо и обезличивает старые записи", async () => {
+    const old = await makeBusiness({ slug: "old-demo" });
+    await db.business.update({ where: { id: old.id }, data: { status: "demo", demoExpiresAt: new Date(Date.now() - 1000) } });
+    const live = await makeBusiness({ slug: "live" });
+    await db.business.update({ where: { id: live.id }, data: { status: "active" } });
+    await db.booking.create({
+      data: {
+        businessId: live.id, serviceName: "x", startAt: new Date("2020-01-01T05:00:00Z"), endAt: new Date("2020-01-01T06:00:00Z"),
+        source: "site", clientName: "Пётр", clientPhone: "+79990001122", cancelToken: "t-old",
+      },
+    });
+    const r = await runCleanup();
+    expect(r.demosDeleted).toBe(1);
+    expect(r.bookingsAnonymized).toBe(1);
+    const b = await db.booking.findUniqueOrThrow({ where: { cancelToken: "t-old" } });
+    expect(b.clientName).toBeNull();
+    expect(b.clientPhone).toBeNull();
+    expect(await db.business.count()).toBe(1);
+  });
+});

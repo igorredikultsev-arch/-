@@ -222,3 +222,12 @@ describe("layoutLanes", () => {
     expect(lanes[0][1].overflow).toBe(true);
   });
 });
+
+import { slugify } from "@/lib/slug";
+describe("slugify", () => {
+  it("транслитерирует и убирает служебные слова", () => {
+    expect(slugify("Шиномонтаж «Колесо»")).toBe("koleso");
+    expect(slugify("Автосервис Ёжик 24")).toBe("ezhik-24");
+    expect(slugify("Шиномонтаж")).toBe("shinomontazh");
+  });
+});
