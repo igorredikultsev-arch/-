@@ -1,0 +1,268 @@
+// Схема данных «Автослот». Раздел 5.4 плана.
+// Все моменты времени хранятся в UTC. Часы работы и даты исключений — в местном времени сервиса.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BusinessStatus {
+  demo
+  trial
+  active
+  suspended
+  archived
+}
+
+enum Theme {
+  garage
+  book
+  road
+}
+
+enum BookingSource {
+  site
+  owner
+}
+
+enum BookingStatus {
+  active
+  cancelled
+  no_show
+  done
+}
+
+enum BlockScope {
+  all
+  one_post
+}
+
+enum Role {
+  owner
+  admin
+}
+
+enum LeadStatus {
+  new
+  demo_sent
+  replied
+  interested
+  trial
+  paid
+  refused
+}
+
+model Business {
+  id       String @id @default(cuid())
+  slug     String @unique
+  name     String
+  city     String @default("Пермь")
+  timezone String @default("Asia/Yekaterinburg")
+
+  address        String
+  addressNote    String?
+  phone          String
+  yandexMapsUrl  String?
+  twoGisUrl      String?
+  rating         Decimal? @db.Decimal(2, 1)
+  reviewsYandex  Int?
+  reviews2gis    Int?
+
+  headline    String?
+  facts       Json? // [{ value: "2 поста", label: "можно приехать вдвоём" }]
+  theme       Theme  @default(garage)
+  accent      String @default("#ff6a1f")
+  logoLetter  String?
+
+  // Настройки расписания (раздел 4.1)
+  posts        Int @default(1)
+  slotStepMin  Int @default(30)
+  minLeadMin   Int @default(120)
+  horizonDays  Int @default(14)
+  cancelHours  Int @default(24)
+
+  // Оператор персональных данных — сам автосервис (раздел 6.3)
+  operatorName String?
+  operatorInn  String?
+
+  status         BusinessStatus @default(demo)
+  demoExpiresAt  DateTime?
+  trialEndsAt    DateTime?
+  paidUntil      DateTime?
+  customDomain   String?        @unique
+  addonTelegram  Boolean        @default(false)
+  addonSms       Boolean        @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services     Service[]
+  hours        WorkingHours[]
+  exceptions   DayException[]
+  bookings     Booking[]
+  blocks       Block[]
+  users        User[]
+  lead         Lead?
+  payments     Payment[]
+}
+
+model Service {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category     String
+  name         String
+  description  String?
+  priceFrom    Int
+  durationMin  Int
+  isDiagnostic Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  active       Boolean  @default(true)
+  bookings     Booking[]
+
+  @@index([businessId, sortOrder])
+}
+
+/// Часы работы по дню недели: 1 — понедельник … 7 — воскресенье. Минуты от полуночи по местному времени.
+model WorkingHours {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  weekday    Int
+  closed     Boolean  @default(false)
+  openMin    Int      @default(540)
+  closeMin   Int      @default(1200)
+
+  @@unique([businessId, weekday])
+}
+
+/// Особый день: праздник или изменённые часы. date — «YYYY-MM-DD» по местному времени.
+model DayException {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  date       String
+  closed     Boolean  @default(true)
+  openMin    Int?
+  closeMin   Int?
+
+  @@unique([businessId, date])
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  businessId  String
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceName String
+  priceFrom   Int?
+  startAt     DateTime
+  endAt       DateTime
+  source      BookingSource
+  status      BookingStatus @default(active)
+
+  clientName  String?
+  clientPhone String?
+  car         String?
+  comment     String?
+
+  cancelToken String @unique
+
+  // Согласие на обработку ПДн (раздел 6.3, п. 2) и отдельное согласие на рекламу (раздел 6.6)
+  consentVersion   String?
+  consentAt        DateTime?
+  consentIp        String?
+  marketingConsent Boolean   @default(false)
+
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+  cancelledBy String?
+
+  @@index([businessId, startAt])
+  @@index([businessId, status, startAt])
+}
+
+model Block {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  startAt    DateTime
+  endAt      DateTime
+  scope      BlockScope @default(all)
+  reason     String?
+  createdAt  DateTime   @default(now())
+
+  @@index([businessId, startAt])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  phone        String    @unique
+  passwordHash String
+  role         Role      @default(owner)
+  name         String?
+  businessId   String?
+  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id // sha256 от токена из cookie
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Мини-CRM рассылки (раздел 2.3)
+model Lead {
+  id          String     @id @default(cuid())
+  businessId  String     @unique
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  status      LeadStatus @default(new)
+  channel     String?
+  contact     String?
+  notes       String?
+  contactedAt DateTime?
+  updatedAt   DateTime   @updatedAt
+}
+
+model Payment {
+  id          String    @id @default(cuid())
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  amount      Int
+  purpose     String
+  periodFrom  DateTime?
+  periodTo    DateTime?
+  receiptSent Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+/// Ограничение частоты: запись, вход. key — например «booking:ip:1.2.3.4»
+model RateLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}
+
+/// Журнал действий без персональных данных клиентов (раздел 6.3, п. 8)
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  businessId String?
+  action     String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([businessId, createdAt])
+}

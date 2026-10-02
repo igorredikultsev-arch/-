@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-golos), system-ui, sans-serif;
+  --color-accent: #ff6a1f;
+  --color-ink: #15181c;
+  --color-paper: #eef0f3;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { font-variant-numeric: tabular-nums; }
