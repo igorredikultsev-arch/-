@@ -1,595 +1,606 @@
-<title>Автослот — макеты</title>
+<title>Автослот: макеты</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Onest:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Onest:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&family=Russo+One&display=swap" rel="stylesheet">
 <style>
-/* Витрина: телефоны в ряд на нейтральном столе; каждая тема внутри телефона — своя замкнутая визуальная система */
+/*
+  Дизайн-чтение: мобильный сайт записи для небольших шиномонтажей Перми (водители 30-55 лет)
+  и рабочий кабинет владельца. Язык: практичный, вызывающий доверие, без маркетингового шума.
+  Шкалы: вариативность 4, движение 3, плотность 5.
+
+  Витрина: нейтральный стол, телефоны в ряд, подписи под ними, текст слева.
+  Каждая тема внутри телефона - своя замкнутая система токенов (цвет, шрифт, радиусы).
+*/
 :root {
-  --bg: #e7e9ec;
-  --fg: #16191d;
-  --muted: #5d646d;
-  --line: #cfd3d9;
-  --frame: #101215;
-  --chip: #ffffff;
+  --bg: #e6e8eb;
+  --fg: #15181c;
+  --muted: #586069;
+  --line: #cdd2d8;
+  --frame: #15171a;
+  --ring: #ffffff;
   --font-ui: "Golos Text", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121417; --fg: #eceef1; --muted: #99a0a9; --line: #2a2e34; --frame: #000000; --chip: #1d2025;
+    --bg: #131518; --fg: #eaecef; --muted: #9aa1aa; --line: #2b3036; --frame: #050607; --ring: #1d2025;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #121417; --fg: #eceef1; --muted: #99a0a9; --line: #2a2e34; --frame: #000000; --chip: #1d2025;
+  --bg: #131518; --fg: #eaecef; --muted: #9aa1aa; --line: #2b3036; --frame: #050607; --ring: #1d2025;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); }
-.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 40px 72px; }
-.intro { display: grid; gap: 10px; max-width: 68ch; margin-bottom: 36px; }
-.eyebrow { font: 600 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-h1 { font: 700 clamp(26px, 4vw, 38px)/1.1 var(--font-ui); margin: 0; text-wrap: balance; letter-spacing: -.02em; }
-.intro p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
-h2.sec { font: 700 22px/1.2 var(--font-ui); margin: 64px 0 8px; text-wrap: balance; }
-p.sec { margin: 0 0 28px; color: var(--muted); max-width: 68ch; line-height: 1.55; font-size: 15px; }
+.wrap { max-width: 1220px; margin: 0 auto; padding-inline: 16px; padding-block: 44px 80px; }
+.intro { display: grid; gap: 12px; max-width: 62ch; margin-bottom: 40px; }
+h1 { font: 700 clamp(28px, 4.2vw, 40px)/1.08 var(--font-ui); margin: 0; letter-spacing: -.022em; text-wrap: balance; }
+.intro p, p.sec { margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.55; }
+h2.sec { font: 700 24px/1.2 var(--font-ui); margin: 72px 0 10px; letter-spacing: -.015em; text-wrap: balance; }
+p.sec { max-width: 62ch; margin-bottom: 30px; }
 
-.row { display: flex; flex-wrap: wrap; gap: 40px 32px; justify-content: center; }
-.col { display: grid; justify-items: center; gap: 16px; width: 360px; max-width: 100%; }
-.cap { display: grid; gap: 6px; width: 100%; padding-inline: 4px; }
-.cap b { font-size: 17px; }
-.cap span { color: var(--muted); font-size: 14px; line-height: 1.45; }
-.swatches { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
-.swatches button {
-  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--chip); cursor: pointer;
-  box-shadow: 0 0 0 1px var(--line); padding: 0;
-}
+.row { display: flex; flex-wrap: wrap; gap: 44px 36px; justify-content: center; }
+.col { display: grid; justify-items: start; gap: 14px; width: 360px; max-width: 100%; }
+.cap { display: grid; gap: 6px; width: 100%; padding-inline: 6px; }
+.cap b { font-size: 17px; letter-spacing: -.01em; }
+.cap span { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.swatches { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); padding-inline: 6px; }
+.swatches button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ring); cursor: pointer; padding: 0; box-shadow: 0 0 0 1px var(--line); }
 .swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--fg); }
-.swatches button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.swatches button:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
 
-.phone {
-  width: 360px; max-width: 100%; height: 740px; border-radius: 46px; padding: 9px;
-  background: var(--frame); box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 30px 60px -20px rgba(0,0,0,.45);
-}
-.screen {
-  height: 100%; border-radius: 38px; overflow-y: auto; overflow-x: hidden; position: relative;
-  background: var(--s-bg); color: var(--s-fg); font-family: var(--s-body);
-  scrollbar-width: none; -webkit-font-smoothing: antialiased;
-}
+.phone { width: 360px; max-width: 100%; height: 744px; border-radius: 48px; padding: 9px; background: var(--frame);
+  box-shadow: 0 1px 0 rgba(255,255,255,.07) inset, 0 34px 60px -24px rgba(16,20,26,.5); }
+.screen { height: 100%; border-radius: 40px; overflow-y: auto; overflow-x: hidden; position: relative;
+  background: var(--s-bg); color: var(--s-fg); font-family: var(--s-body); scrollbar-width: none;
+  -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; scroll-behavior: smooth; }
 .screen::-webkit-scrollbar { display: none; }
-.notch { position: sticky; top: 0; z-index: 5; height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font: 600 12px var(--font-ui); background: var(--s-bar, var(--s-bg)); color: var(--s-bar-fg, var(--s-fg)); }
-.notch i { font-style: normal; letter-spacing: 2px; font-size: 10px; }
+@media (prefers-reduced-motion: reduce) { .screen { scroll-behavior: auto; } }
+.status { position: sticky; top: 0; z-index: 6; height: 34px; display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 24px 0; font: 600 13px var(--font-ui); background: var(--s-bar, var(--s-bg)); color: var(--s-bar-fg, var(--s-fg)); }
+.status .bat { width: 22px; height: 11px; border-radius: 3px; border: 1.5px solid currentColor; position: relative; opacity: .9; }
+.status .bat::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: currentColor; border-radius: 1px; }
+.ic { display: inline-grid; place-items: center; width: 1em; height: 1em; flex: none; }
+.ic svg { width: 100%; height: 100%; display: block; }
 
-/* =========================================================
-   ТЕМА 1. ГАРАЖ — графит, сигнальный оранжевый, протектор
-   ========================================================= */
+/* =================  ТЕМА «ГАРАЖ»  =================
+   Цвет: графит #131518, сталь #1c1f23, текст #eceae4, сигнальный оранжевый #ff6a1f
+   Шрифт: Russo One только в заголовках, Golos Text для всего остального
+   Радиусы: карточки 14, кнопки и поля 10, фильтры - пилюли
+   Смелость в одном месте: заголовок в шапке и полоса протектора под ней */
 .t-garage {
-  --s-bg: #121417; --s-card: #1b1e22; --s-card-2: #24282d; --s-line: #2f343a;
-  --s-fg: #eeeeea; --s-muted: #8f969e; --accent: #ff6b1a; --on-accent: #121417;
-  --s-head: "Russo One", "Golos Text", sans-serif; --s-body: "Golos Text", sans-serif; --s-num: "JetBrains Mono", monospace;
-  --r: 12px; --r-sm: 8px;
+  --s-bg: #131518; --s-card: #1c1f23; --s-card-2: #262a2f; --s-line: #30353b;
+  --s-fg: #eceae4; --s-muted: #959ba3; --accent: #ff6a1f; --on-accent: #131518;
+  --s-head: "Russo One", "Golos Text", sans-serif; --s-body: "Golos Text", sans-serif;
+  --r: 14px; --r-ctl: 10px; --r-pill: 999px;
 }
-/* =========================================================
-   ТЕМА 2. СЕРВИСНАЯ КНИЖКА — бумага, чернильный синий, штампы
-   ========================================================= */
+/* =================  ТЕМА «СЕРВИСНАЯ КНИЖКА»  =================
+   Цвет: бумага #f2f4f7, белый лист #ffffff, чернила #13213a, синий штамп #2350d6
+   Шрифт: Onest во всём, заголовки 800 с плотным трекингом
+   Радиусы: листы 20, кнопки и поля 12, фильтры - пилюли
+   Смелость в одном месте: штамп «Запись онлайн» в шапке */
 .t-book {
-  --s-bg: #f3f5f8; --s-card: #ffffff; --s-card-2: #e9edf3; --s-line: #dce2ea;
-  --s-fg: #0f1b2d; --s-muted: #5f6b7c; --accent: #1f4fd8; --on-accent: #ffffff;
-  --s-head: "Onest", sans-serif; --s-body: "Onest", sans-serif; --s-num: "JetBrains Mono", monospace;
-  --r: 18px; --r-sm: 12px;
+  --s-bg: #f2f4f7; --s-card: #ffffff; --s-card-2: #e8ecf2; --s-line: #dae0e8;
+  --s-fg: #13213a; --s-muted: #5c6879; --accent: #2350d6; --on-accent: #ffffff;
+  --s-head: "Onest", sans-serif; --s-body: "Onest", sans-serif;
+  --r: 20px; --r-ctl: 12px; --r-pill: 999px;
 }
-/* =========================================================
-   ТЕМА 3. АСФАЛЬТ — серый асфальт, жёлтая разметка, узкий шрифт знаков
-   ========================================================= */
+/* =================  ТЕМА «АСФАЛЬТ»  =================
+   Цвет: асфальт #2a2c2b, бетон #d8dad6, лист #f3f3ef, текст #171817, жёлтая разметка #f2c200
+   Шрифт: Oswald в заголовках (узкий, как на дорожных знаках), Golos Text в тексте
+   Радиусы: везде 3, как у табличек
+   Смелость в одном месте: асфальтовая шапка с прерывистой разметкой */
 .t-road {
-  --s-bg: #d9dbd8; --s-card: #f4f4f1; --s-card-2: #e6e7e3; --s-line: #b9bcb7;
-  --s-fg: #141514; --s-muted: #555954; --accent: #f5c400; --on-accent: #141514;
-  --s-head: "Oswald", "Golos Text", sans-serif; --s-body: "Golos Text", sans-serif; --s-num: "JetBrains Mono", monospace;
-  --r: 4px; --r-sm: 3px;
+  --s-bg: #d8dad6; --s-card: #f3f3ef; --s-card-2: #e4e5e1; --s-line: #babdb7;
+  --s-fg: #171817; --s-muted: #545853; --accent: #f2c200; --on-accent: #171817;
+  --s-head: "Oswald", "Golos Text", sans-serif; --s-body: "Golos Text", sans-serif;
+  --r: 3px; --r-ctl: 3px; --r-pill: 3px;
 }
 
-/* ---------- общие элементы сайта ---------- */
-.demo { font: 600 10.5px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; text-align: center; padding: 7px 10px; background: var(--s-card-2); color: var(--s-muted); }
-.hero { position: relative; padding: 20px 20px 22px; overflow: hidden; }
-.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-.mark { width: 42px; height: 42px; flex: none; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); border-radius: var(--r-sm); font: 400 20px var(--s-head); }
-.brand b { display: block; font-size: 14px; font-weight: 600; }
-.brand span { font-size: 12px; color: var(--s-muted); }
-.hero h3 { font-family: var(--s-head); margin: 0 0 14px; text-wrap: balance; }
-.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 10px; border-radius: 99px; background: var(--s-card-2); color: var(--s-fg); }
-.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #2fbf71; box-shadow: 0 0 0 3px rgba(47,191,113,.18); }
-.star { color: #f5a400; }
-.cta { display: grid; grid-template-columns: 1fr 52px; gap: 8px; }
-.btn { appearance: none; border: 0; cursor: pointer; display: grid; place-items: center; min-height: 52px; padding: 0 16px; border-radius: var(--r); background: var(--accent); color: var(--on-accent); font: 600 15px var(--s-body); }
+/* ---------- общие блоки сайта ---------- */
+.demo { font-size: 11.5px; text-align: center; padding: 7px 12px; background: var(--s-card-2); color: var(--s-muted); }
+.hero { position: relative; padding: 22px 20px 26px; overflow: hidden; }
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+.mark { width: 44px; height: 44px; flex: none; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); border-radius: var(--r-ctl); font: 400 21px var(--s-head); }
+.brand b { display: block; font-size: 14.5px; font-weight: 600; }
+.brand span { font-size: 12.5px; color: var(--s-muted); }
+.hero h3 { font-family: var(--s-head); margin: 0 0 12px; text-wrap: balance; }
+.sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; font-size: 13.5px; color: var(--s-muted); margin-bottom: 20px; }
+.sub .r { display: inline-flex; align-items: center; gap: 5px; color: var(--s-fg); font-weight: 600; }
+.sub .r .ic { color: #f5a623; font-size: 15px; }
+.open { display: inline-flex; align-items: center; gap: 6px; }
+.open::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2fb86f; }
+.cta { display: grid; grid-template-columns: 1fr 54px; gap: 8px; }
+.btn { appearance: none; border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 54px; padding: 0 18px; border-radius: var(--r-ctl); background: var(--accent); color: var(--on-accent);
+  font: 600 15.5px var(--s-body); white-space: nowrap; }
+.btn .ic { font-size: 20px; }
 .btn.alt { background: var(--s-card-2); color: var(--s-fg); }
-.btn:focus-visible, .slot:focus-visible, .day:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; }
-.btn svg { width: 20px; height: 20px; }
+.btn:focus-visible, .slot:focus-visible, .day:focus-visible, .tabs button:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .slot, .day { transition: background-color .15s, color .15s, transform .12s; }
+  .btn:active, .slot:active, .day:active { transform: translateY(1px) scale(.985); }
+}
 
-.season { margin: 0 16px; padding: 14px 16px; border-radius: var(--r); display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; background: var(--s-card); border: 1px solid var(--s-line); }
-.season .flake { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--s-card-2); font-size: 20px; }
-.season b { display: block; font-size: 14px; margin-bottom: 2px; }
-.season span { font-size: 12.5px; color: var(--s-muted); line-height: 1.4; }
+.season { margin: 18px 16px 0; padding: 14px; border-radius: var(--r); display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; background: var(--s-card); border: 1px solid var(--s-line); }
+.season .ic { width: 40px; height: 40px; padding: 9px; border-radius: var(--r-ctl); background: var(--s-card-2); color: var(--accent); }
+.season b { display: block; font-size: 14px; margin-bottom: 3px; }
+.season p { margin: 0; font-size: 12.5px; color: var(--s-muted); line-height: 1.45; }
 
-.block { padding: 26px 16px 8px; }
-.block > h4 { font-family: var(--s-head); margin: 0 4px 14px; display: flex; justify-content: space-between; align-items: baseline; }
-.block > h4 small { font: 500 12px var(--s-body); color: var(--s-muted); text-transform: none; letter-spacing: 0; }
+.block { padding: 30px 16px 0; }
+.block > h4 { font-family: var(--s-head); margin: 0 4px 14px; text-wrap: balance; }
+.note-sm { font-size: 12.5px; color: var(--s-muted); margin: -8px 4px 14px; }
 
 .tabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px; scrollbar-width: none; }
-.tabs span { flex: none; font-size: 13px; padding: 8px 13px; border-radius: 99px; background: var(--s-card); border: 1px solid var(--s-line); }
-.tabs span.on { background: var(--s-fg); color: var(--s-bg); border-color: var(--s-fg); }
+.tabs button { flex: none; font: 500 13.5px var(--s-body); padding: 9px 14px; border-radius: var(--r-pill); background: var(--s-card); border: 1px solid var(--s-line); color: var(--s-fg); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--s-fg); color: var(--s-bg); border-color: var(--s-fg); }
 
 .svc-list { display: grid; gap: 8px; }
-.svc { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 14px; background: var(--s-card); border: 1px solid var(--s-line); border-radius: var(--r); }
-.svc .n { font-weight: 600; font-size: 14.5px; }
-.svc .size { font: 700 12px var(--s-num); color: var(--accent); }
-.svc .m { font-size: 12px; color: var(--s-muted); grid-column: 1; }
-.svc .p { font: 700 15px var(--s-num); text-align: right; grid-row: 1 / span 2; grid-column: 2; font-variant-numeric: tabular-nums; }
-.svc .p small { display: block; font: 500 11px var(--s-body); color: var(--s-muted); margin-top: 3px; }
+.svc { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: start; padding: 15px; background: var(--s-card); border: 1px solid var(--s-line); border-radius: var(--r); }
+.svc .n { font-weight: 600; font-size: 15px; line-height: 1.3; }
+.svc .m { font-size: 12.5px; color: var(--s-muted); line-height: 1.4; }
+.svc .p { font-weight: 700; font-size: 15.5px; text-align: right; white-space: nowrap; grid-row: 1 / span 2; grid-column: 2; }
+.svc .p small { display: block; font-weight: 500; font-size: 11.5px; color: var(--s-muted); margin-top: 2px; }
 
-.book { margin: 26px 0 0; padding: 22px 16px 20px; background: var(--s-card); border-top: 1px solid var(--s-line); border-bottom: 1px solid var(--s-line); }
+.book { margin-top: 30px; padding: 24px 16px 22px; background: var(--s-card); border-block: 1px solid var(--s-line); scroll-margin-top: 34px; }
 .book h4 { font-family: var(--s-head); margin: 0 4px 16px; }
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
-.steps div { font-size: 11px; color: var(--s-muted); display: grid; gap: 6px; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 18px; }
+.steps div { font-size: 11.5px; color: var(--s-muted); display: grid; gap: 7px; }
 .steps div::before { content: ""; height: 4px; border-radius: 2px; background: var(--s-card-2); }
 .steps .done::before, .steps .cur::before { background: var(--accent); }
 .steps .cur { color: var(--s-fg); font-weight: 600; }
-.picked { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 13px; padding: 11px 12px; border-radius: var(--r-sm); background: var(--s-card-2); margin-bottom: 14px; }
-.picked u { text-decoration: none; color: var(--accent); font-weight: 600; flex: none; }
-.days { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 14px; padding: 0 16px; scrollbar-width: none; }
-.day { flex: none; width: 54px; padding: 9px 0 8px; display: grid; gap: 2px; justify-items: center; border-radius: var(--r-sm); border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-fg); cursor: pointer; font: inherit; }
-.day small { font-size: 11px; color: var(--s-muted); }
-.day b { font: 700 18px var(--s-num); }
-.day em { font-style: normal; font-size: 9.5px; color: var(--s-muted); }
+.picked { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 13.5px; padding: 12px 14px; border-radius: var(--r-ctl); background: var(--s-card-2); margin-bottom: 16px; }
+.picked button { all: unset; cursor: pointer; color: var(--s-fg); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.days { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 16px; padding: 2px 16px; scrollbar-width: none; }
+.day { flex: none; width: 54px; padding: 9px 0 8px; display: grid; gap: 1px; justify-items: center; border-radius: var(--r-ctl); border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-fg); cursor: pointer; font: inherit; }
+.day small { font-size: 11.5px; color: var(--s-muted); }
+.day b { font-size: 19px; font-weight: 700; }
+.day em { font-style: normal; font-size: 10px; color: var(--s-muted); min-height: 12px; }
 .day[aria-pressed="true"] { background: var(--s-fg); border-color: var(--s-fg); color: var(--s-bg); }
-.day[aria-pressed="true"] small, .day[aria-pressed="true"] em { color: var(--s-bg); opacity: .75; }
-.day:disabled { opacity: .35; cursor: default; }
-.slot-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--s-muted); margin: 0 2px 8px; }
-.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 16px; }
-.slot { font: 600 14px var(--s-num); padding: 11px 0; border-radius: var(--r-sm); border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-fg); cursor: pointer; font-variant-numeric: tabular-nums; }
-.slot:disabled { cursor: default; color: var(--s-muted); opacity: .45; text-decoration: line-through; background: transparent; }
+.day[aria-pressed="true"] small, .day[aria-pressed="true"] em { color: var(--s-bg); opacity: .72; }
+.day:disabled { opacity: .38; cursor: default; }
+.slot-head { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--s-muted); margin: 0 2px 10px; }
+.slot-head b { color: var(--s-fg); font-weight: 600; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px; }
+.slot { font: 600 14.5px var(--s-body); font-variant-numeric: tabular-nums; padding: 12px 0; border-radius: var(--r-ctl); border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-fg); cursor: pointer; }
+.slot:disabled { cursor: default; color: var(--s-muted); background: transparent; border-style: dashed; opacity: .55; }
 .slot[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.legal { font-size: 11px; color: var(--s-muted); text-align: center; margin-top: 10px; line-height: 1.4; }
+.btn.wide { width: 100%; }
+.hint { font-size: 12px; color: var(--s-muted); text-align: center; margin-top: 10px; }
 
-.gallery { display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: 96px 96px; gap: 8px; }
-.tile { border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); position: relative; overflow: hidden; display: grid; align-content: end; padding: 10px 12px; font-size: 12px; color: var(--s-muted); }
-.tile b { display: block; font: 700 20px var(--s-num); color: var(--s-fg); }
-.tile.big { grid-row: span 2; background: var(--s-card-2); }
-.tire { position: absolute; width: 150px; aspect-ratio: 1; right: -38px; top: -26px; border-radius: 50%;
-  background:
-    radial-gradient(circle, #c9cdd2 0 17%, #7c828a 18% 21%, #b8bdc3 22% 33%, #2a2c30 34% 38%, transparent 39%),
-    repeating-conic-gradient(#1b1c1f 0 6deg, #2c2e33 6deg 12deg);
-  box-shadow: inset 0 0 0 6px #161719; }
-.tire::after { content: ""; position: absolute; inset: 33%; border-radius: 50%;
-  background: repeating-conic-gradient(transparent 0 30deg, rgba(0,0,0,.35) 30deg 42deg); }
+.photos { display: grid; grid-template-columns: 1.45fr 1fr; gap: 8px; }
+.photo { border-radius: var(--r); border: 1px dashed var(--s-line); background: var(--s-card-2); display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; padding: 14px; color: var(--s-muted); font-size: 12px; line-height: 1.35; }
+.photo .ic { font-size: 24px; }
+.photo.big { aspect-ratio: 4 / 5; }
+.facts { display: grid; gap: 8px; }
+.fact { border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); padding: 12px 14px; display: grid; gap: 2px; align-content: center; }
+.fact b { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.fact span { font-size: 12px; color: var(--s-muted); line-height: 1.35; }
 
-.reviews { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; padding: 16px; border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); }
-.score { font: 700 40px/1 var(--s-num); letter-spacing: -.03em; }
-.score small { display: block; font: 500 11px var(--s-body); color: var(--s-muted); letter-spacing: 0; margin-top: 6px; }
+.reviews { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; padding: 18px; border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); }
+.score b { display: block; font: 700 42px/1 var(--s-head); letter-spacing: -.02em; }
+.stars { display: flex; gap: 1px; color: #f5a623; font-size: 13px; margin-top: 6px; }
+.score span { display: block; font-size: 11.5px; color: var(--s-muted); margin-top: 5px; }
 .src { display: grid; gap: 6px; }
-.src a { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--s-card-2); color: var(--s-fg); text-decoration: none; }
-.src a span { font: 600 12px var(--s-num); color: var(--s-muted); }
+.src a { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; padding: 11px 12px; border-radius: var(--r-ctl); background: var(--s-card-2); color: var(--s-fg); text-decoration: none; }
+.src a span { font-weight: 600; color: var(--s-muted); }
 
-.contacts { display: grid; gap: 0; padding: 4px 16px; border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); }
-.contacts div { display: grid; grid-template-columns: 70px 1fr; gap: 10px; font-size: 13.5px; padding: 12px 0; border-bottom: 1px solid var(--s-line); line-height: 1.4; }
-.contacts div:last-child { border-bottom: 0; }
+.contacts { margin: 0; padding: 2px 16px; border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); }
+.contacts div { display: grid; grid-template-columns: 72px 1fr; gap: 10px; font-size: 14px; padding: 13px 0; line-height: 1.4; }
+.contacts div + div { border-top: 1px solid var(--s-line); }
 .contacts dt { color: var(--s-muted); }
 .contacts dd { margin: 0; }
-.map { height: 128px; border-radius: var(--r); margin-bottom: 8px; position: relative; overflow: hidden; background: var(--s-card-2); border: 1px solid var(--s-line); }
-.map::before { content: ""; position: absolute; inset: 0;
-  background:
-    linear-gradient(100deg, transparent 46%, var(--s-card) 46% 52%, transparent 52%),
-    linear-gradient(8deg, transparent 54%, var(--s-card) 54% 60%, transparent 60%),
-    linear-gradient(140deg, transparent 72%, var(--s-card) 72% 75%, transparent 75%); }
-.pin { position: absolute; left: 50%; top: 46%; width: 22px; height: 22px; background: var(--accent); border: 3px solid var(--s-card); border-radius: 50% 50% 50% 0; transform: translate(-50%, -50%) rotate(-45deg); box-shadow: 0 4px 10px rgba(0,0,0,.25); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.foot { margin-top: 28px; padding: 18px 20px 26px; font-size: 11px; line-height: 1.65; color: var(--s-muted); border-top: 1px solid var(--s-line); }
+.foot { margin-top: 32px; padding: 18px 20px 30px; font-size: 11.5px; line-height: 1.7; color: var(--s-muted); border-top: 1px solid var(--s-line); }
 .foot a { color: inherit; }
 
-/* ---------- особенности ГАРАЖА ---------- */
-.t-garage .hero { background: linear-gradient(180deg, #181b1f, #121417); }
-.t-garage .hero::after { /* полоса протектора */
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px; opacity: .55;
-  background: repeating-linear-gradient(120deg, transparent 0 8px, var(--accent) 8px 12px, transparent 12px 20px);
-  -webkit-mask: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
-          mask: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
-}
-.t-garage .hero h3 { font-size: 30px; line-height: 1.05; font-weight: 400; letter-spacing: -.01em; }
-.t-garage .hero h3 em { font-style: normal; color: var(--accent); }
-.t-garage .block > h4, .t-garage .book h4 { font-size: 17px; font-weight: 400; }
-.t-garage .season .flake { background: rgba(255,107,26,.14); }
+/* ---------- «Гараж»: отличия ---------- */
+.t-garage .hero { background: linear-gradient(180deg, #191c20 0%, #131518 100%); }
+.t-garage .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; opacity: .5;
+  background: repeating-linear-gradient(115deg, transparent 0 9px, var(--accent) 9px 13px, transparent 13px 22px);
+  -webkit-mask: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.t-garage .hero h3 { font-size: 31px; line-height: 1.08; font-weight: 400; }
+.t-garage .block > h4, .t-garage .book h4 { font-size: 18px; font-weight: 400; }
 
-/* ---------- особенности СЕРВИСНОЙ КНИЖКИ ---------- */
-.t-book .notch { --s-bar: #f3f5f8; }
+/* ---------- «Сервисная книжка»: отличия ---------- */
 .t-book .hero { background: var(--s-card); border-bottom: 1px solid var(--s-line);
-  background-image: repeating-linear-gradient(0deg, transparent 0 27px, rgba(31,79,216,.06) 27px 28px); }
-.t-book .hero h3 { padding-right: 88px; font-size: 29px; line-height: 1.1; font-weight: 800; letter-spacing: -.025em; }
-.t-book .mark { border-radius: 12px; }
-.t-book .stamp { position: absolute; right: 14px; top: 76px; width: 78px; height: 78px; border-radius: 50%; border: 2px solid var(--accent); color: var(--accent);
-  display: grid; place-items: center; text-align: center; transform: rotate(-12deg); opacity: .8; font: 700 9.5px/1.25 var(--s-num); letter-spacing: .04em; text-transform: uppercase; }
+  background-image: repeating-linear-gradient(0deg, transparent 0 27px, rgba(35,80,214,.055) 27px 28px); }
+.t-book .hero h3 { font-size: 30px; line-height: 1.1; font-weight: 800; letter-spacing: -.028em; padding-right: 84px; }
+.t-book .stamp { position: absolute; right: 16px; top: 80px; width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--accent); color: var(--accent);
+  display: grid; place-items: center; text-align: center; transform: rotate(-11deg); font: 700 11px/1.2 var(--s-body); opacity: .85; }
 .t-book .stamp::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; border: 1px dashed var(--accent); }
-.t-book .block > h4, .t-book .book h4 { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
-.t-book .svc { border-left: 0; border-right: 0; border-radius: 0; background: transparent; padding: 13px 4px; }
-.t-book .svc-list { gap: 0; background: var(--s-card); border-radius: var(--r); padding: 0 12px; border: 1px solid var(--s-line); }
+.t-book .block > h4, .t-book .book h4 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.t-book .svc-list { gap: 0; background: var(--s-card); border: 1px solid var(--s-line); border-radius: var(--r); padding: 0 14px; }
+.t-book .svc { background: transparent; border: 0; border-radius: 0; padding: 15px 2px; }
 .t-book .svc + .svc { border-top: 1px dashed var(--s-line); }
-.t-book .svc { border-top: 0; border-bottom: 0; }
-.t-book .tabs span.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-.t-book .day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.t-book .tabs button[aria-pressed="true"], .t-book .day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .t-book .day[aria-pressed="true"] small, .t-book .day[aria-pressed="true"] em { color: #fff; }
 
-/* ---------- особенности АСФАЛЬТА ---------- */
-.t-road .notch { --s-bar: #1d1f1e; --s-bar-fg: #f4f4f1; }
-.t-road .demo { background: #1d1f1e; color: #a7aba5; }
-.t-road .hero { background: #2a2c2b; color: #f4f4f1;
-  background-image:
-    radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px),
-    radial-gradient(rgba(0,0,0,.25) 1px, transparent 1.5px);
-  background-size: 7px 7px, 11px 11px; background-position: 0 0, 3px 4px; }
-.t-road .hero::after { /* прерывистая разметка */
-  content: ""; position: absolute; left: 20px; right: 20px; bottom: 0; height: 6px;
-  background: repeating-linear-gradient(90deg, var(--accent) 0 34px, transparent 34px 56px); }
-.t-road .hero h3 { font-size: 40px; line-height: .98; font-weight: 700; text-transform: uppercase; letter-spacing: -.005em; }
-.t-road .brand span { color: #a7aba5; }
-.t-road .pill { background: rgba(255,255,255,.08); color: #f4f4f1; }
-.t-road .btn.alt { background: #f4f4f1; color: #141514; }
-.t-road .mark { font-family: "Oswald", sans-serif; font-weight: 700; font-size: 24px; }
-.t-road .block > h4, .t-road .book h4 { font-size: 22px; font-weight: 600; text-transform: uppercase; letter-spacing: .01em; }
-.t-road .btn { font-family: "Oswald", sans-serif; font-weight: 600; font-size: 17px; text-transform: uppercase; letter-spacing: .04em; }
+/* ---------- «Асфальт»: отличия ---------- */
+.t-road { --s-bar: #232524; --s-bar-fg: #f3f3ef; }
+.t-road .demo { background: #232524; color: #a9ada6; }
+.t-road .hero { background-color: #2a2c2b; color: #f3f3ef;
+  background-image: radial-gradient(rgba(255,255,255,.055) 1px, transparent 1.6px), radial-gradient(rgba(0,0,0,.28) 1px, transparent 1.6px);
+  background-size: 7px 7px, 11px 11px; background-position: 0 0, 3px 5px; padding-bottom: 34px; }
+.t-road .hero::after { content: ""; position: absolute; left: 20px; right: 20px; bottom: 12px; height: 5px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 36px, transparent 36px 58px); }
+.t-road .hero h3 { font-size: 42px; line-height: 1; font-weight: 700; text-transform: uppercase; }
+.t-road .brand span, .t-road .sub { color: #b4b8b1; }
+.t-road .sub .r { color: #f3f3ef; }
+.t-road .btn.alt { background: #f3f3ef; color: #171817; }
+.t-road .mark { font: 700 25px "Oswald", sans-serif; }
+.t-road .btn { font-family: "Oswald", sans-serif; font-weight: 600; font-size: 17px; text-transform: uppercase; letter-spacing: .03em; }
+.t-road .block > h4, .t-road .book h4 { font-size: 24px; font-weight: 600; text-transform: uppercase; }
 .t-road .svc { border-left: 6px solid var(--s-fg); }
-.t-road .svc .size { color: #8a6d00; background: var(--accent); color: var(--on-accent); padding: 1px 5px; border-radius: 2px; justify-self: start; }
 .t-road .season { background: var(--accent); border-color: var(--accent); }
-.t-road .season span { color: #3d3a2a; }
-.t-road .season .flake { background: #141514; color: var(--accent); }
-.t-road .tabs span { border-radius: 2px; }
-.t-road .tabs span.on { background: #141514; border-color: #141514; color: var(--accent); }
-.t-road .book { background: #f4f4f1; }
-.t-road .score { font-family: "Oswald", sans-serif; font-size: 46px; }
+.t-road .season p { color: #3b3826; }
+.t-road .season .ic { background: #171817; color: var(--accent); }
+.t-road .tabs button[aria-pressed="true"] { background: #171817; border-color: #171817; color: var(--accent); }
+.t-road .score b { font-family: "Oswald", sans-serif; font-size: 48px; }
 
 /* ---------- экран «Вы записаны» ---------- */
-.done-screen { padding: 26px 20px 30px; display: grid; gap: 18px; }
-.check { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
-.check svg { width: 32px; height: 32px; }
-.done-screen h3 { font: 400 28px/1.1 var(--s-head); margin: 0; }
-.ticket { border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); overflow: hidden; }
-.ticket .top { padding: 16px; display: grid; gap: 4px; }
-.ticket .when { font: 700 26px var(--s-num); letter-spacing: -.02em; }
+.done { padding: 30px 20px 34px; display: grid; gap: 18px; }
+.done .tick { width: 62px; height: 62px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 30px; }
+@media (prefers-reduced-motion: no-preference) { .done .tick { animation: pop .5s cubic-bezier(.2,1.4,.4,1) both; } }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } }
+.done h3 { font: 400 30px/1.05 var(--s-head); margin: 0; }
+.done > p { margin: -8px 0 0; color: var(--s-muted); font-size: 14px; line-height: 1.45; }
+.ticket { border-radius: var(--r); background: var(--s-card); border: 1px solid var(--s-line); }
+.ticket .top { padding: 18px 16px 16px; display: grid; gap: 4px; }
+.ticket .when { font-size: 25px; font-weight: 700; letter-spacing: -.02em; }
 .ticket .what { font-size: 14px; color: var(--s-muted); }
-.ticket .cut { height: 0; border-top: 2px dashed var(--s-line); margin: 0 12px; position: relative; }
-.ticket .rows { padding: 12px 16px 16px; display: grid; gap: 8px; font-size: 13px; }
-.ticket .rows div { display: flex; justify-content: space-between; gap: 12px; }
-.ticket .rows span { color: var(--s-muted); }
-.note-box { font-size: 12.5px; line-height: 1.5; color: var(--s-muted); padding: 12px 14px; border-radius: var(--r-sm); background: var(--s-card-2); }
-.note-box b { color: var(--s-fg); }
-.linkish { color: var(--accent); font-weight: 600; font-size: 14px; text-align: center; }
+.ticket .cut { position: relative; border-top: 2px dashed var(--s-line); margin: 0 14px; }
+.ticket .cut::before, .ticket .cut::after { content: ""; position: absolute; top: -10px; width: 18px; height: 18px; border-radius: 50%; background: var(--s-bg); border: 1px solid var(--s-line); }
+.ticket .cut::before { left: -24px; } .ticket .cut::after { right: -24px; }
+.ticket dl { margin: 0; padding: 14px 16px 16px; display: grid; gap: 9px; font-size: 13.5px; }
+.ticket dl div { display: flex; justify-content: space-between; gap: 12px; }
+.ticket dt { color: var(--s-muted); }
+.ticket dd { margin: 0; font-weight: 600; text-align: right; }
+.keep { font-size: 13px; line-height: 1.5; color: var(--s-muted); padding: 13px 14px; border-radius: var(--r-ctl); background: var(--s-card-2); }
+.keep b { color: var(--s-fg); }
+.cancel { justify-self: center; background: none; border: 0; color: var(--s-fg); font: 600 14px var(--s-body); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--s-muted); cursor: pointer; padding: 6px; }
 
-/* =========================================================
-   КАБИНЕТ ВЛАДЕЛЬЦА — рабочий инструмент, светлый, крупный
-   ========================================================= */
+/* =================  КАБИНЕТ ВЛАДЕЛЬЦА  =================
+   Рабочий инструмент: светлый, крупный, цвет только для смысла (сайт / телефон / закрыто / сейчас) */
 .t-cab {
-  --s-bg: #eff1f4; --s-card: #ffffff; --s-card-2: #e8ebef; --s-line: #dfe3e8;
-  --s-fg: #14171b; --s-muted: #646c76; --accent: #ff6b1a; --on-accent: #ffffff;
-  --s-head: "Golos Text", sans-serif; --s-body: "Golos Text", sans-serif; --s-num: "JetBrains Mono", monospace;
-  --r: 16px; --r-sm: 10px; --ok: #1f9d5c; --full: #e5484d;
+  --s-bg: #eef0f3; --s-card: #ffffff; --s-card-2: #e7eaee; --s-line: #dde1e6;
+  --s-fg: #15181c; --s-muted: #626a74; --accent: #ff6a1f; --on-accent: #ffffff;
+  --s-head: "Golos Text", sans-serif; --s-body: "Golos Text", sans-serif;
+  --r: 16px; --r-ctl: 12px; --r-pill: 999px; --phone: #2d3238; --ok: #1d9358; --now: #e5484d;
 }
-.push { position: sticky; top: 30px; z-index: 4; margin: 6px 10px 0; padding: 10px 12px; border-radius: 18px; background: rgba(28,30,34,.94); color: #fff; display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; font-size: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
-.push .ic { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; font: 700 15px var(--s-head); }
-.push b { display: block; font-size: 12.5px; }
-.push span { opacity: .78; }
-.push time { opacity: .55; font-size: 11px; align-self: start; }
-.cab-head { padding: 18px 18px 14px; }
-.cab-head .d { font-size: 13px; color: var(--s-muted); }
-.cab-head h3 { margin: 2px 0 14px; font: 700 28px var(--s-head); letter-spacing: -.02em; }
-.kpis { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
-.kpi { background: var(--s-card); border-radius: 14px; padding: 11px 12px; display: grid; gap: 2px; border: 1px solid var(--s-line); }
-.kpi b { font: 700 19px var(--s-num); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.kpi span { font-size: 11px; color: var(--s-muted); }
-.loadcard { margin: 0 14px; padding: 14px; background: var(--s-card); border-radius: var(--r); border: 1px solid var(--s-line); }
-.loadcard .t { display: flex; justify-content: space-between; font-size: 12px; color: var(--s-muted); margin-bottom: 10px; }
-.lanes { display: grid; gap: 6px; }
-.lane { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: center; font-size: 11px; color: var(--s-muted); }
-.track { position: relative; height: 20px; border-radius: 6px; background: var(--s-card-2); overflow: hidden; }
-.track i { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); opacity: .9; }
-.track i.ph { background: #2b2f35; }
-.track i.lunch { background: repeating-linear-gradient(45deg, #c4cad1 0 3px, transparent 3px 6px); opacity: 1; }
-.now-line { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--full); }
-.hours { display: grid; grid-template-columns: 44px repeat(11, 1fr); font: 500 9.5px var(--s-num); color: var(--s-muted); margin-top: 6px; }
-.legend { display: flex; gap: 12px; font-size: 11px; color: var(--s-muted); margin-top: 10px; }
-.legend span { display: inline-flex; align-items: center; gap: 5px; }
-.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-.list { padding: 14px 14px 100px; display: grid; gap: 8px; }
-.list h5 { margin: 4px 4px 2px; font-size: 12px; color: var(--s-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.bk { display: grid; grid-template-columns: 56px 1fr 40px; gap: 10px; align-items: center; padding: 12px; background: var(--s-card); border-radius: 14px; border: 1px solid var(--s-line); }
-.bk .tm { font: 700 16px var(--s-num); }
-.bk .tm small { display: block; font: 500 11px var(--s-body); color: var(--s-muted); margin-top: 2px; }
-.bk .who { font-size: 14.5px; font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.bk .what { font-size: 12.5px; color: var(--s-muted); margin-top: 3px; }
-.src-tag { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px; }
-.src-tag.site { background: #fff0e6; color: #b54708; }
-.src-tag.tel { background: var(--s-card-2); color: var(--s-muted); }
-.call { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #e7f6ee; color: var(--ok); }
-.call svg { width: 18px; height: 18px; }
+.push { position: sticky; top: 34px; z-index: 5; margin: 6px 10px 0; padding: 11px 12px; border-radius: 18px; background: rgba(30,33,37,.95); color: #fff;
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; box-shadow: 0 12px 26px -8px rgba(20,24,30,.45); }
+.push .app { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; font: 700 16px var(--s-head); }
+.push b { display: block; font-size: 13px; }
+.push span { font-size: 12.5px; opacity: .8; }
+.push time { font-size: 11px; opacity: .55; align-self: start; }
+.cab-head { padding: 20px 18px 16px; }
+.cab-head .d { font-size: 13.5px; color: var(--s-muted); }
+.cab-head h3 { margin: 2px 0 16px; font: 700 30px var(--s-head); letter-spacing: -.025em; }
+.kpis { display: grid; grid-template-columns: .8fr .8fr 1.4fr; gap: 8px; }
+.kpi { background: var(--s-card); border-radius: 14px; padding: 12px; display: grid; gap: 2px; border: 1px solid var(--s-line); }
+.kpi b { font-size: 21px; font-weight: 700; white-space: nowrap; letter-spacing: -.01em; }
+.kpi span { font-size: 11.5px; color: var(--s-muted); }
+.loadcard { margin: 0 14px; padding: 16px 14px 14px; background: var(--s-card); border-radius: var(--r); border: 1px solid var(--s-line); }
+.loadcard .t { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px; }
+.loadcard .t span { color: var(--s-muted); }
+.lane { display: grid; grid-template-columns: 48px 1fr; gap: 8px; align-items: center; font-size: 11.5px; color: var(--s-muted); }
+.lane + .lane { margin-top: 7px; }
+.track { position: relative; height: 22px; border-radius: 6px; background: var(--s-card-2); }
+.track i { position: absolute; top: 2px; bottom: 2px; border-radius: 5px; background: var(--accent); }
+.track i.tel { background: var(--phone); }
+.track i.shut { background: repeating-linear-gradient(45deg, #c3c9d0 0 3px, transparent 3px 6px); }
+.track .now { position: absolute; top: -5px; bottom: -5px; width: 2px; border-radius: 1px; background: var(--now); }
+.hours { display: grid; grid-template-columns: 48px repeat(11, 1fr); font-size: 10px; color: var(--s-muted); margin-top: 7px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--s-muted); margin-top: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; }
+.list { padding: 16px 14px 104px; display: grid; gap: 8px; }
+.list h5 { margin: 6px 4px 0; font-size: 13px; color: var(--s-muted); font-weight: 600; }
+.bk { display: grid; grid-template-columns: 56px 1fr 42px; gap: 10px; align-items: center; padding: 12px; background: var(--s-card); border-radius: 14px; border: 1px solid var(--s-line); }
+.bk .tm { font-size: 16.5px; font-weight: 700; }
+.bk .tm small { display: block; font-size: 11.5px; font-weight: 500; color: var(--s-muted); margin-top: 1px; }
+.bk .who { font-size: 15px; font-weight: 600; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.bk .what { font-size: 13px; color: var(--s-muted); margin-top: 3px; line-height: 1.35; }
+.tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; }
+.tag.site { background: #fff0e6; color: #a6420f; }
+.tag.tel { background: var(--s-card-2); color: #4a525b; }
+.call { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #e5f5ec; color: var(--ok); font-size: 19px; }
 .bk.now { box-shadow: 0 0 0 2px var(--accent); border-color: transparent; }
-.bk.past { opacity: .55; }
-.bk.block { background: repeating-linear-gradient(45deg, var(--s-card) 0 9px, var(--s-bg) 9px 18px); }
-.tabbar { position: sticky; bottom: 0; margin-top: -84px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; padding: 8px 6px 18px; background: rgba(255,255,255,.96); border-top: 1px solid var(--s-line); backdrop-filter: blur(8px); }
-.tabbar div { display: grid; justify-items: center; gap: 3px; font-size: 10.5px; color: var(--s-muted); }
-.tabbar svg { width: 22px; height: 22px; }
+.bk.past { opacity: .5; }
+.bk.shut { background: repeating-linear-gradient(45deg, var(--s-card) 0 9px, var(--s-bg) 9px 18px); }
+.tabbar { position: sticky; bottom: 0; margin-top: -88px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; padding: 8px 6px 20px; background: rgba(255,255,255,.95); border-top: 1px solid var(--s-line); }
+.tabbar div { display: grid; justify-items: center; gap: 3px; font-size: 11px; color: var(--s-muted); }
+.tabbar .ic { font-size: 23px; }
 .tabbar .on { color: var(--s-fg); font-weight: 600; }
-.tabbar .plus span { width: 54px; height: 54px; margin-top: -26px; border-radius: 18px; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 8px 18px rgba(255,107,26,.4); }
-.tabbar .plus svg { width: 26px; height: 26px; }
+.tabbar .plus .fab { width: 56px; height: 56px; margin-top: -28px; border-radius: 18px; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 10px 20px -6px rgba(255,106,31,.6); }
+.tabbar .plus .ic { font-size: 28px; }
 
-/* ---------- лист «Добавить запись» ---------- */
-.sheet-bg { background: #8a9099; height: 100%; display: grid; align-content: end; }
-.sheet { background: var(--s-card); border-radius: 26px 26px 0 0; padding: 10px 18px 26px; display: grid; gap: 16px; }
+.sheet-bg { min-height: 100%; background: #7d848d; display: grid; align-content: end; padding-top: 44px; }
+.sheet-bg .status { position: absolute; top: 0; left: 0; right: 0; background: transparent; color: #fff; }
+.sheet { background: var(--s-card); border-radius: 28px 28px 0 0; padding: 10px 18px 24px; display: grid; gap: 14px; }
 .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--s-line); justify-self: center; }
-.sheet h3 { margin: 0; font: 700 22px var(--s-head); }
-.field { display: grid; gap: 7px; }
-.field > span { font-size: 12px; color: var(--s-muted); font-weight: 600; }
+.sheet h3 { margin: 0; font: 700 23px var(--s-head); letter-spacing: -.02em; }
+.field { display: grid; gap: 8px; }
+.field > label, .field > span { font-size: 13px; color: var(--s-muted); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chips span { font-size: 13px; padding: 9px 12px; border-radius: 10px; background: var(--s-card-2); }
+.chips span { font-size: 13.5px; padding: 9px 12px; border-radius: 10px; background: var(--s-card-2); }
 .chips span.on { background: var(--s-fg); color: #fff; }
-.input { min-height: 46px; border-radius: 12px; border: 1px solid var(--s-line); display: flex; align-items: center; padding: 0 14px; font-size: 14px; color: var(--s-muted); }
-.input b { color: var(--s-fg); font-weight: 500; }
-.warn { font-size: 12px; color: #9a3412; background: #fff1e7; padding: 10px 12px; border-radius: 10px; line-height: 1.4; }
+.input { min-height: 48px; border-radius: 12px; border: 1px solid #c9cfd6; display: flex; align-items: center; padding: 0 14px; font-size: 15px; color: var(--s-fg); background: var(--s-card); }
+.input.empty { color: #69717b; }
+.warn { display: grid; grid-template-columns: 20px 1fr; gap: 8px; font-size: 13px; color: #8a3a0c; background: #fff1e6; padding: 11px 12px; border-radius: 12px; line-height: 1.4; }
+.warn .ic { font-size: 20px; }
 
-.footnote { max-width: 68ch; margin: 56px auto 0; color: var(--muted); font-size: 14px; line-height: 1.6; text-align: center; }
-@media (prefers-reduced-motion: no-preference) {
-  .slot, .day, .btn, .swatches button { transition: background-color .15s, color .15s, transform .1s; }
-  .slot:active, .btn:active { transform: scale(.97); }
-}
+.footnote { max-width: 62ch; margin: 64px auto 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
 </style>
 
 <div class="wrap">
   <header class="intro">
-    <div class="eyebrow">Автослот · макеты v2</div>
     <h1>Сайт с онлайн-записью для шиномонтажа</h1>
-    <p>Один и тот же сайт в трёх темах. Разметка общая, меняются шрифты, цвета и детали. Внутри телефонов всё прокручивается, а дни и время можно нажимать. Под каждым телефоном — выбор акцентного цвета: так сайт подстраивается под логотип клиента. Шиномонтаж «Колесо» вымышленный.</p>
+    <p>Один сайт в трёх темах. Внутри телефонов всё прокручивается, дни и время нажимаются, кнопка «Записаться» ведёт к записи. Под телефоном можно сменить акцентный цвет под логотип клиента. Шиномонтаж «Колесо» и все данные выдуманы.</p>
   </header>
 
   <div class="row" id="sites"></div>
 
   <h2 class="sec">После записи</h2>
-  <p class="sec">Что видит клиент, когда нажал «Записаться». Ссылка для отмены здесь же: отменить можно не позже чем за 24 часа.</p>
+  <p class="sec">Клиент видит талон: когда, что и куда ехать. Здесь же ссылка на отмену, она работает не позже чем за сутки до визита.</p>
   <div class="row">
     <div class="col">
       <div class="phone"><div class="screen t-garage">
-        <div class="notch"><span>9:41</span><i>●●●</i></div>
-        <div class="done-screen">
-          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <div class="status"><span>9:41</span><span class="bat"></span></div>
+        <div class="done">
+          <div class="tick"><i class="ic" data-i="check"></i></div>
           <h3>Вы записаны</h3>
+          <p>Ждём вас в субботу. Если планы поменяются, отмените запись по ссылке ниже.</p>
           <div class="ticket">
             <div class="top">
-              <div class="when">Сб, 4 окт · 11:30</div>
-              <div class="what">Смена колёс R13–R16 · ~40 мин</div>
+              <div class="when">Суббота, 4 октября, 11:30</div>
+              <div class="what">Смена колёс R13-R16, около 40 минут</div>
             </div>
             <div class="cut"></div>
-            <div class="rows">
-              <div><span>Автомобиль</span><b>Kia Rio</b></div>
-              <div><span>Адрес</span><b>ул. Примерная, 12</b></div>
-              <div><span>Стоимость</span><b>от 1 600 ₽</b></div>
-            </div>
+            <dl>
+              <div><dt>Машина</dt><dd>Kia Rio</dd></div>
+              <div><dt>Адрес</dt><dd>ул. Примерная, 12</dd></div>
+              <div><dt>Стоимость</dt><dd>от 1 600 ₽</dd></div>
+            </dl>
           </div>
-          <div class="two" style="margin-top:0"><div class="btn alt">В календарь</div><div class="btn">Маршрут</div></div>
-          <div class="note-box"><b>Сохраните ссылку на запись.</b> По ней можно отменить визит до пятницы, 11:30. Позже — только по телефону +7 (342) 000-00-00.</div>
-          <div class="linkish">Отменить запись</div>
+          <div class="two" style="margin-top:0">
+            <button class="btn alt" type="button"><i class="ic" data-i="calendar-plus"></i>В календарь</button>
+            <button class="btn" type="button"><i class="ic" data-i="navigation-arrow"></i>Маршрут</button>
+          </div>
+          <div class="keep"><b>Ссылка на запись пришла в SMS.</b> Отменить онлайн можно до пятницы, 11:30. Позже только по телефону +7 (342) 254-18-73.</div>
+          <button class="cancel" type="button">Отменить запись</button>
         </div>
       </div></div>
-      <div class="cap"><b>Экран «Вы записаны»</b><span>Талон с датой и временем — главное, что клиент ищет глазами. Остальное ниже.</span></div>
+      <div class="cap"><b>Экран «Вы записаны»</b><span>Главное крупно: день и время. Всё остальное мельче, в порядке важности.</span></div>
     </div>
   </div>
 
   <h2 class="sec">Кабинет владельца</h2>
-  <p class="sec">Рабочий инструмент: светлый, крупный, чтобы читалось на ходу. Слева — день по постам: оранжевым записи с сайта, тёмным — по телефону, штриховкой — обед. Справа — добавление записи после звонка: три касания, имя и телефон по желанию.</p>
+  <p class="sec">Рабочий инструмент, поэтому без украшений: светлый фон, крупные цифры, цвет только там, где он что-то значит. Оранжевый означает запись с сайта, тёмный - запись по телефону, штриховка - закрытое время.</p>
   <div class="row">
     <div class="col">
       <div class="phone"><div class="screen t-cab">
-        <div class="notch"><span>11:20</span><i>●●●</i></div>
-        <div class="push"><div class="ic">А</div><div><b>Новая запись</b><span>Завтра 10:00 · Смена колёс R15</span></div><time>сейчас</time></div>
+        <div class="status"><span>11:20</span><span class="bat"></span></div>
+        <div class="push"><div class="app">К</div><div><b>Новая запись</b><span>Завтра в 10:00, смена колёс R15</span></div><time>сейчас</time></div>
         <div class="cab-head">
           <div class="d">Пятница, 3 октября</div>
           <h3>Сегодня</h3>
           <div class="kpis">
             <div class="kpi"><b>9</b><span>записей</span></div>
             <div class="kpi"><b>5</b><span>с сайта</span></div>
-            <div class="kpi"><b>17 400 ₽</b><span>примерно за день</span></div>
+            <div class="kpi"><b>17 400 ₽</b><span>выручка за день, примерно</span></div>
           </div>
         </div>
         <div class="loadcard">
-          <div class="t"><span>Посты</span><span>9:00–20:00</span></div>
-          <div class="lanes">
-            <div class="lane">Пост 1<div class="track">
-              <i style="left:9%;width:6%"></i><i class="ph" style="left:18%;width:9%"></i><i style="left:27%;width:7.5%"></i>
-              <i class="lunch" style="left:36.4%;width:9%"></i><i class="ph" style="left:45.4%;width:6%"></i><i style="left:54.5%;width:9%"></i><i style="left:72.7%;width:7.5%"></i>
-              <span class="now-line" style="left:21.2%"></span></div></div>
-            <div class="lane">Пост 2<div class="track">
-              <i class="ph" style="left:4.5%;width:9%"></i><i style="left:22.7%;width:7.5%"></i>
-              <i class="lunch" style="left:36.4%;width:9%"></i><i style="left:45.4%;width:4.5%"></i><i class="ph" style="left:63.6%;width:9%"></i>
-              <span class="now-line" style="left:21.2%"></span></div></div>
-          </div>
+          <div class="t"><b>Загрузка постов</b><span>9:00-20:00</span></div>
+          <div class="lane">Пост 1<div class="track">
+            <i class="site" style="left:9%;width:6%"></i><i class="tel" style="left:18.2%;width:9%"></i><i style="left:27.3%;width:7.5%"></i>
+            <i class="shut" style="left:36.4%;width:9%"></i><i class="tel" style="left:45.5%;width:6%"></i><i style="left:54.5%;width:9%"></i><i style="left:72.7%;width:7.5%"></i>
+            <span class="now" style="left:21.2%"></span></div></div>
+          <div class="lane">Пост 2<div class="track">
+            <i class="tel" style="left:4.5%;width:9%"></i><i style="left:22.7%;width:7.5%"></i>
+            <i class="shut" style="left:36.4%;width:9%"></i><i style="left:45.5%;width:4.5%"></i><i class="tel" style="left:63.6%;width:9%"></i>
+            <span class="now" style="left:21.2%"></span></div></div>
           <div class="hours"><span></span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span></div>
-          <div class="legend"><span><i style="background:var(--accent)"></i>сайт</span><span><i style="background:#2b2f35"></i>телефон</span><span><i style="background:repeating-linear-gradient(45deg,#c4cad1 0 3px,transparent 3px 6px)"></i>закрыто</span></div>
+          <div class="legend"><span><i style="background:var(--accent)"></i>с сайта</span><span><i style="background:var(--phone)"></i>по телефону</span><span><i style="background:repeating-linear-gradient(45deg,#c3c9d0 0 3px,transparent 3px 6px)"></i>закрыто</span><span><i style="background:var(--now);width:2px"></i>сейчас</span></div>
         </div>
         <div class="list">
           <h5>Утро</h5>
-          <div class="bk past"><div class="tm">10:00<small>40 мин</small></div><div><div class="who">Андрей <span class="src-tag site">сайт</span></div><div class="what">Kia Rio · Смена колёс R15</div></div><div class="call"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></div></div>
-          <div class="bk now"><div class="tm">11:00<small>60 мин</small></div><div><div class="who">Сергей <span class="src-tag tel">телефон</span></div><div class="what">Camry · Развал-схождение</div></div><div class="call"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></div></div>
-          <div class="bk"><div class="tm">11:30<small>50 мин</small></div><div><div class="who">Ольга <span class="src-tag site">сайт</span></div><div class="what">Tiguan · Смена колёс R17</div></div><div class="call"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></div></div>
-          <h5>День</h5>
-          <div class="bk block"><div class="tm">13:00<small>60 мин</small></div><div><div class="who">Обед</div><div class="what">Закрыто: оба поста</div></div><div></div></div>
-          <div class="bk"><div class="tm">14:00<small>40 мин</small></div><div><div class="who">Без имени <span class="src-tag tel">телефон</span></div><div class="what">Lada Vesta · Замена масла</div></div><div></div></div>
-          <div class="bk"><div class="tm">14:00<small>30 мин</small></div><div><div class="who">Марат <span class="src-tag site">сайт</span></div><div class="what">Polo · Диагностика: «стучит спереди справа»</div></div><div class="call"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></div></div>
+          <div class="bk past"><div class="tm">10:00<small>40 мин</small></div><div><div class="who">Андрей <span class="tag site">сайт</span></div><div class="what">Kia Rio, смена колёс R15</div></div><div class="call"><i class="ic" data-i="phone"></i></div></div>
+          <div class="bk now"><div class="tm">11:00<small>60 мин</small></div><div><div class="who">Сергей <span class="tag tel">телефон</span></div><div class="what">Toyota Camry, развал-схождение</div></div><div class="call"><i class="ic" data-i="phone"></i></div></div>
+          <div class="bk"><div class="tm">11:30<small>50 мин</small></div><div><div class="who">Ольга <span class="tag site">сайт</span></div><div class="what">VW Tiguan, смена колёс R17</div></div><div class="call"><i class="ic" data-i="phone"></i></div></div>
+          <h5>После обеда</h5>
+          <div class="bk shut"><div class="tm">13:00<small>60 мин</small></div><div><div class="who">Обед</div><div class="what">Закрыты оба поста</div></div><div></div></div>
+          <div class="bk"><div class="tm">14:00<small>40 мин</small></div><div><div class="who">Без имени <span class="tag tel">телефон</span></div><div class="what">Lada Vesta, замена масла</div></div><div></div></div>
+          <div class="bk"><div class="tm">14:00<small>30 мин</small></div><div><div class="who">Марат <span class="tag site">сайт</span></div><div class="what">VW Polo, диагностика ходовой. «Стучит спереди справа на кочках»</div></div><div class="call"><i class="ic" data-i="phone"></i></div></div>
         </div>
         <nav class="tabbar">
-          <div class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Сегодня</div>
-          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Неделя</div>
-          <div class="plus"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Запись</div>
-          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Сайт</div>
-          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Ещё</div>
+          <div class="on"><i class="ic" data-i="clock"></i>Сегодня</div>
+          <div><i class="ic" data-i="calendar-dots"></i>Неделя</div>
+          <div class="plus"><span class="fab"><i class="ic" data-i="plus"></i></span>Запись</div>
+          <div><i class="ic" data-i="pencil-simple"></i>Сайт</div>
+          <div><i class="ic" data-i="list"></i>Ещё</div>
         </nav>
       </div></div>
-      <div class="cap"><b>«Сегодня»</b><span>Сверху push без имени и телефона клиента: данные остаются на сервере в России.</span></div>
+      <div class="cap"><b>Экран «Сегодня»</b><span>В уведомлении нет имени и телефона клиента: эти данные остаются на сервере в России и видны только в кабинете.</span></div>
     </div>
 
     <div class="col">
       <div class="phone"><div class="screen t-cab">
         <div class="sheet-bg">
-          <div class="notch" style="background:transparent;color:#fff;position:absolute;top:0;left:0;right:0"><span>11:24</span><i>●●●</i></div>
+          <div class="status"><span>11:24</span><span class="bat"></span></div>
           <div class="sheet">
             <div class="grab"></div>
             <h3>Новая запись</h3>
             <div class="field"><span>Услуга</span>
-              <div class="chips"><span class="on">Смена колёс R13–R16</span><span>R17–R19</span><span>Балансировка</span><span>Развал</span><span>Масло</span><span>Диагностика</span></div>
+              <div class="chips"><span class="on">Смена колёс R13-R16</span><span>R17-R19</span><span>Балансировка</span><span>Развал</span><span>Масло</span></div>
             </div>
             <div class="field"><span>Когда</span>
-              <div class="chips"><span>Сегодня</span><span class="on">Завтра, сб 4</span><span>Пн 6</span><span>Другая дата</span></div>
-              <div class="chips"><span>10:00</span><span>10:30</span><span class="on">12:00</span><span>14:30</span><span>15:00</span><span>16:00</span></div>
+              <div class="chips"><span>Сегодня</span><span class="on">Завтра, сб 4</span><span>Пн 6</span><span>Другой</span></div>
+              <div class="chips"><span>10:30</span><span class="on">12:00</span><span>14:30</span><span>15:00</span><span>16:00</span></div>
             </div>
-            <div class="field"><span>Клиент — по желанию</span>
-              <div class="input"><b>Иван, Камри</b></div>
-              <div class="input">+7 (___) ___-__-__</div>
-            </div>
-            <div class="warn">В 12:00 занят 1 пост из 2. Окно на сайте закроется автоматически.</div>
-            <div class="btn" style="min-height:56px">Записать</div>
+            <div class="field"><label for="c-name">Имя и машина, если клиент назвал</label><div class="input" id="c-name">Иван, Камри</div></div>
+            <div class="field"><label for="c-tel">Телефон, необязательно</label><div class="input empty" id="c-tel">+7</div></div>
+            <div class="warn"><i class="ic" data-i="warning-circle"></i><span>В 12:00 занят 1 пост из 2. На сайте это время закроется само.</span></div>
+            <button class="btn" type="button" style="min-height:56px">Записать</button>
           </div>
         </div>
       </div></div>
-      <div class="cap"><b>Кнопка «+» — запись после звонка</b><span>Сразу попадает в общее расписание, и на сайте это время становится занятым.</span></div>
+      <div class="cap"><b>Кнопка «+»: запись после звонка</b><span>Три касания. Запись сразу попадает в общее расписание, и на сайте это время становится занятым.</span></div>
     </div>
   </div>
 
-  <p class="footnote">Скажите, какие темы оставить и что поменять. Акцентный цвет в любой теме выбирается под логотип клиента, а шрифты и детали остаются фирменными для темы.</p>
+  <p class="footnote">Напишите, какие темы оставить и что поменять. Акцентный цвет в каждой теме подбирается под логотип клиента, а шрифты и характер темы остаются.</p>
 </div>
 
 <template id="site">
-  <div class="notch"><span>9:41</span><i>●●●</i></div>
-  <div class="demo">Демо-версия · не официальный сайт</div>
+  <div class="status"><span>9:41</span><span class="bat"></span></div>
+  <div class="demo">Демо-версия. Не официальный сайт</div>
   <section class="hero">
     <div class="brand"><div class="mark">К</div><div><b>Шиномонтаж «Колесо»</b><span>Пермь, ул. Примерная, 12</span></div></div>
-    <div class="stamp" data-only="t-book">Запись<br>онлайн<br>24/7</div>
+    <div class="stamp" data-only="t-book">Запись<br>онлайн<br>без звонка</div>
     <h3 data-h></h3>
-    <div class="meta">
-      <span class="pill"><span class="star">★</span> 4,8 · 126 отзывов</span>
-      <span class="pill"><span class="dot"></span>Открыто до 20:00</span>
-    </div>
+    <div class="sub"><span class="r"><i class="ic" data-i="star-fill"></i>4,8</span><span>126 отзывов на картах</span><span class="open">Открыто до 20:00</span></div>
     <div class="cta">
-      <button class="btn" type="button">Записаться онлайн</button>
-      <button class="btn alt" type="button" aria-label="Позвонить"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg></button>
+      <button class="btn" type="button" data-go>Записаться</button>
+      <button class="btn alt" type="button" aria-label="Позвонить"><i class="ic" data-i="phone"></i></button>
     </div>
   </section>
 
-  <div style="height:16px"></div>
   <div class="season">
-    <div class="flake">❄</div>
-    <div><b>Сезон зимней резины</b><span>С середины октября очереди. Запишитесь заранее — на сайте видно свободные окна.</span></div>
+    <i class="ic" data-i="snowflake"></i>
+    <div><b>Сезон зимней резины</b><p>С середины октября очереди. Выберите время заранее, свободные окна видны ниже.</p></div>
   </div>
 
   <section class="block">
-    <h4>Услуги и цены <small>за 4 колеса</small></h4>
-    <div class="tabs"><span class="on">Шиномонтаж</span><span>Развал</span><span>ТО и масло</span><span>Диагностика</span></div>
+    <h4>Услуги и цены</h4>
+    <p class="note-sm">Цены за 4 колеса, точную назовёт мастер</p>
+    <div class="tabs" data-tabs>
+      <button type="button" aria-pressed="true">Шиномонтаж</button><button type="button" aria-pressed="false">Развал</button><button type="button" aria-pressed="false">ТО и масло</button><button type="button" aria-pressed="false">Диагностика</button>
+    </div>
     <div class="svc-list">
-      <div class="svc"><div class="n">Смена колёс <span class="size">R13–R16</span></div><div class="m">снять, разбортировать, отбалансировать · ~40 мин</div><div class="p">1 600 ₽<small>от</small></div></div>
-      <div class="svc"><div class="n">Смена колёс <span class="size">R17–R19</span></div><div class="m">кроссоверы и седаны бизнес-класса · ~50 мин</div><div class="p">2 200 ₽<small>от</small></div></div>
-      <div class="svc"><div class="n">Смена колёс <span class="size">R20+</span></div><div class="m">внедорожники, низкий профиль · ~60 мин</div><div class="p">3 000 ₽<small>от</small></div></div>
-      <div class="svc"><div class="n">Хранение шин</div><div class="m">комплект на сезон, с мойкой</div><div class="p">2 500 ₽<small>от</small></div></div>
+      <div class="svc"><div class="n">Смена колёс R13-R16</div><div class="m">Снять, разбортировать, отбалансировать. Около 40 минут</div><div class="p">1 600 ₽<small>от</small></div></div>
+      <div class="svc"><div class="n">Смена колёс R17-R19</div><div class="m">Кроссоверы и крупные седаны. Около 50 минут</div><div class="p">2 200 ₽<small>от</small></div></div>
+      <div class="svc"><div class="n">Смена колёс R20 и больше</div><div class="m">Внедорожники и низкий профиль. Около часа</div><div class="p">3 000 ₽<small>от</small></div></div>
+      <div class="svc"><div class="n">Сезонное хранение шин</div><div class="m">Комплект с мойкой и упаковкой</div><div class="p">2 500 ₽<small>от</small></div></div>
     </div>
   </section>
 
-  <section class="book">
+  <section class="book" data-book>
     <h4>Запись</h4>
     <div class="steps"><div class="done">Услуга</div><div class="cur">Время</div><div>Контакты</div></div>
-    <div class="picked"><span>Смена колёс R13–R16 · 40 мин</span><u>Изменить</u></div>
+    <div class="picked"><span>Смена колёс R13-R16, 40 мин</span><button type="button">Изменить</button></div>
     <div class="days" data-days></div>
-    <div class="slot-head"><span data-slot-label>Суббота, 4 октября</span><span data-free></span></div>
+    <div class="slot-head"><b data-slot-label></b><span data-free></span></div>
     <div class="slots" data-slots></div>
-    <button class="btn" type="button" style="width:100%" data-next>Выберите время</button>
-    <div class="legal">Дальше — имя, телефон и марка машины</div>
+    <button class="btn wide" type="button" data-next>Выберите время</button>
+    <div class="hint">Дальше имя, телефон и марка машины</div>
   </section>
 
   <section class="block">
     <h4>О сервисе</h4>
-    <div class="gallery">
-      <div class="tile big"><div class="tire"></div><b>2 поста</b>подъёмники, шиномонтажный станок с бескамерной накачкой</div>
-      <div class="tile"><b>12 лет</b>работаем в Перми</div>
-      <div class="tile"><b>R13–R22</b>любые диаметры</div>
+    <div class="photos">
+      <div class="photo big"><i class="ic" data-i="camera"></i>Фото мастерской<br>владелец добавит после подключения</div>
+      <div class="facts">
+        <div class="fact"><b>2 поста</b><span>можно приехать вдвоём</span></div>
+        <div class="fact"><b>R13-R22</b><span>любые диаметры</span></div>
+        <div class="fact"><b>12 лет</b><span>работаем в Перми</span></div>
+      </div>
     </div>
   </section>
 
   <section class="block">
     <h4>Отзывы</h4>
     <div class="reviews">
-      <div class="score">4,8<small>126 отзывов</small></div>
-      <div class="src"><a href="#">Яндекс Карты <span>98 →</span></a><a href="#">2ГИС <span>28 →</span></a></div>
+      <div class="score"><b>4,8</b><div class="stars" data-stars></div><span>126 отзывов</span></div>
+      <div class="src"><a href="#">Яндекс Карты <span>98</span></a><a href="#">2ГИС <span>28</span></a></div>
     </div>
   </section>
 
   <section class="block">
     <h4>Как добраться</h4>
-    <div class="map"><span class="pin"></span></div>
     <dl class="contacts">
-      <div><dt>Адрес</dt><dd>Пермь, ул. Примерная, 12, въезд со двора</dd></div>
-      <div><dt>Часы</dt><dd>Пн–Сб 9:00–20:00<br>Вс — выходной</dd></div>
-      <div><dt>Телефон</dt><dd>+7 (342) 000-00-00</dd></div>
+      <div><dt>Адрес</dt><dd>Пермь, ул. Примерная, 12. Въезд со двора, ворота с вывеской</dd></div>
+      <div><dt>Часы</dt><dd>Пн-Сб 9:00-20:00<br>Вс выходной</dd></div>
+      <div><dt>Телефон</dt><dd>+7 (342) 254-18-73</dd></div>
     </dl>
-    <div class="two"><div class="btn alt">Маршрут</div><div class="btn">Позвонить</div></div>
+    <div class="two"><button class="btn alt" type="button"><i class="ic" data-i="navigation-arrow"></i>Маршрут</button><button class="btn" type="button"><i class="ic" data-i="phone"></i>Позвонить</button></div>
   </section>
 
   <footer class="foot">
-    ИП Иванов И. И., ИНН 590000000000 — оператор персональных данных.<br>
-    <a href="#">Политика обработки ПДн</a> · <a href="#">Согласие на обработку ПДн</a><br>
-    Сайт работает на «Автослот»
+    ИП Шаров Д. А., ИНН 590412873316, оператор персональных данных.<br>
+    <a href="#">Политика обработки персональных данных</a><br>
+    <a href="#">Согласие на обработку персональных данных</a><br>
+    Сайт работает на сервисе «Автослот»
   </footer>
 </template>
 
 <script>
 (function () {
-  const themes = [
-    { cls: 't-garage', name: 'Гараж', h: 'Шиномонтаж <em>без&nbsp;очереди</em> — запись за&nbsp;минуту',
-      desc: 'Графит и сигнальный оранжевый, полоса протектора под шапкой. Для шиномонтажей и СТО, которым важно выглядеть серьёзно.',
-      colors: ['#ff6b1a', '#ffb000', '#e5484d', '#3fa3ff'] },
-    { cls: 't-book', name: 'Сервисная книжка', h: 'Шиномонтаж и развал без очереди',
-      desc: 'Светлая, как бланк заказ-наряда: линовка, штамп «Запись онлайн», чернильный синий. Ощущение порядка — для аккуратных сервисов.',
-      colors: ['#1f4fd8', '#0f766e', '#7c3aed', '#c2410c'] },
-    { cls: 't-road', name: 'Асфальт', h: 'Переобуем<br>без очереди',
-      desc: 'Шапка — асфальт с прерывистой разметкой, узкие заголовки как на дорожных знаках, жёлтый как краска разметки. Заметная и простая.',
-      colors: ['#f5c400', '#ff8a1f', '#7cc242', '#4fb3ff'] },
-  ];
+  const ICONS = {"calendar-dots": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-68-76a12,12,0,1,1-12-12A12,12,0,0,1,140,132Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,132ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,140,172Zm44,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z\"/></svg>", "calendar-plus": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-48-56a8,8,0,0,1-8,8H136v16a8,8,0,0,1-16,0V160H104a8,8,0,0,1,0-16h16V128a8,8,0,0,1,16,0v16h16A8,8,0,0,1,160,152Z\"/></svg>", "camera": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z\"/></svg>", "check": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z\"/></svg>", "clock": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z\"/></svg>", "list": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z\"/></svg>", "navigation-arrow": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M237.33,106.21,61.41,41l-.16-.05A16,16,0,0,0,40.9,61.25a1,1,0,0,0,.05.16l65.26,175.92A15.77,15.77,0,0,0,121.28,248h.3a15.77,15.77,0,0,0,15-11.29l.06-.2,21.84-78,78-21.84.2-.06a16,16,0,0,0,.62-30.38ZM149.84,144.3a8,8,0,0,0-5.54,5.54L121.3,232l-.06-.17L56,56l175.82,65.22.16.06Z\"/></svg>", "pencil-simple": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z\"/></svg>", "phone": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M222.37,158.46l-47.11-21.11-.13-.06a16,16,0,0,0-15.17,1.4,8.12,8.12,0,0,0-.75.56L134.87,160c-15.42-7.49-31.34-23.29-38.83-38.51l20.78-24.71c.2-.25.39-.5.57-.77a16,16,0,0,0,1.32-15.06l0-.12L97.54,33.64a16,16,0,0,0-16.62-9.52A56.26,56.26,0,0,0,32,80c0,79.4,64.6,144,144,144a56.26,56.26,0,0,0,55.88-48.92A16,16,0,0,0,222.37,158.46ZM176,208A128.14,128.14,0,0,1,48,80,40.2,40.2,0,0,1,82.87,40a.61.61,0,0,0,0,.12l21,47L83.2,111.86a6.13,6.13,0,0,0-.57.77,16,16,0,0,0-1,15.7c9.06,18.53,27.73,37.06,46.46,46.11a16,16,0,0,0,15.75-1.14,8.44,8.44,0,0,0,.74-.56L168.89,152l47,21.05h0s.08,0,.11,0A40.21,40.21,0,0,1,176,208Z\"/></svg>", "plus": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z\"/></svg>", "snowflake": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M223.77,150.09a8,8,0,0,1-5.86,9.68l-24.64,6,6.46,24.11a8,8,0,0,1-5.66,9.8A8.25,8.25,0,0,1,192,200a8,8,0,0,1-7.72-5.93l-7.72-28.8L136,141.86v46.83l21.66,21.65a8,8,0,0,1-11.32,11.32L128,203.31l-18.34,18.35a8,8,0,0,1-11.32-11.32L120,188.69V141.86L79.45,165.27l-7.72,28.8A8,8,0,0,1,64,200a8.25,8.25,0,0,1-2.08-.27,8,8,0,0,1-5.66-9.8l6.46-24.11-24.64-6a8,8,0,0,1,3.82-15.54l29.45,7.23L112,128,71.36,104.54l-29.45,7.23A7.85,7.85,0,0,1,40,112a8,8,0,0,1-1.91-15.77l24.64-6L56.27,66.07a8,8,0,0,1,15.46-4.14l7.72,28.8L120,114.14V67.31L98.34,45.66a8,8,0,0,1,11.32-11.32L128,52.69l18.34-18.35a8,8,0,0,1,11.32,11.32L136,67.31v46.83l40.55-23.41,7.72-28.8a8,8,0,0,1,15.46,4.14l-6.46,24.11,24.64,6A8,8,0,0,1,216,112a7.85,7.85,0,0,1-1.91-.23l-29.45-7.23L144,128l40.64,23.46,29.45-7.23A8,8,0,0,1,223.77,150.09Z\"/></svg>", "star-fill": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z\"/></svg>", "warning-circle": "<svg viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z\"/></svg>"};
+  function paint(root) {
+    root.querySelectorAll('i[data-i]').forEach(el => {
+      if (el.firstChild) return;
+      const svg = ICONS[el.dataset.i];
+      if (svg) { el.innerHTML = svg; el.setAttribute('aria-hidden', 'true'); }
+    });
+  }
 
+  const themes = [
+    { cls: 't-garage', name: '«Гараж»', h: 'Шиномонтаж без очереди. Запись за минуту',
+      desc: 'Графит и сигнальный оранжевый, под шапкой полоса как протектор шины. Для шиномонтажей и СТО, которым важно выглядеть серьёзно.',
+      colors: ['#ff6a1f', '#ffb21a', '#ef4b4b', '#3d9bff'] },
+    { cls: 't-book', name: '«Сервисная книжка»', h: 'Шиномонтаж и развал без очереди',
+      desc: 'Светлая, как бланк заказ-наряда: тонкая линовка, синий штамп, услуги списком через пунктир. Ощущение порядка и аккуратности.',
+      colors: ['#2350d6', '#0f766e', '#6d3fd1', '#c2410c'] },
+    { cls: 't-road', name: '«Асфальт»', h: 'Переобуем без очереди',
+      desc: 'Шапка как асфальт с жёлтой прерывистой разметкой, узкие заголовки как на дорожных знаках. Самая заметная из трёх.',
+      colors: ['#f2c200', '#ff8a1f', '#79c043', '#4fb0ff'] },
+  ];
   const days = [
     { w: 'пт', d: 3, label: 'Пятница, 3 октября', busy: [0,1,2,3,4,5,6,8,9], tag: 'сегодня' },
     { w: 'сб', d: 4, label: 'Суббота, 4 октября', busy: [0,2,5,6,9] },
-    { w: 'вс', d: 5, off: true, tag: 'вых.' },
+    { w: 'вс', d: 5, off: true, tag: 'выходной' },
     { w: 'пн', d: 6, label: 'Понедельник, 6 октября', busy: [1,6] },
     { w: 'вт', d: 7, label: 'Вторник, 7 октября', busy: [0,3,4] },
     { w: 'ср', d: 8, label: 'Среда, 8 октября', busy: [] },
     { w: 'чт', d: 9, label: 'Четверг, 9 октября', busy: [2] },
   ];
   const times = ['10:00','10:30','11:00','11:30','12:00','12:30','14:00','14:30','15:00','15:30','16:00','16:30'];
-  const plural = n => n % 10 === 1 && n % 100 !== 11 ? 'окно' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 'окна' : 'окон');
-
+  const word = n => (n % 10 === 1 && n % 100 !== 11) ? 'свободное окно' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'свободных окна' : 'свободных окон';
   const tpl = document.getElementById('site');
   const row = document.getElementById('sites');
 
   themes.forEach((t, ti) => {
     const col = document.createElement('div');
     col.className = 'col';
-    col.innerHTML = `<div class="phone"><div class="screen ${t.cls}"></div></div>
-      <div class="swatches" role="group" aria-label="Акцентный цвет">Акцент:</div>
-      <div class="cap"><b>${ti + 1}. «${t.name}»</b><span>${t.desc}</span></div>`;
+    col.innerHTML = '<div class="phone"><div class="screen ' + t.cls + '"></div></div>' +
+      '<div class="swatches" role="group" aria-label="Акцентный цвет">Акцент</div>' +
+      '<div class="cap"><b>' + t.name + '</b><span>' + t.desc + '</span></div>';
     const screen = col.querySelector('.screen');
     screen.appendChild(tpl.content.cloneNode(true));
-    screen.querySelector('[data-h]').innerHTML = t.h;
+    screen.querySelector('[data-h]').textContent = t.h;
     screen.querySelectorAll('[data-only]').forEach(el => { if (el.dataset.only !== t.cls) el.remove(); });
+    screen.querySelector('[data-stars]').innerHTML = '<i class="ic" data-i="star-fill"></i>'.repeat(5);
 
     const sw = col.querySelector('.swatches');
     t.colors.forEach((c, i) => {
       const b = document.createElement('button');
-      b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', 'Цвет ' + c);
-      b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+      b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', 'Акцент ' + c);
+      b.setAttribute('aria-pressed', String(i === 0));
       b.addEventListener('click', () => {
         screen.style.setProperty('--accent', c);
-        sw.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+        sw.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
       });
       sw.appendChild(b);
+    });
+
+    const tabs = screen.querySelectorAll('[data-tabs] button');
+    tabs.forEach(b => b.addEventListener('click', () => tabs.forEach(x => x.setAttribute('aria-pressed', String(x === b)))));
+    screen.querySelector('[data-go]').addEventListener('click', () => {
+      const book = screen.querySelector('[data-book]');
+      screen.scrollTo({ top: book.offsetTop - 34 });
     });
 
     const dWrap = screen.querySelector('[data-days]');
@@ -599,7 +610,7 @@ p.sec { margin: 0 0 28px; color: var(--muted); max-width: 68ch; line-height: 1.5
     const next = screen.querySelector('[data-next]');
     let cur = 1;
 
-    function renderSlots() {
+    function renderSlots(preselect) {
       const day = days[cur];
       label.textContent = day.label;
       sWrap.innerHTML = '';
@@ -607,36 +618,34 @@ p.sec { margin: 0 0 28px; color: var(--muted); max-width: 68ch; line-height: 1.5
       times.forEach((tm, i) => {
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'slot'; b.textContent = tm;
-        if (day.busy.includes(i)) { b.disabled = true; b.setAttribute('aria-label', tm + ', занято'); }
-        else n++;
         b.setAttribute('aria-pressed', 'false');
+        if (day.busy.includes(i)) { b.disabled = true; b.setAttribute('aria-label', tm + ', занято'); } else n++;
         b.addEventListener('click', () => {
-          sWrap.querySelectorAll('.slot').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-          next.textContent = 'Далее — ' + day.w + ', ' + day.d + ' окт, ' + tm;
+          sWrap.querySelectorAll('.slot').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+          next.textContent = 'Дальше: ' + day.w + ' ' + day.d + ' октября, ' + tm;
         });
         sWrap.appendChild(b);
       });
-      free.textContent = n + ' ' + plural(n);
+      free.textContent = n + ' ' + word(n);
       next.textContent = 'Выберите время';
-      const first = sWrap.querySelectorAll('.slot:not(:disabled)')[ti === 0 ? 1 : ti === 1 ? 2 : 0];
-      if (first) first.click();
+      if (preselect != null) { const s = sWrap.querySelectorAll('.slot:not(:disabled)')[preselect]; if (s) s.click(); }
     }
-
     days.forEach((d, i) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'day';
-      b.innerHTML = `<small>${d.w}</small><b>${d.d}</b><em>${d.tag || '&nbsp;'}</em>`;
+      b.innerHTML = '<small>' + d.w + '</small><b>' + d.d + '</b><em>' + (d.tag || '') + '</em>';
       if (d.off) b.disabled = true;
-      b.setAttribute('aria-pressed', i === cur ? 'true' : 'false');
+      b.setAttribute('aria-pressed', String(i === cur));
       b.addEventListener('click', () => {
         cur = i;
-        dWrap.querySelectorAll('.day').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-        renderSlots();
+        dWrap.querySelectorAll('.day').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        renderSlots(null);
       });
       dWrap.appendChild(b);
     });
-    renderSlots();
+    renderSlots(ti);
     row.appendChild(col);
   });
+  paint(document);
 })();
 </script>
