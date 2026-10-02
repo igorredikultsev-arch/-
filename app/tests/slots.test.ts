@@ -201,3 +201,24 @@ describe("горизонт записи", () => {
     expect(inHorizon("2026-10-02", now, TZ, 3)).toBe(false);
   });
 });
+
+import { layoutLanes } from "@/lib/cabinet";
+
+describe("layoutLanes", () => {
+  it("раскладывает пересекающиеся записи по разным постам, а последовательные — на один", () => {
+    const lanes = layoutLanes(2, { start: 0, end: 100 }, [
+      { start: 0, end: 30, kind: "site" },
+      { start: 10, end: 40, kind: "owner" },
+      { start: 30, end: 50, kind: "site" },
+    ]);
+    expect(lanes[0].map((x) => x.startPct)).toEqual([0, 30]);
+    expect(lanes[1].map((x) => x.startPct)).toEqual([10]);
+  });
+  it("перебор постов помечается как overflow", () => {
+    const lanes = layoutLanes(1, { start: 0, end: 100 }, [
+      { start: 0, end: 30, kind: "site" },
+      { start: 10, end: 40, kind: "owner" },
+    ]);
+    expect(lanes[0][1].overflow).toBe(true);
+  });
+});

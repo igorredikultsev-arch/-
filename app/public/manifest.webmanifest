@@ -1,0 +1,10 @@
+{
+  "name": "Кабинет автосервиса",
+  "short_name": "Кабинет",
+  "start_url": "/cabinet",
+  "display": "standalone",
+  "background_color": "#eef0f3",
+  "theme_color": "#eef0f3",
+  "lang": "ru",
+  "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
