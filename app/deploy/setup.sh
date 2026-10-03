@@ -100,4 +100,4 @@ fi
 
 step "Готово"
 echo "Админка: https://$ROOT_DOMAIN/login"
-echo "Обновление в будущем: cd $DIR/app && git pull && docker compose build && docker compose run --rm migrate && docker compose up -d"
+echo "Обновление в будущем: $DIR/app/deploy/update.sh"

@@ -89,7 +89,7 @@ curl -fsSL https://raw.githubusercontent.com/igorredikultsev-arch/-/claude/admir
    15 3 * * *  cd /opt/avtoslot/app && ./deploy/backup.sh >> deploy/backup.log 2>&1
    30 3 * * *  curl -s -X POST -H "Authorization: Bearer <CRON_SECRET>" https://ваш-домен.ru/api/cron/cleanup
    ```
-6. **Обновление:** `git pull && docker compose run --rm migrate && docker compose up -d --build`.
+6. **Обновление:** `/opt/avtoslot/app/deploy/update.sh` — новый код, сборка, миграции, перезапуск и очистка старых образов.
 
 Сертификаты: основной домен получает сертификат сразу. Поддомены клиентов и их собственные домены — при первом заходе, только если клиент подключён (проверку делает `/api/tls-check`).
 
