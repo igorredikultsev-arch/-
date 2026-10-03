@@ -47,3 +47,18 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npx next build
+
+  docker:
+    # Образы как на сервере: миграции и сайт. Сервер не возьмёт коммит, если они не собираются
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target migrator -t avtoslot-migrator app
+      - run: docker build --target runner -t avtoslot-app app
+      - name: Миграции из образа на чистой базе
+        run: |
+          docker network create t
+          docker run -d --name db --network t -e POSTGRES_USER=avtoslot -e POSTGRES_PASSWORD=x -e POSTGRES_DB=avtoslot postgres:16
+          for i in $(seq 1 30); do docker exec db pg_isready -U avtoslot && break; sleep 1; done; sleep 3
+          docker run --rm --network t -e DATABASE_URL=postgresql://avtoslot:x@db:5432/avtoslot avtoslot-migrator npx prisma migrate deploy
