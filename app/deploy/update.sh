@@ -9,10 +9,23 @@
 #                          сайт на это время может перестать отвечать)
 #
 # Коды выхода: 0 — готово, 3 — образы для коммита ещё не готовы или не скачались (можно повторить позже),
-# остальное — ошибка обновления (сайт остаётся на прошлой версии).
+# остальное — ошибка обновления (сайт остаётся на прошлой версии). Если новая версия запустилась, но не отвечает,
+# скрипт сам возвращает прошлую.
 set -euo pipefail
 
 env_value() { sed -n "s/^$1=//p" .env | tr -d "\"'" | tail -1; }
+
+# Сайт внутри контейнера отвечает на /login (до 60 секунд ожидания)
+site_ok() {
+  local i
+  for i in $(seq 1 30); do
+    if docker compose exec -T app node -e "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
 
 # Всё в функции: git ниже может поменять этот файл, а bash читает скрипт по ходу выполнения
 main() {
@@ -58,6 +71,18 @@ main() {
   export AVTOSLOT_TAG=$tag
   docker compose run --rm -T migrate </dev/null
   docker compose up -d
+
+  # Новая версия должна ответить за минуту. Иначе возвращаем прошлую (её образ хранится на сервере)
+  if ! site_ok; then
+    echo "Новая версия ${tag:0:12} не отвечает. Последние строки журнала сайта:" >&2
+    docker compose logs --tail 30 app >&2 || true
+    if [[ -n $prev && $prev != "$tag" ]]; then
+      echo "Возвращаю прошлую версию ${prev:0:12}" >&2
+      AVTOSLOT_TAG=$prev docker compose up -d app
+      AVTOSLOT_TAG=$prev site_ok && echo "Прошлая версия работает" >&2
+    fi
+    return 1
+  fi
 
   # Версию запоминаем только после удачного запуска: ручные docker compose и перезагрузка берут её из .env
   if grep -q '^AVTOSLOT_TAG=' .env; then

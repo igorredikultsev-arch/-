@@ -89,13 +89,16 @@ jobs:
           cache-from: type=gha,scope=app
           cache-to: type=gha,scope=app,mode=max
 
-      - name: Миграции из образа на чистой базе и запуск сайта
+      - name: Миграции и скрипты из образа на чистой базе, запуск сайта
         run: |
           docker network create t
           docker run -d --name db --network t -e POSTGRES_USER=avtoslot -e POSTGRES_PASSWORD=x -e POSTGRES_DB=avtoslot postgres:16
           for i in $(seq 1 30); do docker exec db pg_isready -U avtoslot && break; sleep 1; done; sleep 3
           url=postgresql://avtoslot:x@db:5432/avtoslot
           docker run --rm --network t -e DATABASE_URL=$url "$IMAGE:migrate-$GITHUB_SHA" npx prisma migrate deploy
+          # Служебные скрипты из того же образа: на сервере ими создают админа и чистят демо
+          docker run --rm --network t -e DATABASE_URL=$url "$IMAGE:migrate-$GITHUB_SHA" npx tsx scripts/create-admin.ts +79990000001 "ci-password-123"
+          docker run --rm --network t -e DATABASE_URL=$url "$IMAGE:migrate-$GITHUB_SHA" npx tsx scripts/cleanup-demos.ts
           docker run -d --name app --network t -p 3000:3000 -e DATABASE_URL=$url -e ROOT_DOMAIN=avtoslot.ru \
             -e APP_URL=https://avtoslot.ru "$IMAGE:app-$GITHUB_SHA"
           for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:3000/login && break; sleep 1; done

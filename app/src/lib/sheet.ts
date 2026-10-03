@@ -5,15 +5,21 @@ import { inflateRawSync } from "node:zlib";
 
 export type Sheet = { name: string; rows: string[][] };
 
-const MAX_UNZIPPED = 20 * 1024 * 1024;
+const MAX_UNZIPPED = 20 * 1024 * 1024; // одна часть файла
+const MAX_TOTAL = 40 * 1024 * 1024; // все распакованные части вместе: сервер с 1 ГБ памяти
+const MAX_ENTRIES = 500;
+// Нужны только книга, общие строки и листы; картинки, стили и прочее не распаковываем
+const NEEDED = /^xl\/(workbook\.xml|sharedStrings\.xml|_rels\/workbook\.xml\.rels|worksheets\/[^/]+\.xml)$/;
 
 function unzip(buf: Buffer): Map<string, Buffer> {
   let end = buf.length - 22;
   while (end >= 0 && buf.readUInt32LE(end) !== 0x06054b50) end--;
   if (end < 0) throw new Error("Файл повреждён или это не .xlsx");
   const count = buf.readUInt16LE(end + 10);
+  if (count > MAX_ENTRIES) throw new Error("Файл .xlsx слишком сложный: оставьте в нём только лист с сервисами");
   let p = buf.readUInt32LE(end + 16);
   const out = new Map<string, Buffer>();
+  let total = 0;
   for (let i = 0; i < count; i++) {
     if (buf.readUInt32LE(p) !== 0x02014b50) break;
     const method = buf.readUInt16LE(p + 10);
@@ -23,10 +29,14 @@ function unzip(buf: Buffer): Map<string, Buffer> {
     const local = buf.readUInt32LE(p + 42);
     const name = buf.toString("utf8", p + 46, p + 46 + nameLen);
     const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
-    const data = buf.subarray(start, start + size);
-    if (method === 0) out.set(name, data);
-    else if (method === 8) out.set(name, inflateRawSync(data, { maxOutputLength: MAX_UNZIPPED }));
     p += 46 + skip;
+    if (!NEEDED.test(name)) continue;
+    const data = buf.subarray(start, start + size);
+    const file = method === 0 ? data : method === 8 ? inflateRawSync(data, { maxOutputLength: MAX_UNZIPPED }) : null;
+    if (!file) continue;
+    total += file.length;
+    if (total > MAX_TOTAL) throw new Error("Файл .xlsx слишком большой после распаковки: оставьте в нём только лист с сервисами");
+    out.set(name, file);
   }
   return out;
 }

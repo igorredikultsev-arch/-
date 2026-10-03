@@ -6,6 +6,9 @@ import { db } from "@/lib/db";
  * Разрешаем только основной домен, поддомены подключённых клиентов и их собственные домены.
  */
 export async function GET(req: NextRequest) {
+  // Спрашивает только Caddy изнутри сети (http://app:3000). Запрос снаружи приходит через Caddy с X-Forwarded-For:
+  // ему не отвечаем, чтобы по этому адресу нельзя было перебирать, какие клиенты есть
+  if (req.headers.get("x-forwarded-for")) return new Response(null, { status: 404 });
   const domain = (req.nextUrl.searchParams.get("domain") || "").toLowerCase();
   const root = (process.env.ROOT_DOMAIN || "").toLowerCase();
   if (!domain || !root) return new Response(null, { status: 404 });
