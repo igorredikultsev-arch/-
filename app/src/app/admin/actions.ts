@@ -7,10 +7,14 @@ import { audit, generatePassword, hashPassword, requireAdmin } from "@/lib/auth"
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
+import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
+import { outreach, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
+import { readTable } from "@/lib/sheet";
+import { publicSiteUrl } from "@/lib/site-url";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
 import { TRIAL_DAYS } from "@/lib/pricing";
-import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES, type TemplateKey } from "@/lib/templates";
+import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
 
 export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
 
@@ -46,6 +50,36 @@ const Demo = z.object({
   contact: z.string().max(120),
 });
 
+type NewDemo = Omit<DemoInput, "message" | "notes"> & { notes?: string | null; firstMessage?: string | null };
+
+async function insertDemo(d: NewDemo) {
+  const slug = await uniqueSlug(slugify(d.name));
+  return db.business.create({
+    data: {
+      slug,
+      name: d.name,
+      city: d.city,
+      address: d.address,
+      phone: d.phone,
+      yandexMapsUrl: d.yandexMapsUrl,
+      twoGisUrl: d.twoGisUrl,
+      rating: d.rating,
+      reviewsYandex: d.reviewsYandex,
+      reviews2gis: d.reviews2gis,
+      theme: d.theme,
+      accent: d.accent,
+      posts: d.posts,
+      headline: d.headline,
+      facts: d.posts > 1 ? [{ value: `${d.posts} поста`, label: "можно приехать вдвоём" }, DEFAULT_FACTS[1]] : [DEFAULT_FACTS[1]],
+      status: "demo",
+      demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000),
+      hours: { create: DEFAULT_HOURS },
+      services: { create: TEMPLATES[d.template].services.map((s, i) => ({ ...s, sortOrder: i })) },
+      lead: { create: { status: "new", channel: d.channel, contact: d.contact, notes: d.notes ?? null, firstMessage: d.firstMessage ?? null } },
+    },
+  });
+}
+
 /** Быстрое демо (раздел 2.3): 2-3 минуты от карточки на картах до персональной ссылки. */
 export async function createDemo(_prev: AdminResult, f: FormData): Promise<AdminResult> {
   const admin = await requireAdmin();
@@ -54,34 +88,69 @@ export async function createDemo(_prev: AdminResult, f: FormData): Promise<Admin
   const d = p.data;
   const phone = normalizePhone(d.phone);
   if (!phone) return { error: "Телефон: 10 цифр после +7" };
-  const slug = await uniqueSlug(slugify(d.name));
-  const biz = await db.business.create({
-    data: {
-      slug,
-      name: d.name,
-      city: d.city,
-      address: d.address,
-      phone,
-      yandexMapsUrl: d.yandexMapsUrl || null,
-      twoGisUrl: d.twoGisUrl || null,
-      rating: d.rating === "" ? null : d.rating,
-      reviewsYandex: d.reviewsYandex === "" ? null : d.reviewsYandex,
-      reviews2gis: d.reviews2gis === "" ? null : d.reviews2gis,
-      theme: d.theme,
-      accent: d.accent,
-      posts: d.posts,
-      headline: d.headline || null,
-      facts: d.posts > 1 ? [{ value: `${d.posts} поста`, label: "можно приехать вдвоём" }, DEFAULT_FACTS[1]] : [DEFAULT_FACTS[1]],
-      status: "demo",
-      demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000),
-      hours: { create: DEFAULT_HOURS },
-      services: { create: TEMPLATES[d.template as TemplateKey].services.map((s, i) => ({ ...s, sortOrder: i })) },
-      lead: { create: { status: "new", channel: d.channel || null, contact: d.contact || null } },
-    },
+  const biz = await insertDemo({
+    ...d,
+    phone,
+    yandexMapsUrl: d.yandexMapsUrl || null,
+    twoGisUrl: d.twoGisUrl || null,
+    rating: d.rating === "" ? null : d.rating,
+    reviewsYandex: d.reviewsYandex === "" ? null : d.reviewsYandex,
+    reviews2gis: d.reviews2gis === "" ? null : d.reviews2gis,
+    headline: d.headline || null,
+    channel: d.channel || null,
+    contact: d.contact || null,
   });
   await audit("admin.demo_create", { userId: admin.id, businessId: biz.id });
   revalidatePath("/admin");
   redirect(`/admin/b/${biz.id}?created=1`);
+}
+
+export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; channel?: string | null; contact?: string | null };
+export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[] } | null;
+
+// Запрос к серверному действию ограничен 1 МБ (настройка Next.js по умолчанию), таблица на сотню строк весит десятки КБ
+const MAX_FILE = 900 * 1024;
+
+/**
+ * Импорт демо из таблицы лидов: каждая строка с телефоном становится демо со ссылкой и готовым сообщением.
+ * Повторная загрузка того же файла не плодит копии: сервис с той же ссылкой 2ГИС или тем же названием и адресом
+ * считается уже созданным. Так можно дописать телефоны и загрузить файл ещё раз.
+ */
+export async function importDemos(_prev: ImportResult, f: FormData): Promise<ImportResult> {
+  const admin = await requireAdmin();
+  const file = f.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Выберите файл .xlsx или .csv" };
+  if (file.size > MAX_FILE) return { error: "Файл больше 900 КБ. Оставьте в нём только лист с сервисами" };
+  let parsed: ReturnType<typeof parseDemoRows>;
+  try {
+    parsed = parseDemoRows(readTable(Buffer.from(await file.arrayBuffer()), file.name));
+  } catch (e) {
+    return { error: e instanceof Error && /xls|zip|повреж/i.test(e.message) ? e.message : "Не получилось прочитать файл. Сохраните его как .xlsx или .csv" };
+  }
+  if ("error" in parsed) return { error: parsed.error };
+
+  const rows: ImportRow[] = [];
+  for (const r of parsed.rows) {
+    const d = r.demo;
+    if (!d) {
+      rows.push({ line: r.line, name: r.name, status: "skipped", reason: r.error });
+      continue;
+    }
+    const existing = await db.business.findFirst({
+      where: { OR: [...(d.twoGisUrl ? [{ twoGisUrl: d.twoGisUrl }] : []), { name: d.name, address: d.address }], status: { not: "archived" } },
+      include: { lead: true },
+    });
+    const biz = existing ?? (await insertDemo({ ...d, firstMessage: null }));
+    const url = publicSiteUrl(biz.slug, biz.customDomain, biz.status);
+    const message = existing?.lead?.firstMessage ?? (d.message ? withLink(d.message, url) : outreach(biz, url));
+    if (!existing) {
+      await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: message } });
+      await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
+    }
+    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
+  }
+  revalidatePath("/admin");
+  return { sheet: parsed.sheet, rows };
 }
 
 const Info = z.object({

@@ -233,6 +233,7 @@ model Lead {
   channel     String?
   contact     String?
   notes       String?
+  firstMessage String? // из таблицы при импорте, ссылка на демо уже подставлена
   contactedAt DateTime?
   updatedAt   DateTime   @updatedAt
 }

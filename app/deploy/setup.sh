@@ -84,10 +84,12 @@ docker compose up -d
 
 step "Расписание: резервные копии и очистка"
 chmod +x deploy/backup.sh
-( crontab -l 2>/dev/null | grep -v avtoslot || true
+( crontab -l 2>/dev/null | grep -v '# avtoslot$' || true
   echo "15 3 * * * cd $DIR/app && ./deploy/backup.sh >> deploy/backup.log 2>&1 # avtoslot"
   echo "30 3 * * * curl -s -X POST -H 'Authorization: Bearer $CRON_SECRET' https://$ROOT_DOMAIN/api/cron/cleanup >/dev/null # avtoslot"
 ) | crontab -
+chmod +x deploy/autoupdate.sh
+./deploy/autoupdate.sh install
 
 if [[ ! -f .admin-created ]]; then
   step "Вход в админку"
@@ -100,4 +102,5 @@ fi
 
 step "Готово"
 echo "Админка: https://$ROOT_DOMAIN/login"
-echo "Обновление в будущем: $DIR/app/deploy/update.sh"
+echo "Обновления ставятся сами раз в 5 минут после пуша в ветку $BRANCH (журнал: $DIR/app/deploy/update.log)."
+echo "Обновить вручную: $DIR/app/deploy/update.sh"

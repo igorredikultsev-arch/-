@@ -5,3 +5,7 @@ node_modules
 next-env.d.ts
 coverage
 .admin-created
+deploy/*.log
+deploy/.deployed
+deploy/.failed
+deploy/.seen

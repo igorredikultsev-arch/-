@@ -58,6 +58,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           <div className="rounded-2xl bg-white p-6 text-center ring-1 ring-zinc-200">
             <p className="text-zinc-600">Пока пусто. Начните с первого демо.</p>
             <Link href="/admin/new" className="mt-3 inline-block rounded-xl bg-accent px-4 py-2.5 font-semibold text-white">Новое демо</Link>
+            <Link href="/admin/import" className="ml-2 mt-3 inline-block rounded-xl bg-zinc-100 px-4 py-2.5 font-semibold">Загрузить таблицу</Link>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-zinc-200">

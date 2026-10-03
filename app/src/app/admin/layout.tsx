@@ -10,12 +10,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-dvh bg-paper text-ink">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
+        <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 whitespace-nowrap px-4 sm:gap-4">
           <Link href="/admin" className="flex items-center gap-2 font-bold">
-            <span className="grid size-8 place-items-center rounded-lg bg-accent text-white">А</span> Автослот
+            <span className="grid size-8 place-items-center rounded-lg bg-accent text-white">А</span> <span className="hidden sm:inline">Автослот</span>
           </Link>
           <nav className="flex gap-1 text-[14px]">
-            <Link href="/admin" className="rounded-lg px-3 py-1.5 hover:bg-zinc-100">Сервисы</Link>
+            <Link href="/admin" className="hidden rounded-lg px-3 py-1.5 hover:bg-zinc-100 sm:block">Сервисы</Link>
+            <Link href="/admin/import" className="rounded-lg px-3 py-1.5 hover:bg-zinc-100">Из таблицы</Link>
             <Link href="/admin/new" className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-white">Новое демо</Link>
           </nav>
           <form action={logoutAction} className="ml-auto">

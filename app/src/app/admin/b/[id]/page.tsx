@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { outreach } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
 import { publicSiteUrl } from "@/lib/site-url";
 import { deleteBusiness, extendDemo, setReceiptSent, setStatus } from "../../actions";
@@ -17,14 +18,6 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
       {children}
     </section>
   );
-}
-
-/** Первое сообщение по шаблону из плана (раздел 8.3). Менять под каждого сервиса. */
-function outreach(b: { name: string; rating: unknown; reviewsYandex: number | null; reviews2gis: number | null; yandexMapsUrl: string | null }, url: string) {
-  const rating = b.rating ? Number(b.rating).toFixed(1).replace(".", ",") : null;
-  const where = b.yandexMapsUrl ? "на Яндекс Картах" : "на 2ГИС";
-  const intro = rating ? `Посмотрел ваш сервис ${where}: у вас ${rating}, но нет сайта с онлайн-записью, клиентам приходится звонить.` : `Посмотрел ваш сервис ${where}: у вас нет сайта с онлайн-записью, клиентам приходится звонить.`;
-  return `Здравствуйте! ${intro}\n\nСделал для вас пример: ${url}\nТам ваши услуги, адрес и запись на свободное время. Клиент сам выбирает окно, а вы видите всё расписание в телефоне.\n\nПодключение 3 500 ₽, первые 2 недели бесплатно. Если неактуально, напишите, больше не побеспокою.`;
 }
 
 export default async function AdminBusiness({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
@@ -66,7 +59,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
 
       {(b.status === "demo" || b.lead?.status === "new") && (
         <Card title="Первое сообщение">
-          <CopyBox label="Поправьте под сервис перед отправкой" rows={8} text={outreach(b, siteUrl)} />
+          <CopyBox label="Поправьте под сервис перед отправкой" rows={8} text={b.lead?.firstMessage ?? outreach(b, siteUrl)} />
           <p className="text-[13px] text-zinc-500">После отправки поставьте этап «Демо отправлено» ниже: так считается воронка.</p>
         </Card>
       )}
