@@ -40,13 +40,16 @@ main() {
     tag="local-${tag:0:12}"
     AVTOSLOT_TAG=$tag docker compose -f docker-compose.yml -f docker-compose.build.yml --profile tools build
   else
-    local i ok=0
+    local i err ok=0
     for i in 1 2 3; do
-      if docker pull -q "$IMAGE:migrate-$tag" >/dev/null && docker pull -q "$IMAGE:app-$tag" >/dev/null; then ok=1; break; fi
-      sleep 10
+      if err=$( { docker pull -q "$IMAGE:migrate-$tag" && docker pull -q "$IMAGE:app-$tag"; } 2>&1 >/dev/null ); then
+        ok=1; break
+      fi
+      if (( i < 3 )); then sleep 10; fi
     done
     if (( ! ok )); then
       echo "Образы для ${tag:0:7} не скачались: проверка на GitHub ещё идёт, упала или ghcr.io недоступен." >&2
+      echo "Ответ: $(tail -1 <<<"$err")" >&2
       echo "Сайт работает на прошлой версии." >&2
       return 3
     fi

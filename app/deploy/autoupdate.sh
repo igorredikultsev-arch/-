@@ -49,15 +49,18 @@ main() {
   fi
 
   # Образы не скачались — повторяем позже, но пишем в журнал только первый раз
-  local waiting=deploy/.waiting code=0
-  [[ "$target" == "$(cat "$waiting" 2>/dev/null)" ]] || echo "$(date '+%F %T') обновляю до ${target:0:7}"
-  ./deploy/update.sh "$target" || code=$?
+  local waiting=deploy/.waiting code=0 again=0 out
+  [[ "$target" == "$(cat "$waiting" 2>/dev/null)" ]] && again=1
+  out=$(./deploy/update.sh "$target" 2>&1) || code=$?
+  (( again && code == 3 )) && return 0
+  echo "$(date '+%F %T') обновляю до ${target:0:7}"
+  echo "$out"
   if (( code == 0 )); then
     echo "$target" > "$state"
     rm -f "$waiting"
     echo "$(date '+%F %T') готово"
   elif (( code == 3 )); then
-    [[ "$target" == "$(cat "$waiting" 2>/dev/null)" ]] || echo "$(date '+%F %T') ${target:0:7}: образы не скачались, повторю через 5 минут"
+    echo "$(date '+%F %T') ${target:0:7}: образов ещё нет, буду пробовать раз в 5 минут"
     echo "$target" > "$waiting"
   else
     echo "$target" > "$failed"
