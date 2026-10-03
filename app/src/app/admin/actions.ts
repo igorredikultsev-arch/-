@@ -266,6 +266,7 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   }
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing && existing.businessId !== id) return { error: "Этот телефон уже привязан к другому сервису" };
+  const fixedSlug = /-$/.test(biz.slug) ? await uniqueSlug(biz.slug.replace(/-+$/, "") || "servis") : null;
   const password = generatePassword();
   const passwordHash = await hashPassword(password);
   await db.$transaction([
@@ -274,7 +275,13 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
       : db.user.create({ data: { phone, passwordHash, role: "owner", businessId: id, name: str(f, "ownerName") || null } }),
     db.business.update({
       where: { id },
-      data: { status: biz.status === "demo" ? "trial" : biz.status, demoExpiresAt: null, trialEndsAt: biz.trialEndsAt ?? new Date(Date.now() + TRIAL_DAYS * 86400000) },
+      data: {
+        status: biz.status === "demo" ? "trial" : biz.status,
+        demoExpiresAt: null,
+        trialEndsAt: biz.trialEndsAt ?? new Date(Date.now() + TRIAL_DAYS * 86400000),
+        // Демо, созданные до исправления, могли получить адрес с дефисом на конце: поддомен с ним не откроется
+        ...(fixedSlug ? { slug: fixedSlug } : {}),
+      },
     }),
     db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "trial" }, update: { status: "trial" } }),
     // Пробные записи из демо (владелец пробовал форму) не должны занимать время на живом сайте
