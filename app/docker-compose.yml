@@ -1,8 +1,8 @@
 # Запуск и обновление на VPS: deploy/update.sh (подробно — README.md в корне репозитория).
 # Образы сайта и миграций собирает GitHub Actions и публикует в ghcr.io, сервер их только скачивает.
 # Версия (коммит) — AVTOSLOT_TAG в .env, её прописывает update.sh после удачного обновления.
-# Собрать образы на самом сервере (только на крайний случай, 10-15 минут и почти вся память):
-#   docker compose -f docker-compose.yml -f docker-compose.build.yml --profile tools build
+# Если ghcr.io недоступен, deploy/update.sh --build соберёт образы на самом сервере (docker-compose.build.yml),
+# но это 10-15 минут и почти вся память — только на крайний случай.
 services:
   db:
     image: postgres:16
