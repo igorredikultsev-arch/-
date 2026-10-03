@@ -3,12 +3,13 @@
 import { useActionState, useState } from "react";
 import { createBlock } from "../actions";
 import { btnPrimary, Field, inputCls, Notice } from "../ui";
+import { keepValues } from "@/lib/keep-form";
 
 export function BlockForm({ today, posts }: { today: string; posts: number }) {
   const [state, action, pending] = useActionState(createBlock, null);
   const [allDay, setAllDay] = useState(false);
   return (
-    <form action={action} className="grid gap-4 px-[18px]">
+    <form onSubmit={keepValues(action)} className="grid gap-4 px-[18px]">
       <Field label="День" htmlFor="bl-date">
         <input id="bl-date" name="date" type="date" min={today} defaultValue={today} required className={inputCls} />
       </Field>

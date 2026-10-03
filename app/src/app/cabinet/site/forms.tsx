@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { addException, saveHours, saveService, saveSettings, type ActionResult } from "../actions";
 import { btnPrimary, Field, inputCls, Notice } from "../ui";
+import { keepValues } from "@/lib/keep-form";
 
 function Result({ state }: { state: ActionResult }) {
   if (state?.error) return <Notice tone="error">{state.error}</Notice>;
@@ -11,26 +12,38 @@ function Result({ state }: { state: ActionResult }) {
 }
 
 const WD = ["", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
-type Hours = { weekday: number; closed: boolean; open: string; close: string };
+type Hours = { weekday: number; closed: boolean; open: string; close: string; breakFrom: string; breakTo: string };
 
+const timeCls = "h-10 w-full min-w-0 rounded-lg border border-zinc-300 bg-white px-1.5 text-[14px]";
+
+/** Часы по дням. На телефоне каждая строка в два-три ряда, чтобы всё помещалось и на узком экране. */
 export function HoursForm({ hours }: { hours: Hours[] }) {
   const [state, action, pending] = useActionState(saveHours, null);
   return (
-    <form action={action} className="grid gap-2">
+    <form onSubmit={keepValues(action)} className="grid gap-2">
       {hours.map((h) => (
-        <div key={h.weekday} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl bg-white p-2.5 ring-1 ring-zinc-200">
-          <label className="flex items-center gap-2 text-[14px] font-medium">
-            <input type="checkbox" name={`closed${h.weekday}`} defaultChecked={h.closed} className="size-4.5 accent-accent" aria-label={`${WD[h.weekday]}: выходной`} />
-            {WD[h.weekday]}
-            <span className="text-[12px] font-normal text-zinc-500">выходной</span>
-          </label>
-          <div className="flex items-center gap-1">
-            <input type="time" name={`open${h.weekday}`} defaultValue={h.open} aria-label={`${WD[h.weekday]}: открытие`} className="h-10 rounded-lg border border-zinc-300 px-1.5 text-[14px]" />
-            <span>-</span>
-            <input type="time" name={`close${h.weekday}`} defaultValue={h.close} aria-label={`${WD[h.weekday]}: закрытие`} className="h-10 rounded-lg border border-zinc-300 px-1.5 text-[14px]" />
+        // Выходной: часы прячутся, чтобы не путать
+        <div key={h.weekday} className="grid gap-2 rounded-xl bg-white p-3 ring-1 ring-zinc-200 [&:has(.day-off:checked)_.times]:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <b className="text-[15px]">{WD[h.weekday]}</b>
+            <label className="flex items-center gap-2 text-[14px] text-zinc-600">
+              <input type="checkbox" name={`closed${h.weekday}`} defaultChecked={h.closed} className="day-off size-5 accent-accent" />
+              Выходной
+            </label>
+          </div>
+          <div className="times grid grid-cols-[48px_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 text-[13px] text-zinc-500">
+            <span>Часы</span>
+            <input type="time" name={`open${h.weekday}`} defaultValue={h.open} aria-label={`${WD[h.weekday]}: открытие`} className={timeCls} />
+            <span>–</span>
+            <input type="time" name={`close${h.weekday}`} defaultValue={h.close} aria-label={`${WD[h.weekday]}: закрытие`} className={timeCls} />
+            <span>Обед</span>
+            <input type="time" name={`breakFrom${h.weekday}`} defaultValue={h.breakFrom} aria-label={`${WD[h.weekday]}: начало обеда`} className={timeCls} />
+            <span>–</span>
+            <input type="time" name={`breakTo${h.weekday}`} defaultValue={h.breakTo} aria-label={`${WD[h.weekday]}: конец обеда`} className={timeCls} />
           </div>
         </div>
       ))}
+      <p className="px-1 text-[12.5px] text-zinc-500">Обед необязателен. В это время сайт не предлагает запись, а в кабинете оно отмечено как закрытое.</p>
       <Result state={state} />
       <button disabled={pending} className={btnPrimary}>{pending ? "Сохраняем…" : "Сохранить часы"}</button>
     </form>
@@ -40,7 +53,7 @@ export function HoursForm({ hours }: { hours: Hours[] }) {
 export function ExceptionForm({ today }: { today: string }) {
   const [state, action, pending] = useActionState(addException, null);
   return (
-    <form action={action} className="grid gap-3 rounded-2xl bg-white p-3.5 ring-1 ring-zinc-200">
+    <form onSubmit={keepValues(action)} className="grid gap-3 rounded-2xl bg-white p-3.5 ring-1 ring-zinc-200">
       <Field label="Праздник или особый день" htmlFor="ex-date"><input id="ex-date" type="date" name="date" min={today} required className={inputCls} /></Field>
       <div className="flex flex-wrap gap-4 text-[14px]">
         <label className="flex items-center gap-2"><input type="radio" name="mode" value="closed" defaultChecked className="accent-accent" /> Не работаем</label>
@@ -61,7 +74,7 @@ type Svc = { id: string; name: string; category: string; description: string | n
 export function ServiceForm({ service, categories }: { service: Svc | null; categories: string[] }) {
   const [state, action, pending] = useActionState(saveService.bind(null, service?.id ?? null), null);
   return (
-    <form action={action} className="grid gap-4">
+    <form onSubmit={keepValues(action)} className="grid gap-4">
       <Field label="Название" htmlFor="sv-name"><input id="sv-name" name="name" defaultValue={service?.name} required maxLength={80} className={inputCls} /></Field>
       <Field label="Раздел" htmlFor="sv-cat" hint="Вкладка на сайте: Шиномонтаж, Развал, ТО и масло…">
         <input id="sv-cat" name="category" list="cats" defaultValue={service?.category ?? categories[0]} required maxLength={40} className={inputCls} />
@@ -86,7 +99,7 @@ export function SettingsForm({ s }: { s: Settings }) {
   const [state, action, pending] = useActionState(saveSettings, null);
   const facts = [0, 1, 2].map((i) => s.facts[i] ?? { value: "", label: "" });
   return (
-    <form action={action} className="grid gap-4">
+    <form onSubmit={keepValues(action)} className="grid gap-4">
       <Field label="Заголовок на сайте" htmlFor="st-head" hint="Например: Шиномонтаж без очереди. Запись за минуту"><input id="st-head" name="headline" defaultValue={s.headline} maxLength={70} className={inputCls} /></Field>
       <Field label="Как найти въезд" htmlFor="st-note" hint="Например: Въезд со двора, ворота с вывеской"><input id="st-note" name="addressNote" defaultValue={s.addressNote} maxLength={120} className={inputCls} /></Field>
       <fieldset className="grid gap-2">

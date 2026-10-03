@@ -4,13 +4,14 @@ import { useActionState, useState } from "react";
 import { createDemo } from "../actions";
 import { THEMES } from "../labels";
 import { btn, F, inp, Result } from "../ui";
+import { keepValues } from "@/lib/keep-form";
 
 export function DemoForm() {
   const [state, action, pending] = useActionState(createDemo, null);
   const [theme, setTheme] = useState<string>("taxi");
   const [accent, setAccent] = useState<string>("#1f9d55");
   return (
-    <form action={action} className="grid gap-5 rounded-2xl bg-white p-5 ring-1 ring-zinc-200">
+    <form onSubmit={keepValues(action)} className="grid gap-5 rounded-2xl bg-white p-5 ring-1 ring-zinc-200">
       <div className="grid gap-4 sm:grid-cols-2">
         <F label="Название, как на картах" id="d-name"><input id="d-name" name="name" required className={inp} placeholder="Шиномонтаж «Колесо»" /></F>
         <F label="Телефон из карточки" id="d-phone"><input id="d-phone" name="phone" type="tel" required className={inp} placeholder="+7 (342) 254-18-73" /></F>

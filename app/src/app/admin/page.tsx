@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
 const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
+const ended = (d: Date) => d.getTime() < Date.now();
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<{ lead?: string }> }) {
   const lead = (await searchParams).lead;
@@ -44,8 +45,16 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       {(expiring.length > 0 || unpaid.length > 0) && (
         <section className="grid gap-2 rounded-2xl bg-orange-50 p-4 text-[14px] text-orange-950">
           <b>Нужно внимание</b>
-          {expiring.map((b) => <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">{b.name}: пробный период заканчивается</Link>)}
-          {unpaid.map((b) => <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">{b.name}: скоро конец оплаченного периода</Link>)}
+          {expiring.map((b) => (
+            <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">
+              {b.name}: {ended(b.trialEndsAt!) ? "пробный период закончился, сайт ещё принимает записи. Запишите оплату или приостановите сайт" : "пробный период заканчивается"}
+            </Link>
+          ))}
+          {unpaid.map((b) => (
+            <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">
+              {b.name}: {ended(b.paidUntil!) ? "оплаченный период закончился, сайт ещё принимает записи" : "скоро конец оплаченного периода"}
+            </Link>
+          ))}
         </section>
       )}
 

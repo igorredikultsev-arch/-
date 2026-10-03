@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { audit, generatePassword, hashPassword, requireAdmin } from "@/lib/auth";
+import { firstIssue } from "@/lib/zod-ru";
+import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin } from "@/lib/auth";
+import { timezoneForCity } from "@/lib/timezone";
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
@@ -19,10 +21,32 @@ import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
 export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
-const optUrl = z.union([z.literal(""), z.string().url("Ссылка должна начинаться с https://")]);
-const optInt = z.union([z.literal(""), z.coerce.number().int().min(0)]);
+const optUrl = z.union([z.literal(""), z.string().url("ссылка должна начинаться с https://")], { error: "ссылка должна начинаться с https://" });
+const optInt = z.union([z.literal(""), z.coerce.number().int().min(0)], { error: "целое число, например 98" });
+// Рейтинг пишут и «4.8», и «4,8»
+const optRating = z.union([z.literal(""), z.preprocess((v) => String(v).replace(",", "."), z.coerce.number().min(1).max(5))], {
+  error: "число от 1 до 5, например 4,8",
+});
+
+// Названия полей для сообщений об ошибках: «Рейтинг: число от 1 до 5»
+const LABELS: Record<string, string> = {
+  name: "Название", city: "Город", address: "Адрес", phone: "Телефон", yandexMapsUrl: "Яндекс Карты", twoGisUrl: "2ГИС",
+  rating: "Рейтинг", reviewsYandex: "Отзывов в Яндексе", reviews2gis: "Отзывов в 2ГИС", template: "Набор услуг", theme: "Тема",
+  accent: "Цвет", posts: "Постов", headline: "Заголовок", channel: "Канал", contact: "Контакт", logoLetter: "Буква в логотипе",
+  operatorName: "Оператор ПДн", operatorInn: "ИНН оператора", customDomain: "Свой домен", status: "Этап", notes: "Заметки",
+};
 
 const DEMO_DAYS = 14;
+
+/** +N месяцев без перескока: 31 января + 1 месяц = 28 (29) февраля, а не 3 марта. */
+function addMonths(d: Date, n: number) {
+  const r = new Date(d);
+  const day = r.getDate();
+  r.setDate(1);
+  r.setMonth(r.getMonth() + n);
+  r.setDate(Math.min(day, new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate()));
+  return r;
+}
 
 
 async function uniqueSlug(base: string) {
@@ -38,7 +62,7 @@ const Demo = z.object({
   phone: z.string().min(5, "Укажите телефон"),
   yandexMapsUrl: optUrl,
   twoGisUrl: optUrl,
-  rating: z.union([z.literal(""), z.coerce.number().min(1).max(5)]),
+  rating: optRating,
   reviewsYandex: optInt,
   reviews2gis: optInt,
   template: z.enum(["tire", "express"]),
@@ -59,6 +83,7 @@ async function insertDemo(d: NewDemo) {
       slug,
       name: d.name,
       city: d.city,
+      timezone: timezoneForCity(d.city),
       address: d.address,
       phone: d.phone,
       yandexMapsUrl: d.yandexMapsUrl,
@@ -85,7 +110,7 @@ async function insertDemo(d: NewDemo) {
 export async function createDemo(_prev: AdminResult, f: FormData): Promise<AdminResult> {
   const admin = await requireAdmin();
   const p = Demo.safeParse(Object.fromEntries([...f.keys()].map((k) => [k, str(f, k)])));
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const d = p.data;
   const phone = normalizePhone(d.phone);
   if (!phone) return { error: "Телефон: 10 цифр после +7" };
@@ -161,7 +186,7 @@ const Info = z.object({
   phone: z.string(),
   yandexMapsUrl: optUrl,
   twoGisUrl: optUrl,
-  rating: z.union([z.literal(""), z.coerce.number().min(1).max(5)]),
+  rating: optRating,
   reviewsYandex: optInt,
   reviews2gis: optInt,
   theme: z.enum(THEME_KEYS),
@@ -175,16 +200,19 @@ const Info = z.object({
 export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
   const admin = await requireAdmin();
   const p = Info.safeParse(Object.fromEntries([...f.keys()].map((k) => [k, str(f, k)])));
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const d = p.data;
   const phone = normalizePhone(d.phone);
   if (!phone) return { error: "Телефон: 10 цифр после +7" };
+  const before = await db.business.findUniqueOrThrow({ where: { id }, select: { city: true } });
   try {
     await db.business.update({
       where: { id },
       data: {
         ...d,
         phone,
+        // Сменили город — сменился и часовой пояс расписания
+        ...(before.city !== d.city ? { timezone: timezoneForCity(d.city) } : {}),
         yandexMapsUrl: d.yandexMapsUrl || null,
         twoGisUrl: d.twoGisUrl || null,
         rating: d.rating === "" ? null : d.rating,
@@ -214,7 +242,7 @@ const LeadForm = z.object({
 export async function saveLead(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
   await requireAdmin();
   const p = LeadForm.safeParse(Object.fromEntries(["status", "channel", "contact", "notes"].map((k) => [k, str(f, k)])));
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const prev = await db.lead.findUnique({ where: { businessId: id } });
   const contactedAt = p.data.status !== "new" && (!prev || prev.status === "new") ? new Date() : prev?.contactedAt;
   await db.lead.upsert({
@@ -232,6 +260,10 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   const phone = normalizePhone(str(f, "ownerPhone"));
   if (!phone) return { error: "Телефон владельца: 10 цифр после +7" };
   const biz = await db.business.findUniqueOrThrow({ where: { id }, include: { users: true } });
+  // Живой сайт собирает персональные данные: в согласии оператором должен значиться ИП или ООО с ИНН
+  if (biz.status === "demo" && (!biz.operatorName || !biz.operatorInn)) {
+    return { error: "Сначала заполните «Оператор ПДн» и «ИНН оператора» в «Данных сервиса» ниже: они попадают в согласие клиента" };
+  }
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing && existing.businessId !== id) return { error: "Этот телефон уже привязан к другому сервису" };
   const password = generatePassword();
@@ -245,7 +277,11 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
       data: { status: biz.status === "demo" ? "trial" : biz.status, demoExpiresAt: null, trialEndsAt: biz.trialEndsAt ?? new Date(Date.now() + TRIAL_DAYS * 86400000) },
     }),
     db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "trial" }, update: { status: "trial" } }),
+    // Пробные записи из демо (владелец пробовал форму) не должны занимать время на живом сайте
+    ...(biz.status === "demo" ? [db.booking.deleteMany({ where: { businessId: id } })] : []),
   ]);
+  // Новый пароль: старые входы владельца больше не действуют
+  if (existing) await endAllSessions(existing.id);
   await audit("admin.trial_start", { userId: admin.id, businessId: id });
   revalidatePath(`/admin/b/${id}`);
   return { ok: true, message: "Вход создан. Пароль показан один раз: перешлите его владельцу", password };
@@ -258,7 +294,7 @@ export async function addPayment(id: string, _prev: AdminResult, f: FormData): P
   if (!Number.isInteger(amount) || amount <= 0) return { error: "Укажите сумму в рублях" };
   const biz = await db.business.findUniqueOrThrow({ where: { id } });
   const from = biz.paidUntil && biz.paidUntil > new Date() ? biz.paidUntil : new Date();
-  const to = months > 0 ? new Date(new Date(from).setMonth(from.getMonth() + months)) : null;
+  const to = months > 0 ? addMonths(from, months) : null;
   await db.$transaction([
     db.payment.create({
       data: { businessId: id, amount, purpose: str(f, "purpose") || "Абонплата", periodFrom: to ? from : null, periodTo: to, receiptSent: f.get("receiptSent") === "on" },

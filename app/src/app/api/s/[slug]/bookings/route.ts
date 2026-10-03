@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import "@/lib/zod-ru";
 import { Prisma } from "@prisma/client";
 import { BookingError, createSiteBooking } from "@/lib/booking";
 import { verifyCaptcha } from "@/lib/captcha";

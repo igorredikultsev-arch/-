@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { importDemos, type ImportRow } from "../actions";
 import { btn, btn2, inp } from "../ui";
+import { keepValues } from "@/lib/keep-form";
 
 const STATUS: Record<ImportRow["status"], { label: string; cls: string }> = {
   created: { label: "Создано", cls: "bg-emerald-50 text-emerald-800" },
@@ -53,7 +54,7 @@ export function ImportForm() {
 
   return (
     <div className="grid gap-5">
-      <form action={action} className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-zinc-200">
+      <form onSubmit={keepValues(action)} className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-zinc-200">
         <label className="grid gap-1">
           <span className="text-[13px] font-semibold text-zinc-600">Файл таблицы</span>
           <input

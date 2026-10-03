@@ -2,11 +2,11 @@
 
 export const STYLES = "Вверху можно переключить три варианта оформления и выбрать тот, что больше нравится.";
 
-type Biz = { name: string; rating: unknown; yandexMapsUrl: string | null; status?: string };
+type Biz = { name: string; rating: unknown; yandexMapsUrl: string | null; twoGisUrl?: string | null; status?: string };
 
 export function outreach(b: Biz, url: string) {
   const rating = b.rating ? Number(b.rating).toFixed(1).replace(".", ",") : null;
-  const where = b.yandexMapsUrl ? "на Яндекс Картах" : "на 2ГИС";
+  const where = b.yandexMapsUrl ? "на Яндекс Картах" : b.twoGisUrl ? "на 2ГИС" : "на картах";
   const intro = rating ? `Посмотрел ваш сервис ${where}: у вас ${rating}, но нет сайта с онлайн-записью, клиентам приходится звонить.` : `Посмотрел ваш сервис ${where}: у вас нет сайта с онлайн-записью, клиентам приходится звонить.`;
   const styles = b.status === "demo" ? `\n${STYLES}` : "";
   return `Здравствуйте! ${intro}\n\nСделал для вас пример: ${url}\nТам ваши услуги, адрес и запись на свободное время. Клиент сам выбирает окно, а вы видите всё расписание в телефоне.${styles}\n\nПодключение 3 500 ₽, первые 2 недели бесплатно. Если неактуально, напишите, больше не побеспокою.`;

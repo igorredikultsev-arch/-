@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { addPayment, saveInfo, saveLead, startTrial } from "../../actions";
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
+import { keepValues } from "@/lib/keep-form";
 
 type Info = {
   name: string; city: string; address: string; phone: string; yandexMapsUrl: string; twoGisUrl: string; rating: string;
@@ -17,7 +18,7 @@ export function InfoForm({ id, info }: { id: string; info: Info }) {
     <F label={label} id={`i-${k}`} hint={hint}><input id={`i-${k}`} name={k} defaultValue={info[k]} className={inp} {...extra} /></F>
   );
   return (
-    <form action={action} className="grid gap-4">
+    <form onSubmit={keepValues(action)} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         {field("name", "Название", { required: true })}
         {field("phone", "Телефон", { required: true, type: "tel" })}
@@ -59,7 +60,7 @@ export function InfoForm({ id, info }: { id: string; info: Info }) {
 export function LeadForm({ id, lead }: { id: string; lead: { status: string; channel: string; contact: string; notes: string } }) {
   const [state, action, pending] = useActionState(saveLead.bind(null, id), null);
   return (
-    <form action={action} className="grid gap-3">
+    <form onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-3">
         <F label="Этап" id="l-status">
           <select id="l-status" name="status" defaultValue={lead.status} className={inp}>
@@ -80,7 +81,7 @@ export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; log
   const [state, action, pending] = useActionState(startTrial.bind(null, id), null);
   const [phone, setPhone] = useState("");
   return (
-    <form action={action} className="grid gap-3">
+    <form onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <F label="Телефон владельца" id="t-phone"><input id="t-phone" name="ownerPhone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inp} /></F>
         <F label="Имя владельца" id="t-name"><input id="t-name" name="ownerName" className={inp} /></F>
@@ -100,8 +101,11 @@ export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; log
 
 export function PaymentForm({ id }: { id: string }) {
   const [state, action, pending] = useActionState(addPayment.bind(null, id), null);
+  // После записанной оплаты поля очищаются, чтобы не записать её второй раз; при ошибке введённое остаётся
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => { if (state?.ok) ref.current?.reset(); }, [state]);
   return (
-    <form action={action} className="grid gap-3">
+    <form ref={ref} onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-4">
         <F label="Сумма, ₽" id="p-amount"><input id="p-amount" name="amount" inputMode="numeric" required className={inp} placeholder="3500" /></F>
         <F label="За что" id="p-purpose" className="sm:col-span-2"><input id="p-purpose" name="purpose" className={inp} placeholder="Подключение и 1 месяц" /></F>

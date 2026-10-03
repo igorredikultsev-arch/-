@@ -18,7 +18,10 @@ export default async function SiteEditPage() {
   const siteUrl = `/s/${business.slug}`;
   const hoursRows = [1, 2, 3, 4, 5, 6, 7].map((wd) => {
     const h = hours.find((x) => x.weekday === wd);
-    return { weekday: wd, closed: h ? h.closed : true, open: hhmm(h?.openMin ?? 540), close: hhmm(h?.closeMin ?? 1200) };
+    return {
+      weekday: wd, closed: h ? h.closed : true, open: hhmm(h?.openMin ?? 540), close: hhmm(h?.closeMin ?? 1200),
+      breakFrom: h?.breakFromMin != null ? hhmm(h.breakFromMin) : "", breakTo: h?.breakToMin != null ? hhmm(h.breakToMin) : "",
+    };
   });
   return (
     <>
@@ -47,9 +50,11 @@ export default async function SiteEditPage() {
         </Card>
       </Section>
 
-      <Section title="Часы работы">
-        <HoursForm hours={hoursRows} />
-      </Section>
+      <div id="hours" className="scroll-mt-4">
+        <Section title="Часы работы и обед">
+          <HoursForm hours={hoursRows} />
+        </Section>
+      </div>
 
       <Section title="Праздники и особые дни">
         {exceptions.map((e) => (

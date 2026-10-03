@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import "@/lib/zod-ru";
 import { audit, endOtherSessions, hashPassword, requireOwner, verifyPassword } from "@/lib/auth";
 import { bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";

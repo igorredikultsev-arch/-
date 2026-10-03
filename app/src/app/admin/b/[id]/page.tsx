@@ -55,7 +55,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
         </div>
       </div>
 
-      {created && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте его, проверьте и отправьте владельцу.</p>}
+      {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте его, проверьте и отправьте владельцу.</p>}
 
       {(b.status === "demo" || b.lead?.status === "new") && (
         <Card title="Первое сообщение">
@@ -65,16 +65,17 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
       )}
 
       <Card title="Воронка и заметки">
-        <LeadForm id={b.id} lead={{ status: b.lead?.status ?? "new", channel: b.lead?.channel ?? "", contact: b.lead?.contact ?? "", notes: b.lead?.notes ?? "" }} />
+        {/* key: после пробного периода или оплаты этап меняется на сервере, форма должна показать новый, а не затереть его старым */}
+        <LeadForm key={`${b.lead?.status}-${b.lead?.updatedAt?.getTime()}`} id={b.id} lead={{ status: b.lead?.status ?? "new", channel: b.lead?.channel ?? "", contact: b.lead?.contact ?? "", notes: b.lead?.notes ?? "" }} />
       </Card>
 
       <Card title="Вход для владельца">
         {b.users.length > 0 && (
           <p className="text-[14px] text-zinc-600">Владелец: {b.users.map((u) => `${u.name ? `${u.name}, ` : ""}${formatPhone(u.phone)}`).join("; ")}</p>
         )}
-        {!b.operatorName && b.status === "demo" && (
+        {(!b.operatorName || !b.operatorInn) && b.status === "demo" && (
           <p className="rounded-xl bg-orange-50 px-3 py-2.5 text-[13.5px] text-orange-900">
-            Перед запуском заполните реквизиты оператора персональных данных в блоке «Данные сервиса»: они попадают в согласие и политику на сайте.
+            Чтобы начать пробный период, заполните «Оператор ПДн» и «ИНН оператора» в блоке «Данные сервиса»: они попадают в согласие клиента на сайте.
           </p>
         )}
         <TrialForm id={b.id} loginUrl={loginUrl} siteUrl={siteUrl} hasOwner={b.users.length > 0} />
@@ -103,6 +104,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
 
       <Card title="Данные сервиса">
         <InfoForm
+          key={b.updatedAt.getTime()}
           id={b.id}
           info={{
             name: b.name, city: b.city, address: b.address, phone: formatPhone(b.phone), yandexMapsUrl: b.yandexMapsUrl ?? "", twoGisUrl: b.twoGisUrl ?? "",
@@ -121,8 +123,8 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           {b.status === "archived" && <form action={setStatus.bind(null, b.id, "demo")}><button className={btn2}>Вернуть как демо</button></form>}
           {(b.status === "demo" || b.status === "archived") && (
             <details className="group">
-              <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden"><span className={`${btn2} !bg-red-50 !text-red-800`}>Удалить совсем</span></summary>
-              <form action={deleteBusiness.bind(null, b.id)} className="mt-2 flex items-center gap-2 text-[14px]">
+              <summary className={`${btn2} cursor-pointer list-none !bg-red-50 !text-red-800 hover:!bg-red-100 [&::-webkit-details-marker]:hidden`}>Удалить совсем</summary>
+              <form action={deleteBusiness.bind(null, b.id)} className="mt-2 flex flex-wrap items-center gap-2 text-[14px]">
                 Точно удалить сервис и все его записи?
                 <button className="rounded-lg bg-red-700 px-3 py-1.5 font-semibold text-white">Да, удалить</button>
               </form>
