@@ -78,7 +78,7 @@ fi
 step "Сборка и запуск (первый раз 5-10 минут)"
 docker compose up -d db
 docker compose build
-docker compose run --rm migrate
+docker compose run --rm -T migrate </dev/null
 docker compose up -d
 
 step "Расписание: резервные копии и очистка"
@@ -92,7 +92,7 @@ if [[ ! -f .admin-created ]]; then
   step "Вход в админку"
   PHONE=$(ask "Ваш телефон для входа (+79...)")
   PASS=$(openssl rand -base64 12 | tr -d '/+=')
-  docker compose run --rm migrate npx tsx scripts/create-admin.ts "$PHONE" "$PASS"
+  docker compose run --rm -T migrate npx tsx scripts/create-admin.ts "$PHONE" "$PASS" </dev/null
   touch .admin-created
   printf '\n\033[1;33mПароль админки: %s\033[0m  (сохраните его, больше он не покажется)\n' "$PASS"
 fi
