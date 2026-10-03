@@ -38,7 +38,13 @@ export function useDay(apiBase: string, defaultServiceId: string) {
       .then((d: { days: Day[] }) => {
         if (off) return;
         setDays(d.days);
-        setDate((cur) => (cur && d.days.some((x) => x.date === cur && !x.closed) ? cur : (d.days.find((x) => x.free > 0) ?? d.days.find((x) => !x.closed))?.date ?? null));
+        const next = (cur: string | null) => (cur && d.days.some((x) => x.date === cur && !x.closed) ? cur : (d.days.find((x) => x.free > 0) ?? d.days.find((x) => !x.closed))?.date ?? null);
+        setDate((cur) => {
+          const v = next(cur);
+          // Все дни выходные: грузить нечего, витрина показывает пустое состояние, а не вечную загрузку
+          if (!v) { setLoad(null); setSlots([]); }
+          return v;
+        });
       })
       .catch(() => !off && setDays([]));
     return () => { off = true; };
@@ -62,7 +68,9 @@ export function useDay(apiBase: string, defaultServiceId: string) {
     return () => { off = true; };
   }, [apiBase, serviceId, date]);
 
-  return { serviceId, setServiceId, days, date, setDate, load, slots, picked };
+  // Во всём горизонте нет ни одного свободного окна (всё занято или выходные)
+  const noneAtAll = days !== null && days.length > 0 && days.every((x) => x.free === 0);
+  return { serviceId, setServiceId, days, date, setDate, load, slots, picked, noneAtAll };
 }
 
 export const toMin = (t: string) => +t.slice(0, 2) * 60 + +t.slice(3, 5);

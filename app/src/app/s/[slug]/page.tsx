@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Camera, NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
-import { getSiteBusiness, readFacts } from "@/lib/business";
+import { getSiteBusiness, readFacts, type SiteBusiness } from "@/lib/business";
 import { captchaClientKey } from "@/lib/captcha";
 import { formatPhone } from "@/lib/phone";
 import { seasonNotice } from "@/lib/season";
 import { routeUrl, siteBase } from "@/lib/site-url";
-import { hhmm, toLocal, weekdayOf } from "@/lib/time";
+import { resolveDayWindow } from "@/lib/slots";
+import { hhmm, toLocal } from "@/lib/time";
 import { radiusBands, radiusList } from "@/lib/radius";
 import { isThemeKey, type ThemeKey } from "@/lib/themes";
 import { BookingWidget, type WidgetService } from "./booking-widget";
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${biz.name}: онлайн-запись`,
     description: `${biz.name}, ${biz.city}, ${biz.address}. Запись на свободное время без звонка.`,
     // Демо не индексируется (раздел 6.7 плана)
-    robots: biz.status === "demo" ? { index: false, follow: false } : undefined,
+    robots: biz.status === "demo" || biz.status === "archived" ? { index: false, follow: false } : undefined,
   };
 }
 
@@ -49,12 +50,13 @@ function hoursLines(hours: { weekday: number; closed: boolean; openMin: number; 
   return lines;
 }
 
-function openNow(biz: { timezone: string; hours: { weekday: number; closed: boolean; openMin: number; closeMin: number }[] }) {
+/** «Открыто до 20:00» или «Обед до 14:00» с учётом праздников и сокращённых дней. */
+function openNow(biz: Pick<SiteBusiness, "timezone" | "hours" | "exceptions">) {
   const now = toLocal(Date.now(), biz.timezone);
-  const h = biz.hours.find((x) => x.weekday === weekdayOf(now.date));
-  if (!h || h.closed) return null;
-  if (now.minutes >= h.openMin && now.minutes < h.closeMin) return `Открыто до ${hhmm(h.closeMin)}`;
-  return null;
+  const w = resolveDayWindow(now.date, biz.hours, biz.exceptions);
+  if (!w || now.minutes < w.openMin || now.minutes >= w.closeMin) return null;
+  if (w.breakFrom != null && w.breakTo != null && now.minutes >= w.breakFrom && now.minutes < w.breakTo) return `Обед до ${hhmm(w.breakTo)}`;
+  return `Открыто до ${hhmm(w.closeMin)}`;
 }
 
 const plural = (n: number, one: string, few: string, many: string) =>
@@ -102,6 +104,9 @@ export default async function SitePage({ params, searchParams }: Props) {
       privacyHref={`${base}/privacy`}
       captchaKey={captchaClientKey()}
       timezone={biz.timezone}
+      phone={biz.phone}
+      phoneLabel={formatPhone(biz.phone)}
+      demo={demo}
     />
   );
 
@@ -129,8 +134,8 @@ export default async function SitePage({ params, searchParams }: Props) {
       <div className="about">
         {facts.length > 0 && (
           <div className="facts">
-            {facts.map((f) => (
-              <div className="fact" key={f.value}>
+            {facts.map((f, i) => (
+              <div className="fact" key={i}>
                 <b>{f.value}</b>
                 <span>{f.label}</span>
               </div>
@@ -182,9 +187,10 @@ export default async function SitePage({ params, searchParams }: Props) {
     </section>
   );
 
-  const contactsBlock = (
-    <section className="block" aria-labelledby="way-h" id="where">
-      <h2 className="h4" id="way-h">Как добраться</h2>
+  // В «Такси» на компьютере блок стоит ещё и справа под панелью времени, поэтому id с суффиксом
+  const contacts = (suffix = "") => (
+    <section className="block" aria-labelledby={`way-h${suffix}`} id={suffix ? undefined : "where"}>
+      <h2 className="h4" id={`way-h${suffix}`}>Как добраться</h2>
       <dl className="contacts">
         <div>
           <dt>Адрес</dt>
@@ -226,6 +232,7 @@ export default async function SitePage({ params, searchParams }: Props) {
       </div>
     </section>
   );
+  const contactsBlock = contacts();
 
   const meta = (
     <div className="sub">
@@ -304,7 +311,9 @@ export default async function SitePage({ params, searchParams }: Props) {
             {seasonBlock}
           </div>
         </section>
-        {defaultServiceId && <PostsPlan services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} stepMin={biz.slotStepMin} />}
+        {defaultServiceId && (
+          <PostsPlan services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} stepMin={biz.slotStepMin} phone={biz.phone} phoneLabel={phone} />
+        )}
         <div className="layout">
           <div className="book-col">{widget}</div>
           {servicesBlock("Услуги и цены")}
@@ -315,15 +324,19 @@ export default async function SitePage({ params, searchParams }: Props) {
       </>
     );
   } else {
+    const logo = biz.name.replace(/^(Шиномонтаж|Автосервис|Автотехцентр)\s+/i, "").replace(/[«»"]/g, "") || biz.name;
     content = (
       <>
         <header className="nav">
-          <span className="logo">{biz.name.replace(/^(Шиномонтаж|Автосервис|Автотехцентр)\s+/i, "").replace(/[«»"]/g, "") || biz.name}</span>
+          <span className={`logo${logo.length > 18 ? " long" : ""}`} title={logo}>{logo}</span>
           {callBtn}
         </header>
         <div className="hero">
           <h1 className="hello">{headline}</h1>
-          {defaultServiceId && <DayLoad services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} />}
+          <div className="aside">
+            {defaultServiceId && <DayLoad services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} phone={biz.phone} phoneLabel={phone} />}
+            <div className="side-where">{contacts("-side")}</div>
+          </div>
           <div className="sheet">
             <div className="grab" aria-hidden="true" />
             <p className="sheet-name">{biz.name}</p>
@@ -350,7 +363,7 @@ export default async function SitePage({ params, searchParams }: Props) {
           <div className="card">{servicesBlock("Услуги и цены")}</div>
           {aboutBlock && <div className="card">{aboutBlock}</div>}
           {reviewsBlock && <div className="card">{reviewsBlock}</div>}
-          <div className="card">{contactsBlock}</div>
+          <div className="card where-card">{contactsBlock}</div>
         </div>
       </>
     );

@@ -3,12 +3,18 @@ import { db } from "./db";
 
 /**
  * Регулярная очистка:
- * 1) демо, которые не перевели в пробный период за 14 дней (раздел 2.3, п. 5);
+ * 1) демо, которые не перевели в пробный период за 14 дней (раздел 2.3, п. 5): в архив, а не удаление,
+ *    чтобы в воронке осталась карточка лида (этап, контакт, заметки). Пробные записи демо удаляются;
  * 2) персональные данные клиентов старше срока хранения (раздел 6.3, п. 5);
  * 3) просроченные сессии и счётчики лимитов.
  */
 export async function runCleanup(now = new Date()) {
-  const demos = await db.business.deleteMany({ where: { status: "demo", demoExpiresAt: { lt: now } } });
+  const expired = await db.business.findMany({ where: { status: "demo", demoExpiresAt: { lt: now } }, select: { id: true } });
+  const ids = expired.map((b) => b.id);
+  if (ids.length) {
+    await db.booking.deleteMany({ where: { businessId: { in: ids } } });
+    await db.business.updateMany({ where: { id: { in: ids } }, data: { status: "archived" } });
+  }
   const cutoff = new Date(now);
   cutoff.setFullYear(cutoff.getFullYear() - RETENTION_YEARS);
   const pd = await db.booking.updateMany({
@@ -17,5 +23,5 @@ export async function runCleanup(now = new Date()) {
   });
   const sessions = await db.session.deleteMany({ where: { expiresAt: { lt: now } } });
   const limits = await db.rateLimit.deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - 86400000) } } });
-  return { demosDeleted: demos.count, bookingsAnonymized: pd.count, sessionsDeleted: sessions.count, limitsDeleted: limits.count };
+  return { demosArchived: ids.length, bookingsAnonymized: pd.count, sessionsDeleted: sessions.count, limitsDeleted: limits.count };
 }

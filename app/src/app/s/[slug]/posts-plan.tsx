@@ -11,15 +11,15 @@ const CAR_COLORS = ["#8d969d", "#b7bcc0", "#5f6b75", "#a3896f", "#c3c7ca", "#6d7
  * «План»: стоянка, где каждое место — время записи на выбранный день. Где сервис занят целиком, стоит машина;
  * свободное время размечено, на него можно нажать. Посты клиенту не показываем: ему важно время, а не номер поста.
  */
-export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: string; apiBase: string; stepMin: number }) {
+export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: string; apiBase: string; stepMin: number; phone: string; phoneLabel: string }) {
   const d = useDay(p.apiBase, p.defaultServiceId);
   const step = Math.max(p.stepMin, 10);
 
-  // Сетка мест: от открытия (сегодня — от текущего времени) до закрытия с шагом записи
+  // Сетка мест: от открытия с шагом записи (как окна в расписании), сегодня — начиная с текущего места
   const cells: number[] = [];
   if (d.load) {
     let t = d.load.open;
-    if (d.load.now != null) t = Math.max(t, Math.floor(d.load.now / step) * step);
+    if (d.load.now != null && d.load.now > t) t += Math.floor((d.load.now - t) / step) * step;
     for (; t + step <= d.load.close; t += step) cells.push(t);
   }
   const freeTimes = new Set((d.slots ?? []).filter((s) => s.free).map((s) => s.time));
@@ -45,6 +45,7 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
         <div className="legend" aria-hidden="true">
           <span className="f">свободно</span>
           <span className="b">занято</span>
+          <span className="o">не успеть</span>
         </div>
       </div>
       <label className="yard-svc">
@@ -64,15 +65,20 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
           return (
             <button key={x.date} type="button" className="yday" disabled={x.closed} aria-pressed={x.date === d.date} onClick={() => d.setDate(x.date)}>
               {i === 0 ? "Сегодня" : `${f.weekday[0].toUpperCase()}${f.weekday.slice(1)} ${f.day}`}
-              {x.closed && <small>выходной</small>}
+              {x.closed ? <small>выходной</small> : x.free === 0 ? <small>занято</small> : null}
             </button>
           );
         })}
       </div>
 
       <div className="floor">
-        {d.load === undefined && <div className="skeleton" style={{ height: 240 }} />}
-        {d.load === null && <p className="yard-empty">В этот день сервис не работает. Выберите другой.</p>}
+        {d.load === undefined && !d.noneAtAll && <div className="skeleton" style={{ height: 240 }} />}
+        {d.noneAtAll && (
+          <p className="yard-empty">
+            В ближайшие дни свободных мест нет. Позвоните, договоримся: <a href={`tel:${p.phone}`}>{p.phoneLabel}</a>
+          </p>
+        )}
+        {d.load === null && !d.noneAtAll && <p className="yard-empty">В этот день сервис не работает. Выберите другой.</p>}
         {d.load && cells.length === 0 && <p className="yard-empty">На сегодня запись закончилась. Выберите другой день.</p>}
         {d.load && cells.length > 0 && (
           <div className="plan" role="group" aria-label="Время записи">
@@ -108,14 +114,15 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
                 );
               }
               return (
-                <div key={t} className="bay" title="Услуга не успевает до следующей записи или закрытия">
+                <div key={t} className="bay off" aria-label={`${time}, услуга не успевает до следующей записи или закрытия`}>
                   <span className="tm">{time}</span>
+                  <span className="go">не успеть</span>
                 </div>
               );
             })}
           </div>
         )}
-        {d.load && cells.length > 0 && bookable.length === 0 && <p className="yard-empty">На этот день свободных мест для этой услуги нет. Выберите другой день.</p>}
+        {d.load && cells.length > 0 && bookable.length === 0 && !d.noneAtAll && <p className="yard-empty">На этот день свободных мест для этой услуги нет. Выберите другой день.</p>}
         <div className="gate">Въезд</div>
       </div>
     </section>

@@ -6,10 +6,12 @@ import { pickSlot } from "./events";
 import { hm, toMin, useDay, useWide } from "./use-day";
 
 const pct = (m: number, a: number, b: number) => `${(((m - a) / (b - a)) * 100).toFixed(2)}%`;
-const wait = (min: number) => (min < 60 ? `через ${min} минут` : `через ${Math.floor(min / 60)} ч${min % 60 ? ` ${min % 60} мин` : ""}`);
+const minutesWord = (n: number) =>
+  n % 10 === 1 && n % 100 !== 11 ? "минуту" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "минуты" : "минут";
+const wait = (min: number) => (min < 60 ? `через ${min} ${minutesWord(min)}` : `через ${Math.floor(min / 60)} ч${min % 60 ? ` ${min % 60} мин` : ""}`);
 
 /** «Такси»: загрузка сервиса на день одной шкалой, отметка «сейчас» и ближайшее свободное время. Посты клиенту не показываем. */
-export function DayLoad(p: { services: WidgetService[]; defaultServiceId: string; apiBase: string }) {
+export function DayLoad(p: { services: WidgetService[]; defaultServiceId: string; apiBase: string; phone: string; phoneLabel: string }) {
   const d = useDay(p.apiBase, p.defaultServiceId);
   const wide = useWide();
   const load = d.load;
@@ -45,7 +47,7 @@ export function DayLoad(p: { services: WidgetService[]; defaultServiceId: string
       </div>
       <p className="next">
         <small>{chosen ? "Выбранное время" : "Ближайшее свободное время"}</small>
-        <strong>{d.slots === null ? "…" : shown ?? "нет"}</strong>
+        <strong>{d.slots === null && !d.noneAtAll ? "…" : shown ?? "нет"}</strong>
         {shown && isToday && <span>{wait(toMin(shown) - load!.now!)}</span>}
       </p>
       {load && (
@@ -92,7 +94,13 @@ export function DayLoad(p: { services: WidgetService[]; defaultServiceId: string
           </div>
         </div>
       )}
-      {d.load === null && <p className="tl-empty">В этот день сервис не работает</p>}
+      {d.noneAtAll ? (
+        <p className="tl-empty">
+          В ближайшие дни свободного времени нет. Позвоните: <a href={`tel:${p.phone}`}>{p.phoneLabel}</a>
+        </p>
+      ) : (
+        d.load === null && <p className="tl-empty">В этот день сервис не работает</p>
+      )}
       <div className="tl-foot">
         <div className="legend" aria-hidden="true">
           <span className="lf">свободно, можно нажать</span>

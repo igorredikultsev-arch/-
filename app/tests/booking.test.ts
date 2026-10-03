@@ -113,9 +113,12 @@ describe("отмена клиентом", () => {
 import { runCleanup } from "@/lib/cleanup";
 
 describe("runCleanup", () => {
-  it("удаляет просроченные демо и обезличивает старые записи", async () => {
+  it("отправляет просроченные демо в архив с карточкой лида и обезличивает старые записи", async () => {
     const old = await makeBusiness({ slug: "old-demo" });
-    await db.business.update({ where: { id: old.id }, data: { status: "demo", demoExpiresAt: new Date(Date.now() - 1000) } });
+    await db.business.update({
+      where: { id: old.id },
+      data: { status: "demo", demoExpiresAt: new Date(Date.now() - 1000), lead: { create: { status: "demo_sent", notes: "ответит после праздников" } } },
+    });
     const live = await makeBusiness({ slug: "live" });
     await db.business.update({ where: { id: live.id }, data: { status: "active" } });
     await db.booking.create({
@@ -125,11 +128,12 @@ describe("runCleanup", () => {
       },
     });
     const r = await runCleanup();
-    expect(r.demosDeleted).toBe(1);
+    expect(r.demosArchived).toBe(1);
     expect(r.bookingsAnonymized).toBe(1);
     const b = await db.booking.findUniqueOrThrow({ where: { cancelToken: "t-old" } });
     expect(b.clientName).toBeNull();
     expect(b.clientPhone).toBeNull();
-    expect(await db.business.count()).toBe(1);
+    expect((await db.business.findUniqueOrThrow({ where: { id: old.id } })).status).toBe("archived");
+    expect((await db.lead.findUniqueOrThrow({ where: { businessId: old.id } })).notes).toBe("ответит после праздников");
   });
 });

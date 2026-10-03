@@ -24,6 +24,9 @@ type Props = {
   privacyHref: string;
   captchaKey: string;
   timezone: string;
+  phone: string; // для звонка, когда свободного времени нет
+  phoneLabel: string;
+  demo: boolean;
 };
 
 declare global {
@@ -130,9 +133,15 @@ export function BookingWidget(p: Props) {
     window.dispatchEvent(new CustomEvent(STATE_EVENT, { detail: { serviceId, date, time } }));
   }, [serviceId, date, time]);
 
-  // Яндекс SmartCaptcha на шаге контактов
+  // Яндекс SmartCaptcha на шаге контактов. Форма контактов пропадает при возврате к выбору времени,
+  // вместе с ней пропадает и капча: при следующем показе её нужно нарисовать заново
   useEffect(() => {
-    if (step !== 3 || !p.captchaKey || !captchaRef.current) return;
+    if (step !== 3) {
+      captchaId.current = null;
+      setCaptcha("");
+      return;
+    }
+    if (!p.captchaKey || !captchaRef.current) return;
     const render = () => {
       if (window.smartCaptcha && captchaRef.current && captchaId.current == null) {
         captchaId.current = window.smartCaptcha.render(captchaRef.current, { sitekey: p.captchaKey, hl: "ru", callback: setCaptcha });
@@ -175,7 +184,8 @@ export function BookingWidget(p: Props) {
         window.location.href = `${p.siteBase}/b/${data.token}`;
         return;
       }
-      if (data.code === "slot_taken") {
+      // Время заняли или оно уже прошло, пока клиент заполнял форму: обратно к выбору со свежим списком
+      if (data.code === "slot_taken" || data.code === "bad_slot") {
         setStep(2);
         setTime(null);
         setNotice(data.error);
@@ -197,6 +207,10 @@ export function BookingWidget(p: Props) {
 
   const freeCount = slots?.filter((s) => s.free).length ?? 0;
   const dayShort = date ? formatDayShort(date) : null;
+  // Во всём горизонте записи нет ни одного свободного окна (всё занято или выходные)
+  const noneAtAll = days !== null && days.length > 0 && days.every((d) => d.free === 0);
+  // Ошибка поля пропадает, как только клиент его исправляет
+  const clearErr = (k: string) => fieldErr[k] && setFieldErr(({ [k]: _, ...rest }) => rest);
 
   return (
     <section className="book" id="book" aria-labelledby="book-title">
@@ -256,7 +270,7 @@ export function BookingWidget(p: Props) {
                 >
                   <small>{f.weekday}</small>
                   <b>{f.day}</b>
-                  <em>{d.closed ? "выходной" : i === 0 ? "сегодня" : d.free === 0 ? "занято" : ""}</em>
+                  <em>{d.closed ? "выходной" : d.free === 0 ? "занято" : i === 0 ? "сегодня" : ""}</em>
                 </button>
               );
             })}
@@ -269,8 +283,13 @@ export function BookingWidget(p: Props) {
           )}
           <div className="slots" role="group" aria-label="Время">
             {slots === null && <div className="skeleton" />}
-            {slots?.length === 0 && <div className="slots-empty">В этот день записаться нельзя. Выберите другой.</div>}
-            {slots && slots.length > 0 && freeCount === 0 && <div className="slots-empty">Всё занято. Выберите другой день.</div>}
+            {noneAtAll && slots !== null && (
+              <div className="slots-empty">
+                В ближайшие {days!.length} дней свободного времени нет. Позвоните, договоримся: <a href={`tel:${p.phone}`}>{p.phoneLabel}</a>
+              </div>
+            )}
+            {!noneAtAll && slots?.length === 0 && <div className="slots-empty">В этот день записаться нельзя. Выберите другой.</div>}
+            {!noneAtAll && slots && slots.length > 0 && freeCount === 0 && <div className="slots-empty">Всё занято. Выберите другой день.</div>}
             {slots?.map((s) => (
               <button
                 key={s.time}
@@ -304,17 +323,17 @@ export function BookingWidget(p: Props) {
           </div>
           <div className="field">
             <label htmlFor="bk-name">Имя</label>
-            <input id="bk-name" autoComplete="given-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} aria-invalid={!!fieldErr.name} />
+            <input id="bk-name" autoComplete="given-name" value={name} onChange={(e) => { setName(e.target.value); clearErr("name"); }} maxLength={60} aria-invalid={!!fieldErr.name} />
             {fieldErr.name && <span className="err">{fieldErr.name}</span>}
           </div>
           <div className="field">
             <label htmlFor="bk-phone">Телефон</label>
-            <input id="bk-phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} aria-invalid={!!fieldErr.phone} />
+            <input id="bk-phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => { setPhone(maskPhone(e.target.value)); clearErr("phone"); }} aria-invalid={!!fieldErr.phone} />
             {fieldErr.phone && <span className="err">{fieldErr.phone}</span>}
           </div>
           <div className="field">
             <label htmlFor="bk-car">Марка и модель машины</label>
-            <input id="bk-car" placeholder="Например, Kia Rio" value={car} onChange={(e) => setCar(e.target.value)} maxLength={60} aria-invalid={!!fieldErr.car} />
+            <input id="bk-car" placeholder="Например, Kia Rio" value={car} onChange={(e) => { setCar(e.target.value); clearErr("car"); }} maxLength={60} aria-invalid={!!fieldErr.car} />
             {fieldErr.car && <span className="err">{fieldErr.car}</span>}
           </div>
           <div className="field">
@@ -322,7 +341,7 @@ export function BookingWidget(p: Props) {
             <textarea
               id="bk-comment"
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={(e) => { setComment(e.target.value); clearErr("comment"); }}
               maxLength={500}
               placeholder={service.isDiagnostic ? "Например, стучит спереди справа на кочках" : ""}
               aria-invalid={!!fieldErr.comment}
@@ -331,7 +350,7 @@ export function BookingWidget(p: Props) {
           </div>
           <input ref={hpRef} className="hp" tabIndex={-1} autoComplete="off" name="website" aria-hidden="true" />
           <label className="consent" htmlFor="bk-consent">
-            <input id="bk-consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            <input id="bk-consent" type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); clearErr("consent"); }} />
             <span>
               Даю <a href={p.consentHref} target="_blank" rel="noopener">согласие на обработку персональных данных</a> по{" "}
               <a href={p.privacyHref} target="_blank" rel="noopener">политике</a>
@@ -345,6 +364,7 @@ export function BookingWidget(p: Props) {
           </label>
           {p.captchaKey && <div ref={captchaRef} style={{ minHeight: 102, marginBottom: 12 }} />}
           {fieldErr.captcha && <p className="form-err">{fieldErr.captcha}</p>}
+          {p.demo && <p className="demo-note">Это демо-версия сайта: запись пробная, сервис её пока не получает.</p>}
           <button className="btn wide" type="submit" disabled={sending}>
             {sending ? "Записываем…" : "Записаться"}
           </button>

@@ -1,3 +1,4 @@
+import { getSiteBusiness } from "@/lib/business";
 import { db } from "@/lib/db";
 
 const esc = (s: string) => s.replace(/[\\,;]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
@@ -5,9 +6,10 @@ const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}
 
 /** Файл для календаря телефона: «Добавить в календарь» на экране записи. */
 export async function GET(_req: Request, ctx: { params: Promise<{ slug: string; token: string }> }) {
-  const { token } = await ctx.params;
+  const { slug, token } = await ctx.params;
+  const biz = await getSiteBusiness(decodeURIComponent(slug));
   const b = await db.booking.findUnique({ where: { cancelToken: token }, include: { business: true } });
-  if (!b || b.status !== "active") return new Response("Запись не найдена", { status: 404 });
+  if (!biz || !b || b.businessId !== biz.id || b.status !== "active") return new Response("Запись не найдена", { status: 404 });
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
