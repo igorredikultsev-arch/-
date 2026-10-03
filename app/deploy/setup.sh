@@ -8,7 +8,8 @@ REPO="https://github.com/igorredikultsev-arch/-.git"
 BRANCH="${BRANCH:-claude/admiring-davinci-ej5p3n}"
 DIR="/opt/avtoslot"
 
-ask() { local v; read -r -p "$1: " v </dev/tty; printf '%s' "$v"; }
+# Консоль в панели хостинга иногда подмешивает в ввод служебные коды терминала (и Ctrl+V), вычищаем их
+ask() { local v; read -r -p "$1: " v </dev/tty; printf '%s' "$v" | sed $'s/\x1b\[[0-9;?]*[A-Za-z]//g' | tr -d '\000-\037\177' | sed 's/^ *//; s/ *$//'; }
 step() { printf '\n\033[1;32m==> %s\033[0m\n' "$1"; }
 
 [[ $EUID -eq 0 ]] || { echo "Запустите под root"; exit 1; }
