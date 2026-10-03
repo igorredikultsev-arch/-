@@ -1,4 +1,5 @@
-# Проверка каждого пуша: типы, тесты (с базой) и сборка.
+# Проверка каждого пуша: типы, тесты (с базой) и сборка Docker-образов.
+# Образы публикуются в GitHub Container Registry (ghcr.io), сервер их только скачивает — сам больше ничего не собирает.
 # Сервер (deploy/autoupdate.sh) не берёт коммит, пока проверка идёт или если она упала.
 name: Проверка
 
@@ -10,6 +11,11 @@ on:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+# Один пакет на два образа: app-<коммит> (сайт) и migrate-<коммит> (миграции и служебные скрипты).
+# Имя должно совпадать с IMAGE в docker-compose.yml и deploy/update.sh
+env:
+  IMAGE: ghcr.io/igorredikultsev-arch/avtoslot
 
 jobs:
   check:
@@ -49,16 +55,57 @@ jobs:
       - run: npx next build
 
   docker:
-    # Образы как на сервере: миграции и сайт. Сервер не возьмёт коммит, если они не собираются
+    # Образы для сервера: собрать, проверить миграции и запуск сайта, опубликовать
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --target migrator -t avtoslot-migrator app
-      - run: docker build --target runner -t avtoslot-app app
-      - name: Миграции из образа на чистой базе
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Образ миграций
+        uses: docker/build-push-action@v6
+        with:
+          context: app
+          target: migrator
+          load: true
+          provenance: false
+          tags: ${{ env.IMAGE }}:migrate-${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=migrate
+          cache-to: type=gha,scope=migrate,mode=max
+
+      - name: Образ сайта
+        uses: docker/build-push-action@v6
+        with:
+          context: app
+          target: runner
+          load: true
+          provenance: false
+          tags: ${{ env.IMAGE }}:app-${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,scope=app,mode=max
+
+      - name: Миграции из образа на чистой базе и запуск сайта
         run: |
           docker network create t
           docker run -d --name db --network t -e POSTGRES_USER=avtoslot -e POSTGRES_PASSWORD=x -e POSTGRES_DB=avtoslot postgres:16
           for i in $(seq 1 30); do docker exec db pg_isready -U avtoslot && break; sleep 1; done; sleep 3
-          docker run --rm --network t -e DATABASE_URL=postgresql://avtoslot:x@db:5432/avtoslot avtoslot-migrator npx prisma migrate deploy
+          url=postgresql://avtoslot:x@db:5432/avtoslot
+          docker run --rm --network t -e DATABASE_URL=$url "$IMAGE:migrate-$GITHUB_SHA" npx prisma migrate deploy
+          docker run -d --name app --network t -p 3000:3000 -e DATABASE_URL=$url -e ROOT_DOMAIN=avtoslot.ru \
+            -e APP_URL=https://avtoslot.ru "$IMAGE:app-$GITHUB_SHA"
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:3000/login && break; sleep 1; done
+          curl -fsS -o /dev/null http://localhost:3000/login || { docker logs app; exit 1; }
+          curl -fsS -o /dev/null http://localhost:3000/ || { docker logs app; exit 1; }
+          echo "Сайт из образа отвечает"
+
+      - name: Публикация в GitHub Container Registry
+        if: github.event_name == 'push'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push "$IMAGE:migrate-$GITHUB_SHA"
+          docker push "$IMAGE:app-$GITHUB_SHA"

@@ -1,0 +1,7 @@
+# Сборка образов на самом сервере вместо скачивания из ghcr.io — только на крайний случай
+# (GitHub недоступен). Долго и тяжело для сервера с 1 ГБ памяти. Подробно — README.md.
+services:
+  migrate:
+    build: { context: ., target: migrator }
+  app:
+    build: { context: ., target: runner }

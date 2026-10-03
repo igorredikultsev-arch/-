@@ -14,7 +14,7 @@ step() { printf '\n\033[1;32m==> %s\033[0m\n' "$1"; }
 
 [[ $EUID -eq 0 ]] || { echo "Запустите под root"; exit 1; }
 
-step "Файл подкачки (чтобы сборке хватило памяти)"
+step "Файл подкачки (запас памяти для сайта и базы)"
 if ! swapon --show | grep -q .; then
   fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
   echo '/swapfile none swap sw 0 0' >> /etc/fstab
@@ -76,11 +76,11 @@ else
   echo "ок: $ROOT_DOMAIN -> $IP"
 fi
 
-step "Сборка и запуск (первый раз 5-10 минут)"
+step "Скачивание готовых образов и запуск (пара минут)"
+chmod +x deploy/update.sh
 docker compose up -d db
-docker compose --profile tools build
-docker compose run --rm -T migrate </dev/null
-docker compose up -d
+./deploy/update.sh
+unset AVTOSLOT_TAG # версию дальше берём из .env, её только что записал update.sh
 
 step "Расписание: резервные копии и очистка"
 chmod +x deploy/backup.sh

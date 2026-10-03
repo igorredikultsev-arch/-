@@ -67,9 +67,11 @@ npm run typecheck
 curl -fsSL https://raw.githubusercontent.com/igorredikultsev-arch/-/claude/admiring-davinci-ej5p3n/app/deploy/setup.sh | bash
 ```
 
-Скрипт спросит домен, почту, ФИО, ИНН и телефон, сам сгенерирует пароли и секреты, соберёт и запустит всё, настроит расписание и выдаст пароль админки. Ниже то же самое по шагам.
+Скрипт спросит домен, почту, ФИО, ИНН и телефон, сам сгенерирует пароли и секреты, скачает готовые образы и запустит всё, настроит расписание и выдаст пароль админки. Ниже то же самое по шагам.
 
-1. **Сервер.** VPS с Ubuntu 24.04, 2 ГБ памяти, в российском дата-центре (Timeweb Cloud, Selectel, Yandex Cloud). Установите Docker: `curl -fsSL https://get.docker.com | sh`.
+**Где собираются образы.** Сервер ничего не собирает: образы сайта и миграций собирает GitHub Actions (`.github/workflows/ci.yml`) на каждый пуш и публикует в GitHub Container Registry — пакет `ghcr.io/igorredikultsev-arch/avtoslot`, теги `app-<коммит>` и `migrate-<коммит>`. Сервер их только скачивает (пара минут, сайт при этом работает). Пакет должен быть публичным (GitHub → профиль → Packages → avtoslot → Package settings → Change visibility → Public), иначе на сервере нужен `docker login ghcr.io` с токеном `read:packages`.
+
+1. **Сервер.** VPS с Ubuntu 24.04, от 1 ГБ памяти, в российском дата-центре (Timeweb Cloud, Selectel, Yandex Cloud). Установите Docker: `curl -fsSL https://get.docker.com | sh`.
 2. **Домен.** У регистратора добавьте две A-записи на IP сервера: `ваш-домен.ru` и `*.ваш-домен.ru`.
 3. **Код и настройки:**
    ```bash
@@ -77,11 +79,10 @@ curl -fsSL https://raw.githubusercontent.com/igorredikultsev-arch/-/claude/admir
    cp .env.example .env && nano .env
    ```
    Обязательно заполните: `ROOT_DOMAIN`, `APP_URL` (`https://ваш-домен.ru`), `POSTGRES_PASSWORD`, `ACME_EMAIL`, `CRON_SECRET`, ключи SmartCaptcha, `PROCESSOR_NAME`/`PROCESSOR_INN`/`PROCESSOR_EMAIL` (ваши реквизиты, они попадают в согласие и политику). Необязательно: `CONTACT_TELEGRAM` (кнопка «Написать в Telegram» на главной) и `EXAMPLE_SLUG` (какое демо показывать как пример).
-4. **Запуск:**
+4. **Запуск** (скачать образы текущего коммита, миграции, старт; версия запишется в `.env` как `AVTOSLOT_TAG`):
    ```bash
    docker compose up -d db
-   docker compose run --rm migrate
-   docker compose up -d --build
+   ./deploy/update.sh
    docker compose run --rm migrate npx tsx scripts/create-admin.ts +79991234567 "пароль-от-10-символов"
    ```
 5. **Расписание** (`crontab -e`):
@@ -89,8 +90,8 @@ curl -fsSL https://raw.githubusercontent.com/igorredikultsev-arch/-/claude/admir
    15 3 * * *  cd /opt/avtoslot/app && ./deploy/backup.sh >> deploy/backup.log 2>&1
    30 3 * * *  curl -s -X POST -H "Authorization: Bearer <CRON_SECRET>" https://ваш-домен.ru/api/cron/cleanup
    ```
-6. **Обновление:** `/opt/avtoslot/app/deploy/update.sh` — новый код, сборка, миграции, перезапуск и очистка старых образов.
-7. **Автообновление:** `/opt/avtoslot/app/deploy/autoupdate.sh install` (один раз). Раз в 5 минут cron смотрит ветку на GitHub; по новому коммиту ждёт проверку GitHub Actions (`.github/workflows/ci.yml`: типы, тесты, сборка) и запускает `update.sh`. Упавший коммит пропускается, сайт остаётся на прошлой версии. Журнал: `deploy/update.log`. Выключить: `crontab -l | grep -v avtoslot-autoupdate | crontab -`.
+6. **Обновление:** `/opt/avtoslot/app/deploy/update.sh` — новый код, скачивание готовых образов, миграции, перезапуск и очистка старых образов (остаются текущая и прошлая версии). Образы для коммита появляются, когда проверка на GitHub прошла; если их ещё нет, скрипт так и скажет, сайт останется на прошлой версии. На крайний случай, если ghcr.io недоступен: `update.sh --build` соберёт образы прямо на сервере (10-15 минут, сайт может перестать отвечать).
+7. **Автообновление:** `/opt/avtoslot/app/deploy/autoupdate.sh install` (один раз). Раз в 5 минут cron смотрит ветку на GitHub; по новому коммиту ждёт проверку GitHub Actions (`.github/workflows/ci.yml`: типы, тесты, сборка и публикация образов) и запускает `update.sh`. Упавший коммит пропускается, сайт остаётся на прошлой версии; если образы не скачались, попытка повторится через 5 минут. Журнал: `deploy/update.log`. Выключить: `crontab -l | grep -v avtoslot-autoupdate | crontab -`.
 
 Сертификаты: основной домен получает сертификат сразу. Поддомены клиентов и их собственные домены — при первом заходе, только если клиент подключён (проверку делает `/api/tls-check`).
 

@@ -9,3 +9,4 @@ deploy/*.log
 deploy/.deployed
 deploy/.failed
 deploy/.seen
+deploy/.waiting

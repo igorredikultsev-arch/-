@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Автообновление сайта. Включить один раз:  /opt/avtoslot/app/deploy/autoupdate.sh install
-# Дальше cron раз в 5 минут смотрит ветку на GitHub. Появился новый коммит и проверка на GitHub прошла —
-# запускается update.sh. Если проверка упала или сборка не удалась, этот коммит пропускается до следующего.
+# Дальше cron раз в 5 минут смотрит ветку на GitHub. Появился новый коммит и проверка на GitHub прошла
+# (она же собирает и публикует образы) — запускается update.sh: скачать образы, миграции, перезапуск.
+# Если проверка упала или обновление не удалось, этот коммит пропускается до следующего.
+# Если образы не скачались (GitHub недоступен), попытка повторяется через 5 минут.
 # Журнал: /opt/avtoslot/app/deploy/update.log
 set -euo pipefail
 
-# Всё в функции: git merge ниже может поменять этот файл, а bash читает скрипт по ходу выполнения
+# Всё в функции: update.sh ниже может поменять этот файл, а bash читает скрипт по ходу выполнения
 main() {
   cd "$(dirname "$0")/.."
   local log=deploy/update.log state=deploy/.deployed failed=deploy/.failed seen=deploy/.seen
@@ -46,13 +48,20 @@ main() {
     fi
   fi
 
-  echo "$(date '+%F %T') обновляю до ${target:0:7}"
-  git merge --ff-only -q "$target"
-  if ./deploy/update.sh; then
+  # Образы не скачались — повторяем позже, но пишем в журнал только первый раз
+  local waiting=deploy/.waiting code=0
+  [[ "$target" == "$(cat "$waiting" 2>/dev/null)" ]] || echo "$(date '+%F %T') обновляю до ${target:0:7}"
+  ./deploy/update.sh "$target" || code=$?
+  if (( code == 0 )); then
     echo "$target" > "$state"
+    rm -f "$waiting"
     echo "$(date '+%F %T') готово"
+  elif (( code == 3 )); then
+    [[ "$target" == "$(cat "$waiting" 2>/dev/null)" ]] || echo "$(date '+%F %T') ${target:0:7}: образы не скачались, повторю через 5 минут"
+    echo "$target" > "$waiting"
   else
     echo "$target" > "$failed"
+    rm -f "$waiting"
     echo "$(date '+%F %T') ${target:0:7}: обновление не удалось, сайт работает на прошлой версии"
   fi
 }

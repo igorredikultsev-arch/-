@@ -1,4 +1,8 @@
-# Запуск на VPS: docker compose up -d --build   (подробно — README.md в корне репозитория)
+# Запуск и обновление на VPS: deploy/update.sh (подробно — README.md в корне репозитория).
+# Образы сайта и миграций собирает GitHub Actions и публикует в ghcr.io, сервер их только скачивает.
+# Версия (коммит) — AVTOSLOT_TAG в .env, её прописывает update.sh после удачного обновления.
+# Собрать образы на самом сервере (только на крайний случай, 10-15 минут и почти вся память):
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml --profile tools build
 services:
   db:
     image: postgres:16
@@ -16,7 +20,8 @@ services:
 
   # Одноразовый запуск миграций: docker compose run --rm migrate
   migrate:
-    build: { context: ., target: migrator }
+    image: ghcr.io/igorredikultsev-arch/avtoslot:migrate-${AVTOSLOT_TAG:-none}
+    pull_policy: never
     command: npx prisma migrate deploy
     environment:
       DATABASE_URL: postgresql://avtoslot:${POSTGRES_PASSWORD}@db:5432/avtoslot
@@ -24,7 +29,8 @@ services:
     profiles: ["tools"]
 
   app:
-    build: { context: ., target: runner }
+    image: ghcr.io/igorredikultsev-arch/avtoslot:app-${AVTOSLOT_TAG:-none}
+    pull_policy: never
     restart: unless-stopped
     env_file: .env
     environment:
