@@ -212,6 +212,7 @@
 .ticket dd { margin: 0; font-weight: 600; text-align: right; }
 .keep { font-size: 13.5px; line-height: 1.5; color: var(--s-muted); padding: 13px 14px; border-radius: 14px; background: var(--s-card-2); }
 .keep b, .keep a { color: var(--s-fg); }
+.keep a { white-space: nowrap; }
 .cancel { justify-self: center; background: none; border: 0; color: var(--s-fg); font: 600 14px var(--s-body); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--s-muted); cursor: pointer; padding: 6px; }
 .doc { padding: 26px 20px 40px; line-height: 1.6; font-size: 15px; }
 .doc h1 { font: 700 24px/1.2 var(--s-head); margin: 0 0 18px; text-wrap: balance; }
@@ -267,9 +268,9 @@
 .t-plan .sub { font-size: 15px; }
 .t-plan .sub .r .ic { color: var(--s-fg); }
 .t-plan .yard { margin-top: 28px; padding: 0 16px; }
-.t-plan .yard-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.t-plan .yard-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; margin-bottom: 10px; }
 .t-plan .yard-head h2 { margin: 0; font: 800 30px/1 var(--s-head); text-transform: uppercase; }
-.t-plan .legend { display: flex; gap: 12px; font-size: 13px; color: var(--s-muted); white-space: nowrap; }
+.t-plan .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--s-muted); white-space: nowrap; }
 .t-plan .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .t-plan .legend .f::before { content: ""; width: 14px; height: 10px; border: 2px dashed color-mix(in srgb, var(--accent) 80%, #000); border-radius: 2px; background: rgb(255 255 255 / .6); }
 .t-plan .legend .b::before { content: ""; width: 14px; height: 10px; border-radius: 3px; background: #9aa1a6; }

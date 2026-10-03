@@ -26,18 +26,18 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHead kicker={formatDayLong(date)} title={title}>
-        <div className="mt-1 flex gap-2">
+        <div className="mt-1 flex flex-wrap gap-2">
           <Link href={`/cabinet?date=${addDays(date, -1)}`} aria-label="Предыдущий день" className="grid size-10 place-items-center rounded-full bg-white text-zinc-600 ring-1 ring-zinc-200">
             <CaretLeft size={18} />
           </Link>
           <Link href={`/cabinet?date=${addDays(date, 1)}`} aria-label="Следующий день" className="grid size-10 place-items-center rounded-full bg-white text-zinc-600 ring-1 ring-zinc-200">
             <CaretRight size={18} />
           </Link>
-          <Link href="/cabinet/block" className="grid h-10 place-items-center rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-zinc-200">
+          <Link href="/cabinet/block" className="grid h-10 place-items-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-zinc-200">
             Закрыть время
           </Link>
           {date !== today && (
-            <Link href="/cabinet" className="grid h-10 place-items-center rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-zinc-200">
+            <Link href="/cabinet" className="grid h-10 place-items-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-zinc-200">
               Сегодня
             </Link>
           )}

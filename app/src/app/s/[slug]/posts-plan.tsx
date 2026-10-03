@@ -79,7 +79,7 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
           </p>
         )}
         {d.load === null && !d.noneAtAll && <p className="yard-empty">В этот день сервис не работает. Выберите другой.</p>}
-        {d.load && cells.length === 0 && <p className="yard-empty">На сегодня запись закончилась. Выберите другой день.</p>}
+        {d.load && cells.length === 0 && !d.noneAtAll && <p className="yard-empty">На сегодня запись закончилась. Выберите другой день.</p>}
         {d.load && cells.length > 0 && (
           <div className="plan" role="group" aria-label="Время записи">
             {cells.map((t) => {
