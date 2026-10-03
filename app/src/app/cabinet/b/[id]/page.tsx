@@ -21,7 +21,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
     ["Машина", b.car],
     ["Комментарий", b.comment],
     ["Стоимость", b.priceFrom ? `от ${b.priceFrom.toLocaleString("ru-RU")} ₽` : null],
-    ["Статус", STATUS[b.status]],
+    ["Статус", b.status === "cancelled" && b.cancelledBy ? `${STATUS[b.status]} ${b.cancelledBy === "client" ? "клиентом" : "вами"}` : STATUS[b.status]],
     ["Создана", formatDateTime(b.createdAt.getTime(), tz)],
   ];
   return (
@@ -48,7 +48,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
           </div>
         ))}
       </Card>
-      <BookingActions id={b.id} status={b.status} hasPd={!!(b.clientName || b.clientPhone || b.car || b.comment)} />
+      <BookingActions id={b.id} status={b.status} hasPd={!!(b.clientName || b.clientPhone || b.car || b.comment)} started={b.startAt.getTime() <= Date.now()} />
     </div>
   );
 }

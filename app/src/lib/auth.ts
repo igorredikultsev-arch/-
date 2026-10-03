@@ -43,6 +43,17 @@ export async function destroySession() {
   store.delete(COOKIE);
 }
 
+/** Завершить все входы пользователя, кроме текущего (после смены пароля). */
+export async function endOtherSessions(userId: string) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  await db.session.deleteMany({ where: { userId, ...(token ? { id: { not: sha256(token) } } : {}) } });
+}
+
+/** Завершить все входы пользователя (админ выдал владельцу новый пароль). */
+export async function endAllSessions(userId: string) {
+  await db.session.deleteMany({ where: { userId } });
+}
+
 export const getSessionUser = cache(async () => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;

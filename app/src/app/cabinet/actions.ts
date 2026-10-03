@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { audit, hashPassword, requireOwner, verifyPassword } from "@/lib/auth";
-import { createOwnerBooking, getDaySlots, businessForSlotsSelect } from "@/lib/booking";
+import { audit, endOtherSessions, hashPassword, requireOwner, verifyPassword } from "@/lib/auth";
+import { bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
+import { formatPhone } from "@/lib/phone";
+import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
-import { isDateString, localToUtc, parseHhmm } from "@/lib/time";
+import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
 export type ActionResult = { ok?: boolean; error?: string; message?: string } | null;
 
@@ -22,15 +24,47 @@ async function ownBooking(id: string) {
 
 /* ---------- записи ---------- */
 
-export async function setBookingStatus(id: string, status: "active" | "cancelled" | "no_show" | "done") {
-  const { user, business } = await ownBooking(id);
-  await db.booking.update({
-    where: { id },
-    data: { status, ...(status === "cancelled" ? { cancelledAt: new Date(), cancelledBy: "owner" } : { cancelledAt: null, cancelledBy: null }) },
-  });
+/** Текст предупреждения, когда запись не помещается: вне часов, на обеде или закрытом времени, все посты заняты. */
+function warningText(w: OwnerWarning) {
+  if (w.outside) return "Это время вне часов работы. Всё равно записать?";
+  if (w.allClosed) return "Это время закрыто (обед или закрытое время). Всё равно записать?";
+  return `В это время заняты все посты (${w.load} из ${w.posts}). Всё равно записать?`;
+}
+
+export async function setBookingStatus(
+  id: string,
+  status: "active" | "cancelled" | "no_show" | "done",
+  force = false,
+): Promise<{ warning?: string } | void> {
+  const { user, business, booking } = await ownBooking(id);
+  if (status === "active" && booking.status !== "active") {
+    // Пока запись была отменена, её время могли занять: без подтверждения двух клиентов на одно место не ставим
+    const r = await restoreBooking(id, business.id, force);
+    if (!r.ok) {
+      const w = r.warning;
+      return { warning: w.outside || w.allClosed ? warningText(w).replace("записать", "вернуть") : `На это время уже заняты все посты (${w.load} из ${w.posts}). Всё равно вернуть запись?` };
+    }
+  } else {
+    await db.booking.update({
+      where: { id },
+      data: { status, ...(status === "cancelled" ? { cancelledAt: new Date(), cancelledBy: "owner" } : { cancelledAt: null, cancelledBy: null }) },
+    });
+  }
   await audit("booking.status", { userId: user.id, businessId: business.id, details: { id, status } });
   revalidatePath("/cabinet", "layout");
 }
+
+/** Записи в интервале для предупреждения: «05.10 10:00 Иван, +7 (912) …». */
+async function clashRows(businessId: string, tz: string, start: number, end: number) {
+  const list = await bookingsInRange(businessId, start, end);
+  return list.map((b) => {
+    const l = toLocal(b.startAt.getTime(), tz);
+    return `${l.date.slice(8, 10)}.${l.date.slice(5, 7)} ${hhmm(l.minutes)} ${b.clientName || "без имени"}${b.clientPhone ? `, ${formatPhone(b.clientPhone)}` : ""}`;
+  });
+}
+
+const clashNote = (rows: string[], what: string) =>
+  rows.length ? ` Внимание: ${what} уже записаны клиенты, их записи остались: ${rows.join("; ")}. Предупредите их, если нужно перенести.` : "";
 
 /** Право клиента на удаление данных (раздел 6.3, п. 6): обезличиваем запись, время и услуга остаются для статистики. */
 export async function erasePersonalData(id: string) {
@@ -83,14 +117,7 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
     comment: p.data.comment?.trim(),
     force: p.data.force,
   });
-  if (!res.booking) {
-    const w = res.warning!;
-    return {
-      warning: w.allClosed
-        ? "Это время закрыто (например, обед). Всё равно записать?"
-        : `В это время заняты все посты (${w.load} из ${w.posts}). Всё равно записать?`,
-    };
-  }
+  if (!res.booking) return { warning: warningText(res.warning!) };
   await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: res.booking.id } });
   revalidatePath("/cabinet", "layout");
   return { id: res.booking.id };
@@ -107,18 +134,18 @@ export async function createBlock(_prev: ActionResult, f: FormData): Promise<Act
   const to = allDay ? 24 * 60 : parseHhmm(str(f, "to"));
   if (from == null || to == null || to <= from) return { error: "Время «до» должно быть позже времени «с»" };
   const scope = str(f, "scope") === "one_post" ? "one_post" : "all";
+  const startAt = new Date(localToUtc(date, from, business.timezone));
+  const endAt = new Date(localToUtc(date, to, business.timezone));
+  // Повторное нажатие не создаёт второе такое же закрытие
+  const same = await db.block.findFirst({ where: { businessId: business.id, startAt, endAt, scope } });
+  if (same) return { ok: true, message: "Это время уже закрыто" };
   await db.block.create({
-    data: {
-      businessId: business.id,
-      startAt: new Date(localToUtc(date, from, business.timezone)),
-      endAt: new Date(localToUtc(date, to, business.timezone)),
-      scope,
-      reason: str(f, "reason").slice(0, 60) || null,
-    },
+    data: { businessId: business.id, startAt, endAt, scope, reason: str(f, "reason").slice(0, 60) || null },
   });
   await audit("block.create", { userId: user.id, businessId: business.id });
   revalidatePath("/cabinet", "layout");
-  return { ok: true, message: "Время закрыто. На сайте оно стало недоступным" };
+  const clash = scope === "all" ? clashNote(await clashRows(business.id, business.timezone, startAt.getTime(), endAt.getTime()), "на это время") : "";
+  return { ok: true, message: `Время закрыто. На сайте оно стало недоступным.${clash}` };
 }
 
 export async function deleteBlock(id: string) {
@@ -188,7 +215,13 @@ export async function saveHours(_prev: ActionResult, f: FormData): Promise<Actio
     const open = parseHhmm(str(f, `open${wd}`));
     const close = parseHhmm(str(f, `close${wd}`));
     if (!closed && (open == null || close == null || close <= open)) return { error: "Проверьте часы: закрытие должно быть позже открытия" };
-    rows.push({ weekday: wd, closed, openMin: open ?? 540, closeMin: close ?? 1200 });
+    // Обед: оба поля или ни одного, внутри часов работы
+    const bFrom = str(f, `breakFrom${wd}`) ? parseHhmm(str(f, `breakFrom${wd}`)) : null;
+    const bTo = str(f, `breakTo${wd}`) ? parseHhmm(str(f, `breakTo${wd}`)) : null;
+    const hasBreak = bFrom != null && bTo != null;
+    if (!closed && (bFrom != null) !== (bTo != null)) return { error: "Обед: укажите и начало, и конец, или оставьте оба поля пустыми" };
+    if (!closed && hasBreak && (bTo! <= bFrom! || bFrom! < open! || bTo! > close!)) return { error: "Обед должен быть внутри часов работы, конец позже начала" };
+    rows.push({ weekday: wd, closed, openMin: open ?? 540, closeMin: close ?? 1200, breakFromMin: hasBreak ? bFrom : null, breakToMin: hasBreak ? bTo : null });
   }
   await db.$transaction(
     rows.map((r) =>
@@ -218,7 +251,14 @@ export async function addException(_prev: ActionResult, f: FormData): Promise<Ac
     update: { closed, openMin: closed ? null : open, closeMin: closed ? null : close },
   });
   revalidatePath("/cabinet", "layout");
-  return { ok: true, message: "Особый день добавлен" };
+  // Клиенты, которые записаны на закрытый день или вне новых часов
+  const day = dayBounds(date, business.timezone);
+  const tz = business.timezone;
+  const rows = closed
+    ? await clashRows(business.id, tz, day.start, day.end)
+    : [...(await clashRows(business.id, tz, day.start, localToUtc(date, open!, tz))), ...(await clashRows(business.id, tz, localToUtc(date, close!, tz), day.end))];
+  const clash = clashNote(rows, closed ? "на этот день" : "вне новых часов");
+  return { ok: true, message: `Особый день добавлен.${clash}` };
 }
 
 export async function deleteException(id: string) {
@@ -265,6 +305,8 @@ export async function changePassword(_prev: ActionResult, f: FormData): Promise<
   if (next.length < 8) return { error: "Новый пароль: не меньше 8 символов" };
   if (!(await verifyPassword(user.passwordHash, current))) return { error: "Текущий пароль неверный" };
   await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(next) } });
+  // Остальные входы (например, на потерянном телефоне) завершаем, текущий оставляем
+  await endOtherSessions(user.id);
   await audit("password.change", { userId: user.id });
   return { ok: true, message: "Пароль изменён" };
 }

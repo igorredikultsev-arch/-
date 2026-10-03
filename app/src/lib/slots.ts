@@ -3,10 +3,11 @@ import { addDays, hhmm, localToUtc, toLocal, weekdayOf } from "./time";
 
 export type Interval = { start: number; end: number }; // мс UTC, [start, end)
 
-export type HoursRow = { weekday: number; closed: boolean; openMin: number; closeMin: number };
+export type HoursRow = { weekday: number; closed: boolean; openMin: number; closeMin: number; breakFromMin?: number | null; breakToMin?: number | null };
 export type ExceptionRow = { date: string; closed: boolean; openMin: number | null; closeMin: number | null };
 
-export type DayWindow = { openMin: number; closeMin: number };
+/** Часы дня; breakFrom/breakTo — обед (внутри часов работы), в это время сервис закрыт целиком. */
+export type DayWindow = { openMin: number; closeMin: number; breakFrom?: number; breakTo?: number };
 
 /** Часы работы на конкретную дату с учётом особых дней. null — выходной. */
 export function resolveDayWindow(date: string, hours: HoursRow[], exceptions: ExceptionRow[]): DayWindow | null {
@@ -17,7 +18,19 @@ export function resolveDayWindow(date: string, hours: HoursRow[], exceptions: Ex
   }
   const row = hours.find((h) => h.weekday === weekdayOf(date));
   if (!row || row.closed || row.closeMin <= row.openMin) return null;
-  return { openMin: row.openMin, closeMin: row.closeMin };
+  const win: DayWindow = { openMin: row.openMin, closeMin: row.closeMin };
+  const from = row.breakFromMin, to = row.breakToMin;
+  if (from != null && to != null && from >= row.openMin && to <= row.closeMin && to > from) {
+    win.breakFrom = from;
+    win.breakTo = to;
+  }
+  return win;
+}
+
+/** Обед дня как интервал UTC, чтобы считать его закрытым временем всего сервиса. */
+export function breakIntervals(date: string, tz: string, window: DayWindow | null): Interval[] {
+  if (!window || window.breakFrom == null || window.breakTo == null) return [];
+  return [{ start: localToUtc(date, window.breakFrom, tz), end: localToUtc(date, window.breakTo, tz) }];
 }
 
 const overlaps = (a: Interval, b: Interval) => a.start < b.end && b.start < a.end;
@@ -60,11 +73,14 @@ export function daySlots(input: SlotInput): Slot[] {
   if (!window || durationMin <= 0 || stepMin <= 0 || posts <= 0) return [];
   const earliest = input.nowMs + input.minLeadMin * 60000;
   const occupied = [...input.bookings, ...input.blocksOnePost];
+  const lunch = breakIntervals(date, tz, window);
   const slots: Slot[] = [];
   for (let m = window.openMin; m + durationMin <= window.closeMin; m += stepMin) {
     const start = localToUtc(date, m, tz);
     if (start < earliest) continue;
     const slot = { start, end: start + durationMin * 60000 };
+    // На обед запись не предлагается вовсе, как и вне часов работы
+    if (lunch.some((b) => overlaps(b, slot))) continue;
     const free = !input.blocksAll.some((b) => overlaps(b, slot)) && peakLoad(slot, occupied) < posts;
     slots.push({ time: hhmm(m), start: slot.start, end: slot.end, free });
   }
@@ -124,7 +140,7 @@ export function dayLanes(input: DayLanesInput): { open: number; close: number; l
     const s = clip(iv);
     if (s) lanes[lane].push(s);
   }
-  for (const iv of input.blocksAll) {
+  for (const iv of [...input.blocksAll, ...breakIntervals(date, tz, window)]) {
     const s = clip(iv);
     if (s) lanes.forEach((l) => l.push({ ...s }));
   }

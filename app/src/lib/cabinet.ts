@@ -58,11 +58,14 @@ export async function loadDayForOwner(business: Business, date: string) {
     ...blocks.filter((b) => b.scope === "one_post").map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime(), kind: "one_post" as const })),
   ]);
   const span = window.end - window.start;
-  const closedAll = blocks
-    .filter((b) => b.scope === "all")
+  const lunch = win?.breakFrom != null && win.breakTo != null ? { start: bounds.start + win.breakFrom * 60000, end: bounds.start + win.breakTo * 60000 } : null;
+  const closedAll = [
+    ...blocks.filter((b) => b.scope === "all").map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime() })),
+    ...(lunch ? [lunch] : []),
+  ]
     .map((b) => {
-      const s = Math.max(b.startAt.getTime(), window.start);
-      const e = Math.min(b.endAt.getTime(), window.end);
+      const s = Math.max(b.start, window.start);
+      const e = Math.min(b.end, window.end);
       return e > s ? { startPct: ((s - window.start) / span) * 100, widthPct: ((e - s) / span) * 100 } : null;
     })
     .filter(Boolean) as { startPct: number; widthPct: number }[];
@@ -74,6 +77,7 @@ export async function loadDayForOwner(business: Business, date: string) {
     isWorkday: !!win,
     openMin,
     closeMin,
+    lunch,
     bookings,
     blocks,
     lanes,
@@ -88,12 +92,16 @@ export async function loadDayForOwner(business: Business, date: string) {
 }
 
 /** Записи и закрытое время одной лентой по времени — для списка на экране «Сегодня». */
-export type TimelineEntry = { type: "booking"; at: number; booking: Booking } | { type: "block"; at: number; block: Block };
+export type TimelineEntry =
+  | { type: "booking"; at: number; booking: Booking }
+  | { type: "block"; at: number; block: Block }
+  | { type: "lunch"; at: number; end: number };
 
 export function timeline(day: DayData): TimelineEntry[] {
   return [
     ...day.bookings.map((b) => ({ type: "booking" as const, at: b.startAt.getTime(), booking: b })),
     ...day.blocks.map((b) => ({ type: "block" as const, at: b.startAt.getTime(), block: b })),
+    ...(day.lunch && day.bookings.length + day.blocks.length > 0 ? [{ type: "lunch" as const, at: day.lunch.start, end: day.lunch.end }] : []),
   ].sort((a, b) => a.at - b.at);
 }
 

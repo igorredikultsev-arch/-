@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { BookingError, createSiteBooking } from "@/lib/booking";
 import { verifyCaptcha } from "@/lib/captcha";
-import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { hit } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/request";
@@ -49,13 +49,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (ip && !(await hit(`booking:ip:${ip}`, 10, 3600))) {
     return json({ error: "Слишком много записей с этого устройства. Попробуйте через час или позвоните в сервис" }, 429);
   }
-  if (!(await verifyCaptcha(b.captcha, ip))) return json({ error: "Подтвердите, что вы не робот" }, 400);
-
-  const active = await db.booking.count({
-    where: { businessId: biz.id, clientPhone: phone, status: "active", startAt: { gt: new Date() } },
-  });
-  if (active >= MAX_ACTIVE_PER_PHONE) {
-    return json({ error: "На этот номер уже есть несколько записей. Чтобы записаться ещё, позвоните в сервис" }, 409);
+  const captcha = await verifyCaptcha(b.captcha, ip);
+  if (captcha === "fail") return json({ error: "Подтвердите, что вы не робот" }, 400);
+  // Сервис капчи не ответил: запись не теряем, но с одного адреса пускаем реже
+  if (captcha === "unavailable" && ip && !(await hit(`booking:nocaptcha:${ip}`, 3, 3600))) {
+    return json({ error: "Не получилось проверить, что вы не робот. Попробуйте позже или позвоните в сервис" }, 429);
   }
 
   try {
@@ -69,10 +67,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       car: b.car,
       comment: b.comment,
       consentIp: ip,
+      maxActivePerPhone: MAX_ACTIVE_PER_PHONE,
     });
     return json({ token: booking.cancelToken }, 201);
   } catch (e) {
-    if (e instanceof BookingError) return json({ error: e.message, code: e.code }, e.code === "slot_taken" ? 409 : 400);
+    if (e instanceof BookingError) return json({ error: e.message, code: e.code }, e.code === "slot_taken" || e.code === "too_many" ? 409 : 400);
+    // Наплыв записей: очередь к базе не дождалась. Двойной записи не будет, просим повторить
+    if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2028" || e.code === "P2034")) {
+      return json({ error: "Сейчас много записей одновременно. Нажмите «Записаться» ещё раз" }, 503);
+    }
     throw e;
   }
 }

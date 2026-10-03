@@ -16,7 +16,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const day = await loadDayForOwner(business, date);
   const title = date === today ? "Сегодня" : date === addDays(today, 1) ? "Завтра" : date === addDays(today, -1) ? "Вчера" : formatDayLong(date).split(",")[1].trim();
   const entries = timeline(day);
-  const hours = Array.from({ length: Math.floor((day.closeMin - day.openMin) / 60) }, (_, i) => Math.floor(day.openMin / 60) + i);
+  // Подписи часов по месту на шкале: сервис может открываться не ровно в час (8:30)
+  const span = Math.max(day.closeMin - day.openMin, 1);
+  const hours: number[] = [];
+  for (let h = Math.ceil(day.openMin / 60); h * 60 < day.closeMin; h++) hours.push(h);
   const nowMs = Date.now();
 
   let lastPart = "";
@@ -83,11 +86,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               </div>
             ))}
           </div>
-          <div className="mt-1.5 grid text-[10px] text-zinc-500" style={{ gridTemplateColumns: `48px repeat(${hours.length}, 1fr)` }}>
+          <div className="mt-1.5 grid grid-cols-[48px_1fr] gap-2 text-[10px] text-zinc-500">
             <span />
-            {hours.map((h) => (
-              <span key={h}>{h}</span>
-            ))}
+            <div className="relative h-3">
+              {hours.map((h) => (
+                <span key={h} className="absolute top-0 -translate-x-1/2" style={{ left: `${((h * 60 - day.openMin) / span) * 100}%` }}>{h}</span>
+              ))}
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11.5px] text-zinc-500">
             <span className="inline-flex items-center gap-1.5"><i className="size-3 rounded-[3px] bg-accent" />с сайта</span>
@@ -112,6 +117,23 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           const part = partOfDay(e.at, tz);
           const head = part !== lastPart ? <h2 key={`h${e.at}${part}`} className="px-1 pt-2 text-[13px] font-semibold text-zinc-500">{part}</h2> : null;
           lastPart = part;
+          if (e.type === "lunch") {
+            return (
+              <div key={`lunch${e.at}`} className="contents">
+                {head}
+                <Link href="/cabinet/site#hours" className="grid grid-cols-[56px_1fr] items-center gap-2.5 rounded-[14px] border border-zinc-200 bg-[repeating-linear-gradient(45deg,#fff_0_9px,#eef0f3_9px_18px)] p-3">
+                  <div className="text-[16.5px] font-bold">
+                    {hhmm(toLocal(e.at, tz).minutes)}
+                    <small className="block text-[11.5px] font-medium text-zinc-500">{Math.round((e.end - e.at) / 60000)} мин</small>
+                  </div>
+                  <div>
+                    <div className="text-[15px] font-semibold">Обед</div>
+                    <div className="mt-0.5 text-[13px] text-zinc-500">По часам работы, каждый день</div>
+                  </div>
+                </Link>
+              </div>
+            );
+          }
           if (e.type === "block") {
             const b = e.block;
             const s = toLocal(b.startAt.getTime(), tz);

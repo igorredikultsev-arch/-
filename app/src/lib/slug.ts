@@ -11,7 +11,8 @@ export function slugify(name: string): string {
   const meaningful = words.filter((w) => !STOP.has(w));
   const use = meaningful.length ? meaningful : words;
   const s = use.join("-").split("").map((c) => MAP[c] ?? c).join("").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  return (s || "servis").slice(0, 40);
+  // После обрезки до 40 знаков на конце может остаться дефис: такой поддомен не откроется
+  return (s.slice(0, 40).replace(/-+$/, "") || "servis");
 }
 
 export const RESERVED_SLUGS = new Set(["www", "app", "admin", "api", "cabinet", "mail", "login", "s"]);

@@ -3,10 +3,16 @@
 
 export const captchaClientKey = () => process.env.SMARTCAPTCHA_CLIENT_KEY || "";
 
-export async function verifyCaptcha(token: string | undefined, ip: string | undefined): Promise<boolean> {
+export type CaptchaResult = "ok" | "fail" | "unavailable";
+
+/**
+ * Проверка токена SmartCaptcha. «unavailable» — сервис Яндекса не ответил: запись не теряем,
+ * но вызывающий код ужесточает лимиты. Без ключей капча выключена (только для разработки).
+ */
+export async function verifyCaptcha(token: string | undefined, ip: string | undefined): Promise<CaptchaResult> {
   const secret = process.env.SMARTCAPTCHA_SERVER_KEY;
-  if (!secret) return true;
-  if (!token) return false;
+  if (!secret) return "ok";
+  if (!token) return "fail";
   try {
     const body = new URLSearchParams({ secret, token, ...(ip ? { ip } : {}) });
     const res = await fetch("https://smartcaptcha.yandexcloud.net/validate", {
@@ -14,10 +20,10 @@ export async function verifyCaptcha(token: string | undefined, ip: string | unde
       body,
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return true; // сбой сервиса капчи не должен блокировать запись; остаются лимиты
+    if (!res.ok) return "unavailable";
     const data = (await res.json()) as { status?: string };
-    return data.status === "ok";
+    return data.status === "ok" ? "ok" : "fail";
   } catch {
-    return true;
+    return "unavailable";
   }
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { loadWeek } from "@/lib/cabinet";
-import { addDays, formatDayLong, hhmm, isDateString, toLocal, weekdayOf } from "@/lib/time";
+import { addDays, formatDayLong, formatDayShort, hhmm, isDateString, toLocal, weekdayOf } from "@/lib/time";
 import { Card, PageHead } from "../ui";
 
 export default async function WeekPage({ searchParams }: { searchParams: Promise<{ start?: string }> }) {
@@ -14,9 +14,11 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
   const week = await loadWeek(business, start);
   const total = week.reduce((s, d) => s + d.bookings.length, 0);
   const site = week.reduce((s, d) => s + d.fromSite, 0);
+  const a = formatDayShort(start), z = formatDayShort(addDays(start, 6));
+  const range = a.month === z.month ? `${a.day}–${z.day} ${z.month}` : `${a.day} ${a.month} – ${z.day} ${z.month}`;
   return (
     <>
-      <PageHead kicker={`${formatDayLong(start)} и 6 дней`} title="Неделя">
+      <PageHead kicker={range} title="Неделя">
         <div className="mt-1 flex items-center gap-2">
           <Link href={`/cabinet/week?start=${addDays(start, -7)}`} aria-label="Прошлая неделя" className="grid size-10 place-items-center rounded-full bg-white ring-1 ring-zinc-200"><CaretLeft size={18} /></Link>
           <Link href={`/cabinet/week?start=${addDays(start, 7)}`} aria-label="Следующая неделя" className="grid size-10 place-items-center rounded-full bg-white ring-1 ring-zinc-200"><CaretRight size={18} /></Link>
@@ -29,7 +31,7 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
             <Card className={`grid gap-1.5 p-3.5 ${d.date === today ? "ring-2 ring-accent" : ""}`}>
               <div className="flex items-baseline justify-between">
                 <b className="text-[15px]">{formatDayLong(d.date)}</b>
-                <span className="text-[13px] text-zinc-500">{d.isWorkday ? `${d.bookings.length} зап.` : "выходной"}</span>
+                <span className="text-[13px] text-zinc-500">{d.isWorkday ? `${d.bookings.length} зап.` : d.bookings.length ? `выходной, ${d.bookings.length} зап.` : "выходной"}</span>
               </div>
               {d.bookings.length > 0 && (
                 <div className="flex flex-wrap gap-1">

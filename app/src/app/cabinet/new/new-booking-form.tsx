@@ -35,6 +35,9 @@ export function NewBookingForm({ services, today, initialDate }: { services: Svc
     return () => { alive = false; };
   }, [serviceId, date]);
 
+  // Предупреждение относится к выбранному времени: сменили время, услугу или день — проверяем заново
+  useEffect(() => setWarning(null), [serviceId, date, time]);
+
   function submit(force = false) {
     setError(null);
     start(async () => {

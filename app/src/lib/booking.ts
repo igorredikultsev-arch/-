@@ -1,7 +1,7 @@
 // Запись: расчёт окон по данным из базы и создание записи без двойного бронирования (раздел 4.3).
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "./db";
-import { dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, type Interval, type LaneSpan, type Slot } from "./slots";
+import { breakIntervals, dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, type Interval, type LaneSpan, type Slot } from "./slots";
 import { newToken } from "./tokens";
 import { localToUtc, toLocal } from "./time";
 
@@ -9,9 +9,15 @@ type Tx = Prisma.TransactionClient | PrismaClient;
 
 export const CONSENT_VERSION = "2026-10-v1";
 
+/** Записи, которые занимают пост: активные и уже выполненные (отмена и «не приехал» время освобождают). */
+export const OCCUPYING = ["active", "done"] as const;
+
+/** Сколько ждать очереди к базе при наплыве записей, прежде чем ответить «попробуйте ещё раз». */
+const TX_OPTIONS = { maxWait: 10000, timeout: 15000 };
+
 export class BookingError extends Error {
   constructor(
-    public code: "slot_taken" | "bad_slot" | "not_found" | "closed" | "too_late" | "already_cancelled",
+    public code: "slot_taken" | "bad_slot" | "not_found" | "closed" | "too_late" | "already_cancelled" | "too_many",
     message: string,
   ) {
     super(message);
@@ -33,7 +39,7 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
   const to = new Date(dayBounds(lastDate, tz).end + 86400000);
   const [bookings, blocks] = await Promise.all([
     tx.booking.findMany({
-      where: { businessId, status: "active", startAt: { lt: to }, endAt: { gt: from } },
+      where: { businessId, status: { in: [...OCCUPYING] }, startAt: { lt: to }, endAt: { gt: from } },
       select: { startAt: true, endAt: true },
     }),
     tx.block.findMany({
@@ -56,7 +62,7 @@ type BusinessForSlots = {
   slotStepMin: number;
   minLeadMin: number;
   horizonDays: number;
-  hours: { weekday: number; closed: boolean; openMin: number; closeMin: number }[];
+  hours: { weekday: number; closed: boolean; openMin: number; closeMin: number; breakFromMin: number | null; breakToMin: number | null }[];
   exceptions: { date: string; closed: boolean; openMin: number | null; closeMin: number | null }[];
 };
 
@@ -136,6 +142,8 @@ export type SiteBookingInput = {
   comment?: string;
   consentIp?: string;
   nowMs?: number;
+  /** Не больше стольких будущих записей на один номер (проверяется под той же блокировкой). */
+  maxActivePerPhone?: number;
 };
 
 /** Запись с сайта. Окно перепроверяется под блокировкой: если его успели занять — ошибка slot_taken. */
@@ -146,9 +154,18 @@ export async function createSiteBooking(input: SiteBookingInput) {
     const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
     const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId, active: true } });
     if (!biz || !service) throw new BookingError("not_found", "Сервис или услуга не найдены");
+    if (input.maxActivePerPhone) {
+      const active = await tx.booking.count({
+        where: { businessId: input.businessId, clientPhone: input.clientPhone, status: "active", startAt: { gt: new Date(nowMs) } },
+      });
+      if (active >= input.maxActivePerPhone) {
+        throw new BookingError("too_many", "На этот номер уже есть несколько записей. Чтобы записаться ещё, позвоните в сервис");
+      }
+    }
     const slots = await getDaySlots(biz, input.date, service.durationMin, nowMs, tx);
     const slot = slots.find((s) => s.time === input.time);
-    if (!slot) throw new BookingError("bad_slot", "Такого времени нет в расписании");
+    // Чаще всего время просто прошло (или ушло за «запас до записи»), пока клиент заполнял форму
+    if (!slot) throw new BookingError("bad_slot", "Это время уже недоступно. Выберите другое");
     if (!slot.free) throw new BookingError("slot_taken", "Это время только что заняли. Выберите другое");
     return tx.booking.create({
       data: {
@@ -169,7 +186,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
         consentIp: input.consentIp ?? null,
       },
     });
-  });
+  }, TX_OPTIONS);
 }
 
 export type OwnerBookingInput = {
@@ -188,20 +205,39 @@ export type OwnerBookingInput = {
  * Запись, которую владелец вносит сам после звонка (раздел 4.4).
  * Может превышать число постов, но только после явного подтверждения (force).
  */
+export type OwnerWarning = { load: number; posts: number; allClosed: boolean; outside: boolean };
+
+/** Пересекается ли интервал с часами работы, обедом, закрытым временем и другими записями. */
+async function checkCapacity(tx: Tx, biz: BusinessForSlots, date: string, slot: Interval, ignoreBookingId?: string): Promise<OwnerWarning | null> {
+  const window = resolveDayWindow(date, biz.hours, biz.exceptions);
+  const dayStart = localToUtc(date, 0, biz.timezone);
+  const outside = !window || slot.start < dayStart + window.openMin * 60000 || slot.end > dayStart + window.closeMin * 60000;
+  const occ = await loadDay(tx, biz.id, date, biz.timezone);
+  let bookings = occ.bookings;
+  if (ignoreBookingId) {
+    const self = await tx.booking.findUnique({ where: { id: ignoreBookingId }, select: { startAt: true, endAt: true, status: true } });
+    if (self && (OCCUPYING as readonly string[]).includes(self.status)) {
+      const i = bookings.findIndex((b) => b.start === self.startAt.getTime() && b.end === self.endAt.getTime());
+      if (i >= 0) bookings = bookings.filter((_, k) => k !== i);
+    }
+  }
+  const closed = [...occ.blocksAll, ...breakIntervals(date, biz.timezone, window)];
+  const allClosed = closed.some((b) => b.start < slot.end && slot.start < b.end);
+  const load = peakLoad(slot, [...bookings, ...occ.blocksOnePost]);
+  return outside || allClosed || load >= biz.posts ? { load, posts: biz.posts, allClosed, outside } : null;
+}
+
 export async function createOwnerBooking(input: OwnerBookingInput) {
   return db.$transaction(async (tx) => {
     await lockBusiness(tx, input.businessId);
-    const biz = await tx.business.findUnique({ where: { id: input.businessId } });
+    const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
     const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId } });
     if (!biz || !service) throw new BookingError("not_found", "Услуга не найдена");
     const start = localToUtc(input.date, input.startMin, biz.timezone);
     const slot = { start, end: start + service.durationMin * 60000 };
-    const occ = await loadDay(tx, biz.id, input.date, biz.timezone);
-    const allClosed = occ.blocksAll.some((b) => b.start < slot.end && slot.start < b.end);
-    const load = peakLoad(slot, [...occ.bookings, ...occ.blocksOnePost]);
-    const overbooked = allClosed || load >= biz.posts;
-    if (overbooked && !input.force) {
-      return { booking: null, warning: { load, posts: biz.posts, allClosed } };
+    const warning = await checkCapacity(tx, biz, input.date, slot);
+    if (warning && !input.force) {
+      return { booking: null, warning };
     }
     const booking = await tx.booking.create({
       data: {
@@ -220,6 +256,33 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
       },
     });
     return { booking, warning: null };
+  }, TX_OPTIONS);
+}
+
+/**
+ * Владелец возвращает отменённую запись в активные. Время могли уже занять, поэтому проверяем посты
+ * под той же блокировкой, что и при записи, и без подтверждения (force) не возвращаем.
+ */
+export async function restoreBooking(id: string, businessId: string, force = false) {
+  return db.$transaction(async (tx) => {
+    await lockBusiness(tx, businessId);
+    const b = await tx.booking.findFirst({ where: { id, businessId } });
+    const biz = await tx.business.findUnique({ where: { id: businessId }, select: businessForSlotsSelect });
+    if (!b || !biz) throw new BookingError("not_found", "Запись не найдена");
+    const date = toLocal(b.startAt.getTime(), biz.timezone).date;
+    const warning = await checkCapacity(tx, biz, date, { start: b.startAt.getTime(), end: b.endAt.getTime() }, id);
+    if (warning && !force) return { ok: false as const, warning };
+    await tx.booking.update({ where: { id }, data: { status: "active", cancelledAt: null, cancelledBy: null } });
+    return { ok: true as const, warning: null };
+  }, TX_OPTIONS);
+}
+
+/** Активные записи, которые попадают в интервал: для предупреждения при закрытии времени и праздниках. */
+export async function bookingsInRange(businessId: string, start: number, end: number) {
+  return db.booking.findMany({
+    where: { businessId, status: "active", startAt: { lt: new Date(end) }, endAt: { gt: new Date(start) } },
+    orderBy: { startAt: "asc" },
+    select: { id: true, startAt: true, clientName: true, clientPhone: true, serviceName: true },
   });
 }
 
@@ -228,17 +291,26 @@ export function canClientCancel(startAt: Date, cancelHours: number, nowMs = Date
   return startAt.getTime() - nowMs >= cancelHours * 3600000;
 }
 
+const NOT_ACTIVE: Record<string, string> = {
+  cancelled: "Запись уже отменена",
+  done: "Эта запись уже выполнена",
+  no_show: "Эта запись уже закрыта сервисом",
+};
+
 export async function cancelByClient(token: string, nowMs = Date.now()) {
   const b = await db.booking.findUnique({ where: { cancelToken: token }, include: { business: true } });
   if (!b) throw new BookingError("not_found", "Запись не найдена");
-  if (b.status !== "active") throw new BookingError("already_cancelled", "Запись уже отменена");
+  if (b.status !== "active") throw new BookingError("already_cancelled", NOT_ACTIVE[b.status] ?? "Запись уже отменена");
   if (!canClientCancel(b.startAt, b.business.cancelHours, nowMs)) {
     throw new BookingError("too_late", "Отменить онлайн уже нельзя. Позвоните в сервис");
   }
-  return db.booking.update({
-    where: { id: b.id },
+  // Условие на статус в самом обновлении: если владелец в ту же секунду поменял статус, его отметка не затрётся
+  const r = await db.booking.updateMany({
+    where: { id: b.id, status: "active" },
     data: { status: "cancelled", cancelledAt: new Date(nowMs), cancelledBy: "client" },
   });
+  if (r.count === 0) throw new BookingError("already_cancelled", "Запись уже изменена. Обновите страницу");
+  return { ...b, status: "cancelled" as const };
 }
 
 /** Утилита для экранов: местная дата и минуты начала записи. */

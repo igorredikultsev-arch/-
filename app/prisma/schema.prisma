@@ -137,6 +137,9 @@ model WorkingHours {
   closed     Boolean  @default(false)
   openMin    Int      @default(540)
   closeMin   Int      @default(1200)
+  // Обед или другой ежедневный перерыв (минуты от полуночи). Пусто — без перерыва
+  breakFromMin Int?
+  breakToMin   Int?
 
   @@unique([businessId, weekday])
 }
