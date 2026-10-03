@@ -3,16 +3,16 @@
 import { formatDayShort, hhmm } from "@/lib/time";
 import type { WidgetService } from "./booking-widget";
 import { pickSlot } from "./events";
-import { busyAt, useDay, useWide } from "./use-day";
+import { busyAt, useDay } from "./use-day";
 
 const CAR_COLORS = ["#8d969d", "#b7bcc0", "#5f6b75", "#a3896f", "#c3c7ca", "#6d7a84", "#9aa3a9", "#7d8890"];
-const MAX_LANES = 4;
 
-/** «План»: вид сверху на посты выбранного дня. Машины на занятых местах, свободные места размечены, на них можно нажать. */
+/**
+ * «План»: стоянка, где каждое место — время записи на выбранный день. Где сервис занят целиком, стоит машина;
+ * свободное время размечено, на него можно нажать. Посты клиенту не показываем: ему важно время, а не номер поста.
+ */
 export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: string; apiBase: string; stepMin: number }) {
   const d = useDay(p.apiBase, p.defaultServiceId);
-  const wide = useWide();
-  const lanes = d.load ? d.load.lanes.slice(0, MAX_LANES) : [];
   const step = Math.max(p.stepMin, 10);
 
   // Сетка мест: от открытия (сегодня — от текущего времени) до закрытия с шагом записи
@@ -75,69 +75,48 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
         {d.load === null && <p className="yard-empty">В этот день сервис не работает. Выберите другой.</p>}
         {d.load && cells.length === 0 && <p className="yard-empty">На сегодня запись закончилась. Выберите другой день.</p>}
         {d.load && cells.length > 0 && (
-          <div
-            className={`plan${wide ? " wide" : ""}${cells.length > 14 ? " dense" : ""}`}
-            style={wide ? { gridTemplateColumns: `76px repeat(${cells.length}, minmax(0, 1fr))`, gridTemplateRows: `28px repeat(${lanes.length}, 124px)` } : { gridTemplateColumns: `repeat(${lanes.length}, minmax(0, 1fr))`, gridTemplateRows: `32px repeat(${cells.length}, 58px)` }}
-            role="group"
-            aria-label="План постов"
-          >
-            {lanes.map((_, pi) => (
-              <div key={`l${pi}`} className="lane" style={wide ? { gridRow: pi + 2, gridColumn: 1 } : { gridRow: 1, gridColumn: pi + 1 }}>
-                Пост {pi + 1}
-              </div>
-            ))}
-            {wide && cells.map((t, ti) => (
-              <div key={`a${t}`} className="ax" style={{ gridRow: 1, gridColumn: ti + 2 }}>
-                {hhmm(t)}
-              </div>
-            ))}
-            {lanes.map((lane, pi) => {
-              const first = (t: number) => lanes.findIndex((l) => !busyAt(l, t, t + step));
-              return cells.map((t, ti) => {
-                const pos = wide ? { gridRow: pi + 2, gridColumn: ti + 2 } : { gridRow: ti + 2, gridColumn: pi + 1 };
-                const last = ti === cells.length - 1 ? " end" : "";
-                const time = hhmm(t);
-                if (busyAt(lane, t, t + step)) {
-                  const k = n++;
-                  return (
-                    <div key={`${pi}-${t}`} className={`bay busy${last}`} style={pos} aria-label={`Пост ${pi + 1}, ${time}, занято`}>
-                      {!wide && <span className="tm">{time}</span>}
-                      <span className="car" style={{ color: CAR_COLORS[(k * 5 + pi) % CAR_COLORS.length], ["--n" as string]: k }}>
-                        <svg viewBox="0 0 40 72" width="100%" height="100%" aria-hidden="true">
-                          <use href="#car" />
-                        </svg>
-                      </span>
-                    </div>
-                  );
-                }
-                if (freeTimes.has(time) && first(t) === pi) {
-                  const on = d.picked?.date === d.date && d.picked?.time === time;
-                  return (
-                    <button
-                      key={`${pi}-${t}`}
-                      type="button"
-                      className={`bay free${last}`}
-                      style={pos}
-                      aria-pressed={on}
-                      aria-label={`Пост ${pi + 1}, ${time}, свободно`}
-                      onClick={() => d.date && pickSlot({ serviceId: d.serviceId, date: d.date, time })}
-                    >
-                      <span className="tm">{time}</span>
-                      {!wide && <span className="go">{on ? "выбрано" : "свободно"}</span>}
-                    </button>
-                  );
-                }
+          <div className="plan" role="group" aria-label="Время записи">
+            {cells.map((t) => {
+              const time = hhmm(t);
+              if (busyAt(d.load!.busy, t, t + step)) {
+                const k = n++;
                 return (
-                  <div key={`${pi}-${t}`} className={`bay${last}`} style={pos}>
-                    {!wide && <span className="tm">{time}</span>}
+                  <div key={t} className="bay busy" aria-label={`${time}, занято`}>
+                    <span className="tm">{time}</span>
+                    <span className="car" style={{ color: CAR_COLORS[(k * 5) % CAR_COLORS.length], ["--n" as string]: k }}>
+                      <svg viewBox="0 0 40 72" width="100%" height="100%" aria-hidden="true">
+                        <use href="#car" />
+                      </svg>
+                    </span>
                   </div>
                 );
-              });
+              }
+              if (freeTimes.has(time)) {
+                const on = d.picked?.date === d.date && d.picked?.time === time;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    className="bay free"
+                    aria-pressed={on}
+                    aria-label={`${time}, свободно`}
+                    onClick={() => d.date && pickSlot({ serviceId: d.serviceId, date: d.date, time })}
+                  >
+                    <span className="tm">{time}</span>
+                    <span className="go">{on ? "выбрано" : "свободно"}</span>
+                  </button>
+                );
+              }
+              return (
+                <div key={t} className="bay" title="Услуга не успевает до следующей записи или закрытия">
+                  <span className="tm">{time}</span>
+                </div>
+              );
             })}
           </div>
         )}
         {d.load && cells.length > 0 && bookable.length === 0 && <p className="yard-empty">На этот день свободных мест для этой услуги нет. Выберите другой день.</p>}
-        {!wide && <div className="gate">Ворота</div>}
+        <div className="gate">Въезд</div>
       </div>
     </section>
   );

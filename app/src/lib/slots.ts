@@ -140,3 +140,21 @@ export function dayLanes(input: DayLanesInput): { open: number; close: number; l
   );
   return { open: window.openMin, close: window.closeMin, lanes: merged };
 }
+
+/**
+ * Когда в сервисе нет ни одного свободного поста. Это и видит клиент на сайте: какой пост занят,
+ * ему неважно, важно, можно ли приехать.
+ */
+export function fullBusy(lanes: LaneSpan[][]): LaneSpan[] {
+  if (!lanes.length) return [];
+  const cuts = [...new Set(lanes.flat().flatMap((s) => [s.from, s.to]))].sort((a, b) => a - b);
+  const out: LaneSpan[] = [];
+  for (let i = 0; i + 1 < cuts.length; i++) {
+    const from = cuts[i], to = cuts[i + 1];
+    if (!lanes.every((l) => l.some((s) => s.from <= from && s.to >= to))) continue;
+    const last = out[out.length - 1];
+    if (last && last.to === from) last.to = to;
+    else out.push({ from, to });
+  }
+  return out;
+}

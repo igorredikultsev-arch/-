@@ -1,7 +1,7 @@
 // Запись: расчёт окон по данным из базы и создание записи без двойного бронирования (раздел 4.3).
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "./db";
-import { dayBounds, dayLanes, daySlots, horizonDates, inHorizon, peakLoad, resolveDayWindow, type Interval, type LaneSpan, type Slot } from "./slots";
+import { dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, type Interval, type LaneSpan, type Slot } from "./slots";
 import { newToken } from "./tokens";
 import { localToUtc, toLocal } from "./time";
 
@@ -95,16 +95,17 @@ export async function getDaySlots(
   });
 }
 
-export type DayLoad = { date: string; open: number; close: number; now: number | null; lanes: LaneSpan[][] } | null;
+export type DayLoad = { date: string; open: number; close: number; now: number | null; busy: LaneSpan[] } | null;
 
-/** Занятость постов за день для витрины сайта («План», «Такси»). null — выходной или вне горизонта. */
+/** Когда сервис занят целиком (все посты), для витрины сайта («План», «Такси»). null — выходной или вне горизонта. */
 export async function getDayLoad(biz: BusinessForSlots, date: string, nowMs = Date.now()): Promise<DayLoad> {
   if (!inHorizon(date, nowMs, biz.timezone, biz.horizonDays)) return null;
   const window = resolveDayWindow(date, biz.hours, biz.exceptions);
   if (!window) return null;
   const occ = await loadDay(db, biz.id, date, biz.timezone);
   const local = toLocal(nowMs, biz.timezone);
-  return { date, ...dayLanes({ date, tz: biz.timezone, window, posts: biz.posts, ...occ }), now: local.date === date ? local.minutes : null };
+  const day = dayLanes({ date, tz: biz.timezone, window, posts: biz.posts, ...occ });
+  return { date, open: day.open, close: day.close, busy: fullBusy(day.lanes), now: local.date === date ? local.minutes : null };
 }
 
 export type DaySummary = { date: string; closed: boolean; free: number };

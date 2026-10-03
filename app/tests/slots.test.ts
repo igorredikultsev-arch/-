@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLanes, daySlots, horizonDates, inHorizon, peakLoad, resolveDayWindow, type SlotInput } from "@/lib/slots";
+import { dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, type SlotInput } from "@/lib/slots";
 import { addDays, localToUtc, toLocal, weekdayOf } from "@/lib/time";
 
 const TZ = "Asia/Yekaterinburg"; // Пермь, UTC+5
@@ -265,5 +265,13 @@ describe("radiusBands", () => {
   });
   it("без диапазонов выбора по радиусу нет", () => {
     expect(radiusList(radiusBands([svc("Замена масла"), svc("Развал-схождение")]))).toEqual([]);
+  });
+});
+
+describe("fullBusy", () => {
+  it("занято, только когда заняты все посты", () => {
+    expect(fullBusy([[{ from: 600, to: 720 }], [{ from: 660, to: 780 }]])).toEqual([{ from: 660, to: 720 }]);
+    expect(fullBusy([[{ from: 600, to: 660 }, { from: 660, to: 720 }]])).toEqual([{ from: 600, to: 720 }]);
+    expect(fullBusy([[{ from: 600, to: 720 }], []])).toEqual([]);
   });
 });

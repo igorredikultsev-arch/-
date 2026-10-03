@@ -4,8 +4,8 @@ export type ThemeKey = (typeof THEME_KEYS)[number];
 
 export const THEMES: { value: ThemeKey; label: string; accent: string; about: string }[] = [
   { value: "tire", label: "Боковина", accent: "#f2c230", about: "тёмная, шина в шапке, цена по радиусу" },
-  { value: "plan", label: "План", accent: "#ffc400", about: "светлая, запись на плане постов" },
-  { value: "taxi", label: "Такси", accent: "#1f9d55", about: "чёрно-белая, загрузка постов на сегодня" },
+  { value: "plan", label: "План", accent: "#ffc400", about: "светлая, время записи местами на стоянке" },
+  { value: "taxi", label: "Такси", accent: "#1f9d55", about: "чёрно-белая, загрузка сервиса на сегодня" },
 ];
 
 export const isThemeKey = (v: unknown): v is ThemeKey => typeof v === "string" && (THEME_KEYS as readonly string[]).includes(v);

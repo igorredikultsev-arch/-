@@ -70,7 +70,8 @@ async function insertDemo(d: NewDemo) {
       accent: d.accent,
       posts: d.posts,
       headline: d.headline,
-      facts: d.posts > 1 ? [{ value: `${d.posts} поста`, label: "можно приехать вдвоём" }, DEFAULT_FACTS[1]] : [DEFAULT_FACTS[1]],
+      // Число постов клиенту не показываем: в демо оно взято наугад, а записи и так учитывают все посты
+      facts: [DEFAULT_FACTS[1]],
       status: "demo",
       demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000),
       hours: { create: DEFAULT_HOURS },

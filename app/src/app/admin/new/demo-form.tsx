@@ -42,7 +42,7 @@ export function DemoForm() {
             <input name="accent" value={accent} onChange={(e) => setAccent(e.target.value)} className={inp} aria-label="Цвет в формате #1f9d55" />
           </div>
         </F>
-        <F label="Постов" id="d-posts"><input id="d-posts" name="posts" type="number" min={1} max={20} defaultValue={2} className={inp} /></F>
+        <F label="Машин одновременно (постов)" id="d-posts" hint="Клиенту не показывается, нужно для расчёта свободного времени"><input id="d-posts" name="posts" type="number" min={1} max={20} defaultValue={2} className={inp} /></F>
         <F label="Заголовок, необязательно" id="d-head" className="sm:col-span-2"><input id="d-head" name="headline" maxLength={70} className={inp} placeholder="Шиномонтаж без очереди. Запись за минуту" /></F>
         <F label="Канал связи" id="d-ch"><input id="d-ch" name="channel" className={inp} placeholder="Telegram, ВКонтакте, почта" /></F>
         <F label="Контакт" id="d-contact" className="sm:col-span-2"><input id="d-contact" name="contact" className={inp} placeholder="@koleso_perm или почта" /></F>

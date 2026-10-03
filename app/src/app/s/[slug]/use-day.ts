@@ -6,10 +6,10 @@ import { STATE_EVENT, type BookState } from "./events";
 
 export type Day = { date: string; closed: boolean; free: number };
 export type SlotRow = { time: string; free: boolean };
-export type Load = { date: string; open: number; close: number; now: number | null; lanes: LaneSpan[][] } | null;
+export type Load = { date: string; open: number; close: number; now: number | null; busy: LaneSpan[] } | null;
 
 /**
- * Данные дня для витрины («План», «Такси»): дни горизонта, занятость постов и окна выбранной услуги.
+ * Данные дня для витрины («План», «Такси»): дни горизонта, когда сервис занят и окна выбранной услуги.
  * Услуга по умолчанию — первая обычная; когда клиент выбирает услугу в форме, витрина переключается на неё.
  */
 export function useDay(apiBase: string, defaultServiceId: string) {
@@ -69,7 +69,7 @@ export const toMin = (t: string) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
 export const hm = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
 export const busyAt = (lane: LaneSpan[], from: number, to: number) => lane.some((s) => s.from < to && from < s.to);
 
-/** Ширина экрана для раскладки: на компьютере посты идут строками, на телефоне — колонками. */
+/** Ширина экрана: на компьютере шкала дня целиком, на телефоне от текущего часа. */
 export function useWide(query = "(min-width: 960px)") {
   const [wide, setWide] = useState(false);
   useEffect(() => {

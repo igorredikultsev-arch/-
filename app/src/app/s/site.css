@@ -282,25 +282,24 @@
   background-image: radial-gradient(rgb(255 255 255 / .35) .8px, transparent 1.2px), radial-gradient(rgb(0 0 0 / .07) .8px, transparent 1.2px);
   background-size: 9px 9px, 13px 13px; background-position: 0 0, 4px 6px; }
 .t-plan .yard-empty { margin: 8px 4px; font-size: 14.5px; color: var(--s-fg); }
-.t-plan .plan { display: grid; column-gap: 18px; }
-.t-plan .lane { font: 800 18px/1 var(--s-head); text-transform: uppercase; display: flex; align-items: center; padding-left: 2px; color: #464b4f; }
-.t-plan .ax { font: 700 14px var(--s-head); color: #6d7277; align-self: end; padding-left: 4px; }
-.t-plan .bay { position: relative; appearance: none; margin: 0; border: 0; border-top: 2.5px solid #fff; background: transparent; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; text-align: left; }
-.t-plan .bay.end { border-bottom: 2.5px solid #fff; }
+/* Стоянка: ряды мест, каждое место — время. Белые линии разметки между местами, проезд между рядами */
+.t-plan .plan { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); row-gap: 16px; }
+.t-plan .bay { position: relative; appearance: none; margin: 0; border: 0; border-inline: 1.5px solid #fff; background: transparent; height: 112px; padding: 8px 4px 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; text-align: center; }
 .t-plan .bay .tm { position: relative; font: 700 15px var(--s-head); color: #6d7277; letter-spacing: .02em; }
-.t-plan .bay .car { display: block; width: 36px; height: 64px; margin-right: 14px; }
-.t-plan .bay .car svg { display: block; transform: rotate(90deg); }
-.t-plan .bay.free { cursor: pointer; }
-.t-plan .bay.free::before { content: ""; position: absolute; inset: 6px 2px; border: 2.5px dashed color-mix(in srgb, var(--accent) 80%, #000); border-radius: 6px; background: rgb(255 255 255 / .62); }
-.t-plan .bay.free .tm { font: 800 26px/1 var(--s-head); color: var(--s-fg); }
-.t-plan .bay.free .go { position: relative; font-size: 13.5px; font-weight: 600; color: color-mix(in srgb, var(--accent) 40%, #000); }
+.t-plan .bay .car { display: block; width: 36px; height: 64px; }
+.t-plan .bay .car svg { display: block; }
+.t-plan .bay.free { cursor: pointer; justify-content: center; }
+.t-plan .bay.free::before { content: ""; position: absolute; inset: 4px; border: 2.5px dashed color-mix(in srgb, var(--accent) 80%, #000); border-radius: 6px; background: rgb(255 255 255 / .62); }
+.t-plan .bay.free .tm { font: 800 24px/1 var(--s-head); color: var(--s-fg); }
+.t-plan .bay.free .go { position: relative; font-size: 12.5px; font-weight: 600; color: color-mix(in srgb, var(--accent) 40%, #000); }
 .t-plan .bay.free[aria-pressed="true"]::before { background: var(--accent); border: 2.5px solid var(--accent); }
 .t-plan .bay.free[aria-pressed="true"] .go { color: var(--on-accent); }
 .t-plan .bay.free:focus-visible { outline: 3px solid var(--s-fg); outline-offset: -3px; }
 @media (hover: hover) { .t-plan .bay.free:hover::before { background: color-mix(in srgb, var(--accent) 45%, #fff); } }
 @media (prefers-reduced-motion: no-preference) {
   .t-plan .bay .car { animation: park .55s cubic-bezier(.2,.9,.3,1) both; animation-delay: calc(min(var(--n, 0), 14) * 60ms + 100ms); }
-  @keyframes park { from { transform: translateX(40px); opacity: 0; } }
+  @keyframes park { from { transform: translateY(-36px); opacity: 0; } }
 }
 .t-plan .gate { display: flex; align-items: center; gap: 8px; margin-top: 10px; font: 800 16px var(--s-head); text-transform: uppercase; color: #6d7277; letter-spacing: .04em; }
 .t-plan .gate::before, .t-plan .gate::after { content: ""; flex: 1; border-top: 3px solid var(--accent); }
@@ -333,17 +332,15 @@
 .t-taxi .today .next strong { font: 800 44px/1 var(--s-head); letter-spacing: -.03em; }
 .t-taxi .today .next span { font-size: 15px; color: #d6d6d6; margin-left: 8px; }
 .t-taxi .tl { display: grid; gap: 8px; }
-.t-taxi .tl .row { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; }
-.t-taxi .tl .row > span { font-size: 13px; color: #a8a8a8; }
-.t-taxi .tl .lane { position: relative; height: 34px; border-radius: 10px; background: #1d1d1f; overflow: hidden; }
+.t-taxi .tl .lane { position: relative; height: 48px; border-radius: 12px; background: #1d1d1f; overflow: hidden; }
 .t-taxi .blk { position: absolute; top: 3px; bottom: 3px; border-radius: 8px; }
 .t-taxi .blk.busy { background: #3a3a3c; }
 .t-taxi .blk.gap { background: transparent; border: 1.5px dashed #3a3a3c; }
 .t-taxi .blk.past { top: 0; bottom: 0; border-radius: 0; background: repeating-linear-gradient(135deg, #2a2a2c 0 4px, #1d1d1f 4px 8px); }
-.t-taxi .blk.free { appearance: none; border: 0; background: #fff; color: #0e0e0f; font: 600 13px var(--s-body); cursor: pointer; padding: 0; white-space: nowrap; overflow: hidden; }
+.t-taxi .blk.free { appearance: none; border: 0; background: #fff; color: #0e0e0f; font: 600 14px var(--s-body); cursor: pointer; padding: 0; white-space: nowrap; overflow: hidden; }
 .t-taxi .blk.free[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .t-taxi .tl .now { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; pointer-events: none; }
-.t-taxi .tl .axis { position: relative; height: 16px; margin-left: 64px; font-size: 11.5px; color: #8c8c8c; }
+.t-taxi .tl .axis { position: relative; height: 16px; font-size: 11.5px; color: #8c8c8c; }
 .t-taxi .tl .axis i { position: absolute; transform: translateX(-50%); font-style: normal; }
 .t-taxi .tl .axis i:first-child { transform: none; }
 .t-taxi .tl .axis i:last-child { transform: translateX(-100%); }
@@ -438,19 +435,9 @@
   .t-plan .yard-head h2 { font-size: 40px; }
   .t-plan .yard-svc { max-width: 520px; }
   .t-plan .yard-days { margin: 0 0 12px; padding: 0; }
-  .t-plan .floor { padding: 14px 14px 14px 0; }
-  .t-plan .plan.wide { column-gap: 0; row-gap: 20px; }
-  .t-plan .plan.wide .lane { justify-content: center; }
-  .t-plan .plan.wide .bay { border-top: 0; border-left: 2.5px solid #fff; flex-direction: column; justify-content: center; gap: 6px; padding: 8px 4px; }
-  .t-plan .plan.wide .bay.end { border-bottom: 0; border-right: 2.5px solid #fff; }
-  .t-plan .plan.wide .bay .car { width: 36px; height: 64px; margin: 0; }
-  .t-plan .plan.wide .bay .car svg { transform: none; }
-  .t-plan .plan.wide .bay.free::before { inset: 4px 4px; }
-  .t-plan .plan.wide .bay.free .tm { font-size: 24px; }
-  @keyframes park { from { transform: translateY(-36px); opacity: 0; } }
+  .t-plan .floor { padding: 14px; }
+  .t-plan .plan { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); row-gap: 20px; }
   .t-plan .layout { margin-top: 8px; padding: 0 var(--gutter); }
-  .t-plan .plan.dense .bay.free .tm { font-size: 17px; }
-  .t-plan .plan.dense .bay .car { width: 30px; height: 54px; }
   .t-plan .book-col { margin-top: 56px; }
   .t-plan .h4, .t-plan .book .h4 { font-size: 40px; }
 
@@ -460,7 +447,7 @@
   .t-taxi .hello { display: block; grid-column: 1 / -1; font: 700 52px/1.1 var(--s-head); letter-spacing: -.03em; margin: 0; }
   .t-taxi .today { grid-column: 2; grid-row: 2; border-radius: 16px; padding: 28px 28px 30px; position: sticky; top: 24px; }
   .t-taxi .today .next strong { font-size: 64px; }
-  .t-taxi .tl .lane { height: 52px; }
+  .t-taxi .tl .lane { height: 64px; }
   .t-taxi .sheet { grid-column: 1; grid-row: 2; margin: 0; border-radius: 16px; box-shadow: 0 4px 24px rgb(0 0 0 / .12); padding: 22px 20px 16px; }
   .t-taxi .grab { display: none; }
   .t-taxi .btn.wide { position: static; box-shadow: none; }
