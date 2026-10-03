@@ -20,7 +20,7 @@ services:
 
   # Одноразовый запуск миграций: docker compose run --rm migrate
   migrate:
-    image: ghcr.io/igorredikultsev-arch/avtoslot:migrate-${AVTOSLOT_TAG:-none}
+    image: ${AVTOSLOT_IMAGE:-ghcr.io/igorredikultsev-arch/avtoslot}:migrate-${AVTOSLOT_TAG:-none}
     pull_policy: never
     command: npx prisma migrate deploy
     environment:
@@ -29,7 +29,7 @@ services:
     profiles: ["tools"]
 
   app:
-    image: ghcr.io/igorredikultsev-arch/avtoslot:app-${AVTOSLOT_TAG:-none}
+    image: ${AVTOSLOT_IMAGE:-ghcr.io/igorredikultsev-arch/avtoslot}:app-${AVTOSLOT_TAG:-none}
     pull_policy: never
     restart: unless-stopped
     env_file: .env
