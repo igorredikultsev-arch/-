@@ -50,6 +50,12 @@ function openNow(biz: { timezone: string; hours: { weekday: number; closed: bool
   return null;
 }
 
+/** «9:00-20:00» или null, если сегодня выходной. */
+function todayHours(biz: { timezone: string; hours: { weekday: number; closed: boolean; openMin: number; closeMin: number }[] }) {
+  const h = biz.hours.find((x) => x.weekday === weekdayOf(toLocal(Date.now(), biz.timezone).date));
+  return !h || h.closed ? null : `${hhmm(h.openMin).replace(/^0/, "")}-${hhmm(h.closeMin).replace(/^0/, "")}`;
+}
+
 const plural = (n: number, one: string, few: string, many: string) =>
   n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
 
@@ -63,6 +69,7 @@ export default async function SitePage({ params }: Props) {
   const reviews = (biz.reviewsYandex ?? 0) + (biz.reviews2gis ?? 0);
   const rating = biz.rating ? Number(biz.rating).toFixed(1).replace(".", ",") : null;
   const open = openNow(biz);
+  const today = todayHours(biz);
   const tel = `tel:${biz.phone}`;
   const route = routeUrl(biz.city, biz.address, biz.yandexMapsUrl);
   const services: WidgetService[] = biz.services.map((s) => ({
@@ -126,8 +133,27 @@ export default async function SitePage({ params }: Props) {
             </span>
           </a>
         </div>
+        {/* Только на компьютере: справа в шапке главное для того, кто собирается приехать */}
+        <dl className="hero-info">
+          <div>
+            <dt>Адрес</dt>
+            <dd>{biz.address}</dd>
+          </div>
+          <div>
+            <dt>Сегодня</dt>
+            <dd>{today ?? "выходной"}</dd>
+          </div>
+          <div>
+            <dt>Телефон</dt>
+            <dd>
+              <a href={tel}>{formatPhone(biz.phone)}</a>
+            </dd>
+          </div>
+        </dl>
       </section>
 
+      {/* На телефоне блоки идут одной колонкой, на компьютере форма записи уезжает в правую колонку */}
+      <div className="layout">
       {season && (
         <div className="season">
           <span className="ic">{season.title.includes("зимней") ? <Snowflake /> : <Sun />}</span>
@@ -257,6 +283,8 @@ export default async function SitePage({ params }: Props) {
           </a>
         </div>
       </section>
+
+      </div>
 
       <footer className="foot">
         {biz.operatorName ? (
