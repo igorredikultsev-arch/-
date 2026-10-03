@@ -1,5 +1,179 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { brandContacts } from "@/lib/brand";
+import { processor } from "@/lib/legal";
+import { MONTHLY_PRICE, SETUP_PRICE, TRIAL_DAYS, rub } from "@/lib/pricing";
+import "./landing.css";
+
+// Контакты и реквизиты берутся из .env на сервере, поэтому страница собирается при каждом запросе
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Автослот — онлайн-запись для шиномонтажа и автосервиса",
+  description: "Сайт, на котором клиенты сами записываются на свободное время, а записи приходят владельцу в телефон. Подключение за один день.",
+};
+
+const OPEN = 600; // 10:00
+const SPAN = 480; // до 18:00
+type Slot = { from: string; to: string; kind?: "lunch" | "new" };
+const POSTS: Slot[][] = [
+  [{ from: "10:00", to: "10:40" }, { from: "11:00", to: "11:50" }, { from: "13:00", to: "14:00", kind: "lunch" }, { from: "14:30", to: "15:10", kind: "new" }, { from: "16:00", to: "16:40" }],
+  [{ from: "10:00", to: "11:00" }, { from: "11:30", to: "12:10" }, { from: "13:00", to: "14:00", kind: "lunch" }, { from: "15:00", to: "15:50" }, { from: "16:30", to: "17:30" }],
+];
+const min = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+const pos = (s: Slot) => ({ left: `${((min(s.from) - OPEN) / SPAN) * 100}%`, width: `${((min(s.to) - min(s.from)) / SPAN) * 100}%` });
+
+const STEPS = [
+  { h: "Присылаю пример", p: "Собираю сайт по вашей карточке в 2ГИС или на Яндекс Картах: услуги, цены, адрес, часы работы. Вы смотрите и решаете, ничего не платя." },
+  { h: "Сверяем услуги и время", p: "В переписке уточняем цены, сколько длится каждая работа и сколько у вас постов. Обычно это полчаса." },
+  { h: "Ставите ссылку", p: "В карточку на картах, во ВКонтакте, в Telegram, на табличку у ворот. Клиенты начинают записываться, вы получаете вход в кабинет." },
+];
+
+const FEATURES = [
+  { h: "Только свободное время", p: "Сайт учитывает число постов, длительность работ, обед и выходные. Два клиента на одно окно не попадут." },
+  { h: "Звонки в то же расписание", p: "Записали клиента по телефону, внесли в кабинет за десять секунд. Сайт сразу закроет это время." },
+  { h: "Отмена без звонка", p: "Клиент может отменить запись не позже чем за сутки, и время снова становится свободным." },
+  { h: "Цены меняете сами", p: "Услуги, цены, часы работы и праздники правятся в кабинете с телефона. Изменения сразу на сайте." },
+  { h: "Закон соблюдён", p: "Согласие клиента на обработку данных по 152-ФЗ, данные хранятся на сервере в России." },
+  { h: "Ничего не нужно ставить", p: "Кабинет открывается в браузере телефона, его можно добавить на главный экран как приложение." },
+];
 
 export default function Home() {
-  redirect("/login");
+  const c = brandContacts();
+  const pr = processor();
+  const contactHref = c.telegram ?? (c.email ? `mailto:${c.email}` : null);
+  const contactLabel = c.telegram ? "Написать в Telegram" : "Написать на почту";
+
+  return (
+    <div className="landing min-h-dvh bg-paper text-ink">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-8">
+        <Link href="/" className="flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
+          <span className="grid size-9 place-items-center rounded-xl bg-accent text-white" aria-hidden="true">А</span>
+          Автослот
+        </Link>
+        <Link href="/login" className="rounded-full px-4 py-2 text-[15px] font-semibold text-zinc-700 ring-1 ring-zinc-300 hover:bg-white">
+          Вход для клиентов
+        </Link>
+      </header>
+
+      <main>
+        <section className="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-6 sm:px-8 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-14 lg:pb-24 lg:pt-12">
+          <div className="grid gap-6">
+            <h1 className="hero-title">Клиенты записываются сами, пока вы работаете</h1>
+            <p className="max-w-[34rem] text-[18px] leading-relaxed text-zinc-700">
+              Сайт с онлайн-записью для шиномонтажа и автосервиса. Клиент выбирает услугу и свободное время, а запись сразу появляется у вас в телефоне.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {contactHref && (
+                <a href={contactHref} className="rounded-2xl bg-accent px-6 py-4 text-[16px] font-semibold text-white shadow-[0_8px_24px_-10px_#ff6a1f] hover:brightness-105">
+                  {contactLabel}
+                </a>
+              )}
+              {c.exampleUrl && (
+                <Link href={c.exampleUrl} className="rounded-2xl bg-white px-6 py-4 text-[16px] font-semibold ring-1 ring-zinc-300 hover:ring-zinc-400">
+                  Посмотреть пример сайта
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <figure className="board" aria-label="Пример расписания в кабинете владельца: два поста, обед, новая запись с сайта на 14:30">
+            <div className="board-head">
+              <b>Суббота, 18 октября</b>
+              <span>10:00–18:00</span>
+            </div>
+            <div className="grid gap-2">
+              {POSTS.map((post, i) => (
+                <div key={i} className="board-row">
+                  <span className="board-label">Пост {i + 1}</span>
+                  <div className="board-lane">
+                    {post.map((s) => (
+                      <i key={s.from} className={`board-slot ${s.kind ? `is-${s.kind}` : ""}`} style={pos(s)} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="board-hours" aria-hidden="true">
+              <span />
+              {Array.from({ length: 8 }, (_, i) => (
+                <span key={i}>{10 + i}</span>
+              ))}
+            </div>
+            <figcaption className="board-push">
+              <span className="board-push-icon" aria-hidden="true">А</span>
+              <span>
+                <b>Новая запись с сайта</b>
+                Суббота, 14:30, смена колёс R13–R16
+              </span>
+            </figcaption>
+          </figure>
+        </section>
+
+        <section className="border-t border-zinc-300/70 bg-white">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_2fr] lg:gap-14 lg:py-20">
+            <h2 className="section-title">Как подключиться</h2>
+            <ol className="grid gap-8 sm:grid-cols-3 sm:gap-6">
+              {STEPS.map((s, i) => (
+                <li key={s.h} className="grid content-start gap-2">
+                  <span className="step-num" aria-hidden="true">{i + 1}</span>
+                  <h3 className="text-[18px] font-bold tracking-tight">{s.h}</h3>
+                  <p className="leading-relaxed text-zinc-600">{s.p}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_2fr] lg:gap-14 lg:py-20">
+          <h2 className="section-title">Что умеет</h2>
+          <ul className="grid gap-x-10 gap-y-7 sm:grid-cols-2">
+            {FEATURES.map((f) => (
+              <li key={f.h} className="grid gap-1.5 border-l-[3px] border-accent pl-4">
+                <h3 className="text-[17px] font-bold tracking-tight">{f.h}</h3>
+                <p className="leading-relaxed text-zinc-600">{f.p}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="price">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_2fr] lg:gap-14 lg:py-20">
+            <h2 className="section-title">Сколько стоит</h2>
+            <div className="grid gap-8">
+              <div className="grid gap-8 sm:grid-cols-2">
+                <div className="grid gap-1">
+                  <p className="price-num">{rub(SETUP_PRICE)}</p>
+                  <p className="text-zinc-300">подключение, один раз</p>
+                </div>
+                <div className="grid gap-1">
+                  <p className="price-num">{rub(MONTHLY_PRICE)}</p>
+                  <p className="text-zinc-300">в месяц: сайт, кабинет и поддержка</p>
+                </div>
+              </div>
+              <p className="max-w-[36rem] text-[18px] leading-relaxed text-white">
+                Первые {TRIAL_DAYS} дней бесплатно. Платите, только если записи пошли и вам удобно. Одна переобувка окупает месяц.
+              </p>
+              {contactHref && (
+                <a href={contactHref} className="justify-self-start rounded-2xl bg-accent px-6 py-4 text-[16px] font-semibold text-white hover:brightness-105">
+                  {c.telegram ? `Написать ${c.telegramName}` : `Написать на ${c.email}`}
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="mx-auto grid max-w-6xl gap-4 px-4 py-10 text-[14px] text-zinc-600 sm:px-8">
+        <p>
+          Автослот. {pr.name}, ИНН {pr.inn}.{c.email && <> Почта: <a className="underline underline-offset-4" href={`mailto:${c.email}`}>{c.email}</a>.</>}
+        </p>
+        <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Документы">
+          <Link className="underline underline-offset-4" href="/offer">Договор-оферта</Link>
+          <Link className="underline underline-offset-4" href="/privacy">Политика обработки данных</Link>
+          <Link className="underline underline-offset-4" href="/login">Вход для клиентов</Link>
+        </nav>
+      </footer>
+    </div>
+  );
 }

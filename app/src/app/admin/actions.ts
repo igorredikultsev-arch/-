@@ -8,6 +8,7 @@ import { isHexColor } from "@/lib/color";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
+import { TRIAL_DAYS } from "@/lib/pricing";
 import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES, type TemplateKey } from "@/lib/templates";
 
 export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
@@ -17,7 +18,7 @@ const optUrl = z.union([z.literal(""), z.string().url("Ссылка должна
 const optInt = z.union([z.literal(""), z.coerce.number().int().min(0)]);
 
 const DEMO_DAYS = 14;
-const TRIAL_DAYS = 14;
+
 
 async function uniqueSlug(base: string) {
   let slug = RESERVED_SLUGS.has(base) ? `${base}-1` : base;
