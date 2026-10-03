@@ -6,7 +6,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 git pull --ff-only
-docker compose build
+# migrate в профиле tools: без --profile compose его не пересобирает, и миграции берутся из старого образа
+docker compose --profile tools build
 docker compose run --rm -T migrate </dev/null
 docker compose up -d
 

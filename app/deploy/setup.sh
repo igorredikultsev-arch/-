@@ -78,7 +78,7 @@ fi
 
 step "Сборка и запуск (первый раз 5-10 минут)"
 docker compose up -d db
-docker compose build
+docker compose --profile tools build
 docker compose run --rm -T migrate </dev/null
 docker compose up -d
 
