@@ -6,10 +6,17 @@ import { formatPhone } from "@/lib/phone";
 import { seasonNotice } from "@/lib/season";
 import { routeUrl, siteBase } from "@/lib/site-url";
 import { hhmm, toLocal, weekdayOf } from "@/lib/time";
+import { radiusBands, radiusList } from "@/lib/radius";
+import { isThemeKey, type ThemeKey } from "@/lib/themes";
 import { BookingWidget, type WidgetService } from "./booking-widget";
+import { DayLoad } from "./day-load";
+import { PostsPlan } from "./posts-plan";
+import { RadiusPicker } from "./radius-picker";
 import { ServicesList } from "./services-list";
+import { ThemeSwitch } from "./theme-switch";
+import { TireArt } from "./tire-art";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ theme?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const biz = await getSiteBusiness(decodeURIComponent((await params).slug));
@@ -50,16 +57,10 @@ function openNow(biz: { timezone: string; hours: { weekday: number; closed: bool
   return null;
 }
 
-/** «9:00-20:00» или null, если сегодня выходной. */
-function todayHours(biz: { timezone: string; hours: { weekday: number; closed: boolean; openMin: number; closeMin: number }[] }) {
-  const h = biz.hours.find((x) => x.weekday === weekdayOf(toLocal(Date.now(), biz.timezone).date));
-  return !h || h.closed ? null : `${hhmm(h.openMin).replace(/^0/, "")}-${hhmm(h.closeMin).replace(/^0/, "")}`;
-}
-
 const plural = (n: number, one: string, few: string, many: string) =>
   n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
 
-export default async function SitePage({ params }: Props) {
+export default async function SitePage({ params, searchParams }: Props) {
   const key = decodeURIComponent((await params).slug);
   const biz = (await getSiteBusiness(key))!;
   const base = await siteBase(key);
@@ -69,7 +70,6 @@ export default async function SitePage({ params }: Props) {
   const reviews = (biz.reviewsYandex ?? 0) + (biz.reviews2gis ?? 0);
   const rating = biz.rating ? Number(biz.rating).toFixed(1).replace(".", ",") : null;
   const open = openNow(biz);
-  const today = todayHours(biz);
   const tel = `tel:${biz.phone}`;
   const route = routeUrl(biz.city, biz.address, biz.yandexMapsUrl);
   const services: WidgetService[] = biz.services.map((s) => ({
@@ -81,225 +81,305 @@ export default async function SitePage({ params }: Props) {
     durationMin: s.durationMin,
     isDiagnostic: s.isDiagnostic,
   }));
-  const letter = (biz.logoLetter || biz.name.replace(/[«»"]/g, "").split(/\s+/).pop()?.[0] || "А").toUpperCase();
+  const defaultServiceId = (services.find((s) => !s.isDiagnostic) ?? services[0])?.id ?? "";
+  const headline = biz.headline || "Запись онлайн без очереди";
+  const demo = biz.status === "demo";
 
-  return (
-    <>
-      {biz.status === "demo" && <div className="demo">Демо-версия. Не официальный сайт</div>}
+  // В демо владелец может посмотреть сайт в другом стиле: ?theme=plan (оформление ставит layout). Сохраняется только по кнопке «Выбрать».
+  const asked = (await searchParams).theme;
+  const theme: ThemeKey = demo && isThemeKey(asked) ? asked : (biz.theme as ThemeKey);
+  const pagePath = base || "/";
 
-      <section className="hero">
-        <div className="brand">
-          <div className="mark" aria-hidden="true">{letter}</div>
-          <div>
+  const reviewsWord = reviews > 0 ? `${reviews} ${plural(reviews, "отзыв", "отзыва", "отзывов")} на картах` : null;
+  const phone = formatPhone(biz.phone);
+
+  const widget = (
+    <BookingWidget
+      services={services}
+      apiBase={apiBase}
+      siteBase={base}
+      consentHref={`${base}/consent`}
+      privacyHref={`${base}/privacy`}
+      captchaKey={captchaClientKey()}
+      timezone={biz.timezone}
+    />
+  );
+
+  const servicesBlock = (title: string) => (
+    <section className="block svc-block" aria-labelledby="svc-h">
+      <h2 className="h4" id="svc-h">{title}</h2>
+      <p className="note-sm">Цены «от»: точную стоимость назовёт мастер</p>
+      <ServicesList services={services} />
+    </section>
+  );
+
+  const seasonBlock = season && (
+    <div className="season">
+      <span className="ic">{season.title.includes("зимней") ? <Snowflake /> : <Sun />}</span>
+      <p>
+        <b>{season.title}.</b> {season.text}
+      </p>
+    </div>
+  );
+
+  const aboutBlock = (facts.length > 0 || demo) && (
+    <section className="block" aria-labelledby="about-h">
+      <h2 className="h4" id="about-h">О сервисе</h2>
+      {biz.addressNote && <p className="note-sm">{biz.addressNote}</p>}
+      <div className="about">
+        {facts.length > 0 && (
+          <div className="facts">
+            {facts.map((f) => (
+              <div className="fact" key={f.value}>
+                <b>{f.value}</b>
+                <span>{f.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {demo && (
+          <div className="photo">
+            <span className="ic">
+              <Camera />
+            </span>
+            Фото мастерской появится после подключения
+          </div>
+        )}
+      </div>
+    </section>
+  );
+
+  const reviewsBlock = (rating || biz.yandexMapsUrl || biz.twoGisUrl) && (
+    <section className="block" aria-labelledby="rev-h">
+      <h2 className="h4" id="rev-h">Отзывы</h2>
+      <div className="reviews">
+        {rating && (
+          <div className="score">
+            <b>{rating}</b>
+            <div className="stars" aria-label={`Рейтинг ${rating} из 5`}>
+              {Array.from({ length: 5 }, (_, i) => (
+                <span className="ic" key={i}>
+                  <Star weight={i < Math.round(Number(biz.rating)) ? "fill" : "regular"} />
+                </span>
+              ))}
+            </div>
+            {reviews > 0 && <span>{reviews} {plural(reviews, "отзыв", "отзыва", "отзывов")}</span>}
+          </div>
+        )}
+        <div className="src">
+          {biz.yandexMapsUrl && (
+            <a href={biz.yandexMapsUrl} target="_blank" rel="noopener noreferrer">
+              Яндекс Карты {biz.reviewsYandex ? <span>{biz.reviewsYandex}</span> : null}
+            </a>
+          )}
+          {biz.twoGisUrl && (
+            <a href={biz.twoGisUrl} target="_blank" rel="noopener noreferrer">
+              2ГИС {biz.reviews2gis ? <span>{biz.reviews2gis}</span> : null}
+            </a>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+
+  const contactsBlock = (
+    <section className="block" aria-labelledby="way-h" id="where">
+      <h2 className="h4" id="way-h">Как добраться</h2>
+      <dl className="contacts">
+        <div>
+          <dt>Адрес</dt>
+          <dd>
+            {biz.city}, {biz.address}
+            {biz.addressNote ? `. ${biz.addressNote}` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Часы</dt>
+          <dd>
+            {hoursLines(biz.hours).map((l) => (
+              <span key={l} style={{ display: "block" }}>
+                {l}
+              </span>
+            ))}
+          </dd>
+        </div>
+        <div>
+          <dt>Телефон</dt>
+          <dd>
+            <a href={tel}>{phone}</a>
+          </dd>
+        </div>
+      </dl>
+      <div className="two">
+        <a className="btn alt" href={route} target="_blank" rel="noopener noreferrer">
+          <span className="ic">
+            <NavigationArrow />
+          </span>
+          Маршрут
+        </a>
+        <a className="btn alt" href={tel}>
+          <span className="ic">
+            <Phone />
+          </span>
+          Позвонить
+        </a>
+      </div>
+    </section>
+  );
+
+  const meta = (
+    <div className="sub">
+      {rating && (
+        <span className="r">
+          <span className="ic">
+            <Star weight="fill" />
+          </span>
+          {rating}
+        </span>
+      )}
+      {reviewsWord && <span>{reviewsWord}</span>}
+      {open && <span className="open">{open}</span>}
+    </div>
+  );
+
+  const callBtn = (
+    <a className="call" href={tel} aria-label={`Позвонить ${phone}`}>
+      <span className="ic">
+        <Phone />
+      </span>
+      <span className="num">{phone}</span>
+    </a>
+  );
+
+  let content: React.ReactNode;
+  if (theme === "tire") {
+    const bands = radiusBands(services);
+    const radii = radiusList(bands);
+    const ring = [biz.name.replace(/[«»"]/g, ""), biz.city, ...facts.map((f) => f.value)].join("   ").toUpperCase();
+    content = (
+      <>
+        <header className="hero">
+          <div className="top">
+            <div className="who">
+              <b>{biz.name}</b>
+              <span>
+                {biz.city}, {biz.address}
+              </span>
+            </div>
+            {callBtn}
+          </div>
+          <TireArt text={ring} />
+          <div className="hero-text">
+            <h1 className="h3">{headline}</h1>
+            {meta}
+          </div>
+        </header>
+        <div className="layout">
+          {radii.length > 0 && <RadiusPicker services={services} bands={bands} radii={radii} />}
+          {seasonBlock}
+          <div className="book-col">{widget}</div>
+          {servicesBlock(radii.length > 0 ? "Все услуги и цены" : "Услуги и цены")}
+          {aboutBlock}
+          {reviewsBlock}
+          {contactsBlock}
+        </div>
+      </>
+    );
+  } else if (theme === "plan") {
+    content = (
+      <>
+        <header className="top">
+          <div className="who">
             <b>{biz.name}</b>
             <span>
               {biz.city}, {biz.address}
             </span>
           </div>
-        </div>
-        {biz.theme === "book" && (
-          <div className="stamp" aria-hidden="true">
-            Запись
-            <br />
-            онлайн
-            <br />
-            без звонка
-          </div>
-        )}
-        <h1 className="h3">{biz.headline || "Запись онлайн без очереди"}</h1>
-        <div className="sub">
-          {rating && (
-            <span className="r">
-              <span className="ic">
-                <Star weight="fill" />
-              </span>
-              {rating}
-            </span>
-          )}
-          {reviews > 0 && (
-            <span>
-              {reviews} {plural(reviews, "отзыв", "отзыва", "отзывов")} на картах
-            </span>
-          )}
-          {open && <span className="open">{open}</span>}
-        </div>
-        <div className="cta">
-          <a className="btn" href="#book">
-            Записаться
-          </a>
-          <a className="btn alt" href={tel} aria-label={`Позвонить ${formatPhone(biz.phone)}`}>
-            <span className="ic">
-              <Phone />
-            </span>
-          </a>
-        </div>
-        {/* Только на компьютере: справа в шапке главное для того, кто собирается приехать */}
-        <dl className="hero-info">
-          <div>
-            <dt>Адрес</dt>
-            <dd>{biz.address}</dd>
-          </div>
-          <div>
-            <dt>Сегодня</dt>
-            <dd>{today ?? "выходной"}</dd>
-          </div>
-          <div>
-            <dt>Телефон</dt>
-            <dd>
-              <a href={tel}>{formatPhone(biz.phone)}</a>
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      {/* На телефоне блоки идут одной колонкой, на компьютере форма записи уезжает в правую колонку */}
-      <div className="layout">
-      {season && (
-        <div className="season">
-          <span className="ic">{season.title.includes("зимней") ? <Snowflake /> : <Sun />}</span>
-          <div>
-            <b>{season.title}</b>
-            <p>{season.text}</p>
-          </div>
-        </div>
-      )}
-
-      <section className="block">
-        <h2 className="h4">Услуги и цены</h2>
-        <p className="note-sm">Цены «от»: точную стоимость назовёт мастер</p>
-        <ServicesList services={services} />
-      </section>
-
-      <BookingWidget
-        services={services}
-        apiBase={apiBase}
-        siteBase={base}
-        consentHref={`${base}/consent`}
-        privacyHref={`${base}/privacy`}
-        captchaKey={captchaClientKey()}
-        timezone={biz.timezone}
-      />
-
-      {(facts.length > 0 || biz.status === "demo") && (
-        <section className="block">
-          <h2 className="h4">О сервисе</h2>
-          <div className="photos">
-            {biz.status === "demo" ? (
-              <div className="photo big">
-                <span className="ic">
-                  <Camera />
-                </span>
-                Фото мастерской
-                <br />
-                владелец добавит после подключения
-              </div>
-            ) : null}
-            {facts.length > 0 && (
-              <div className="facts" style={biz.status === "demo" ? undefined : { gridColumn: "1 / -1" }}>
-                {facts.map((f) => (
-                  <div className="fact" key={f.value}>
-                    <b>{f.value}</b>
-                    <span>{f.label}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+          {callBtn}
+        </header>
+        <section className="hero">
+          <h1 className="h3">{headline}</h1>
+          <div className="side">
+            {meta}
+            {seasonBlock}
           </div>
         </section>
-      )}
-
-      {(rating || biz.yandexMapsUrl || biz.twoGisUrl) && (
-        <section className="block">
-          <h2 className="h4">Отзывы</h2>
-          <div className="reviews">
-            {rating && (
-              <div className="score">
-                <b>{rating}</b>
-                <div className="stars" aria-label={`Рейтинг ${rating} из 5`}>
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <span className="ic" key={i}>
-                      <Star weight={i < Math.round(Number(biz.rating)) ? "fill" : "regular"} />
-                    </span>
-                  ))}
-                </div>
-                {reviews > 0 && <span>{reviews} {plural(reviews, "отзыв", "отзыва", "отзывов")}</span>}
-              </div>
-            )}
-            <div className="src">
-              {biz.yandexMapsUrl && (
-                <a href={biz.yandexMapsUrl} target="_blank" rel="noopener noreferrer">
-                  Яндекс Карты {biz.reviewsYandex ? <span>{biz.reviewsYandex}</span> : null}
-                </a>
-              )}
-              {biz.twoGisUrl && (
-                <a href={biz.twoGisUrl} target="_blank" rel="noopener noreferrer">
-                  2ГИС {biz.reviews2gis ? <span>{biz.reviews2gis}</span> : null}
-                </a>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="block">
-        <h2 className="h4">Как добраться</h2>
-        <dl className="contacts">
-          <div>
-            <dt>Адрес</dt>
-            <dd>
-              {biz.city}, {biz.address}
+        {defaultServiceId && <PostsPlan services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} stepMin={biz.slotStepMin} />}
+        <div className="layout">
+          <div className="book-col">{widget}</div>
+          {servicesBlock("Услуги и цены")}
+          {aboutBlock}
+          {reviewsBlock}
+          {contactsBlock}
+        </div>
+      </>
+    );
+  } else {
+    content = (
+      <>
+        <header className="nav">
+          <span className="logo">{biz.name.replace(/^(Шиномонтаж|Автосервис|Автотехцентр)\s+/i, "").replace(/[«»"]/g, "") || biz.name}</span>
+          {callBtn}
+        </header>
+        <div className="hero">
+          <h1 className="hello">{headline}</h1>
+          {defaultServiceId && <DayLoad services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} />}
+          <div className="sheet">
+            <div className="grab" aria-hidden="true" />
+            <p className="sheet-name">{biz.name}</p>
+            <p className="where">
+              {biz.address}
               {biz.addressNote ? `. ${biz.addressNote}` : ""}
-            </dd>
+            </p>
+            {meta}
+            {widget}
           </div>
-          <div>
-            <dt>Часы</dt>
-            <dd>
-              {hoursLines(biz.hours).map((l) => (
-                <span key={l} style={{ display: "block" }}>
-                  {l}
-                </span>
-              ))}
-            </dd>
-          </div>
-          <div>
-            <dt>Телефон</dt>
-            <dd>
-              <a href={tel}>{formatPhone(biz.phone)}</a>
-            </dd>
-          </div>
-        </dl>
-        <div className="two">
-          <a className="btn alt" href={route} target="_blank" rel="noopener noreferrer">
-            <span className="ic">
-              <NavigationArrow />
-            </span>
-            Маршрут
-          </a>
-          <a className="btn" href={tel}>
-            <span className="ic">
-              <Phone />
-            </span>
-            Позвонить
-          </a>
         </div>
-      </section>
+        <div className="below">
+          {season && (
+            <section className="promo">
+              <div>
+                <h2>{season.title}</h2>
+                <p>{season.text}</p>
+              </div>
+              <a className="btn alt" href="#book">
+                Выбрать время
+              </a>
+            </section>
+          )}
+          <div className="card">{servicesBlock("Услуги и цены")}</div>
+          {aboutBlock && <div className="card">{aboutBlock}</div>}
+          {reviewsBlock && <div className="card">{reviewsBlock}</div>}
+          <div className="card">{contactsBlock}</div>
+        </div>
+      </>
+    );
+  }
 
-      </div>
+  const footer = (
+    <footer className="foot">
+      {biz.operatorName ? (
+        <>
+          {biz.operatorName}
+          {biz.operatorInn ? `, ИНН ${biz.operatorInn}` : ""}, оператор персональных данных.
+          <br />
+        </>
+      ) : null}
+      <a href={`${base}/privacy`}>Политика обработки персональных данных</a>
+      <br />
+      <a href={`${base}/consent`}>Согласие на обработку персональных данных</a>
+      <br />
+      Сайт работает на сервисе «Автослот»
+    </footer>
+  );
 
-      <footer className="foot">
-        {biz.operatorName ? (
-          <>
-            {biz.operatorName}
-            {biz.operatorInn ? `, ИНН ${biz.operatorInn}` : ""}, оператор персональных данных.
-            <br />
-          </>
-        ) : null}
-        <a href={`${base}/privacy`}>Политика обработки персональных данных</a>
-        <br />
-        <a href={`${base}/consent`}>Согласие на обработку персональных данных</a>
-        <br />
-        Сайт работает на сервисе «Автослот»
-      </footer>
+  return (
+    <>
+      {demo ? (
+        <ThemeSwitch shown={theme} saved={biz.theme as ThemeKey} chosen={!!biz.themeChosenAt} apiBase={apiBase} pagePath={pagePath} />
+      ) : null}
+      {content}
+      {footer}
     </>
   );
 }

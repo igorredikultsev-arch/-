@@ -24,8 +24,4 @@ export const STATUS_CLS = {
   archived: "bg-zinc-100 text-zinc-500",
 } as const;
 
-export const THEMES = [
-  { value: "garage", label: "Гараж", accent: "#ff6a1f" },
-  { value: "book", label: "Сервисная книжка", accent: "#2350d6" },
-  { value: "road", label: "Асфальт", accent: "#f2c200" },
-] as const;
+export { THEMES } from "@/lib/themes";

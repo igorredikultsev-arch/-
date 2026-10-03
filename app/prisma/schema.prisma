@@ -19,9 +19,9 @@ enum BusinessStatus {
 }
 
 enum Theme {
-  garage
-  book
-  road
+  tire // «Боковина»
+  plan // «План»
+  taxi // «Такси»
 }
 
 enum BookingSource {
@@ -74,8 +74,9 @@ model Business {
 
   headline    String?
   facts       Json? // [{ value: "2 поста", label: "можно приехать вдвоём" }]
-  theme       Theme  @default(garage)
-  accent      String @default("#ff6a1f")
+  theme         Theme     @default(taxi)
+  accent        String    @default("#1f9d55")
+  themeChosenAt DateTime? // владелец сам выбрал стиль в демо
   logoLetter  String?
 
   // Настройки расписания (раздел 4.1)

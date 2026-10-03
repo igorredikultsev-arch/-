@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { WidgetService } from "./booking-widget";
+import { PICK_EVENT, scrollToBook } from "./events";
 
-export const PICK_EVENT = "avtoslot:pick-service";
 
 const duration = (m: number) => (m < 60 ? `около ${m} минут` : m === 60 ? "около часа" : `около ${Math.round((m / 60) * 10) / 10} ч`);
 
@@ -14,7 +14,7 @@ export function ServicesList({ services }: { services: WidgetService[] }) {
 
   function pick(id: string) {
     window.dispatchEvent(new CustomEvent(PICK_EVENT, { detail: id }));
-    document.getElementById("book")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    scrollToBook();
   }
 
   return (

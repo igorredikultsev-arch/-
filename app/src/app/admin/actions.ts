@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { audit, generatePassword, hashPassword, requireAdmin } from "@/lib/auth";
 import { isHexColor } from "@/lib/color";
+import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
@@ -37,8 +38,8 @@ const Demo = z.object({
   reviewsYandex: optInt,
   reviews2gis: optInt,
   template: z.enum(["tire", "express"]),
-  theme: z.enum(["garage", "book", "road"]),
-  accent: z.string().refine(isHexColor, "Цвет в формате #ff6a1f"),
+  theme: z.enum(THEME_KEYS),
+  accent: z.string().refine(isHexColor, "Цвет в формате #1f9d55"),
   posts: z.coerce.number().int().min(1).max(20),
   headline: z.string().max(70),
   channel: z.string().max(40),
@@ -93,8 +94,8 @@ const Info = z.object({
   rating: z.union([z.literal(""), z.coerce.number().min(1).max(5)]),
   reviewsYandex: optInt,
   reviews2gis: optInt,
-  theme: z.enum(["garage", "book", "road"]),
-  accent: z.string().refine(isHexColor, "Цвет в формате #ff6a1f"),
+  theme: z.enum(THEME_KEYS),
+  accent: z.string().refine(isHexColor, "Цвет в формате #1f9d55"),
   logoLetter: z.string().max(2),
   operatorName: z.string().max(120),
   operatorInn: z.union([z.literal(""), z.string().regex(/^\d{10}(\d{2})?$/, "ИНН: 10 или 12 цифр")]),

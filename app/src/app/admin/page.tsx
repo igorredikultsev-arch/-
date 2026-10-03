@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL } from "./labels";
+import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
 const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
 
@@ -68,6 +68,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                   <th className="px-4 py-2.5 font-medium">Статус</th>
                   <th className="px-4 py-2.5 font-medium">Воронка</th>
                   <th className="px-4 py-2.5 font-medium">Записей с сайта</th>
+                  <th className="px-4 py-2.5 font-medium">Стиль</th>
                   <th className="px-4 py-2.5 font-medium">Канал</th>
                 </tr>
               </thead>
@@ -81,6 +82,10 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
                     <td className="px-4 py-3"><span className={`rounded-md px-2 py-0.5 text-[12px] font-semibold ${STATUS_CLS[b.status]}`}>{STATUS_LABEL[b.status]}</span></td>
                     <td className="px-4 py-3">{b.lead ? LEAD_LABEL[b.lead.status] : ""}</td>
                     <td className="px-4 py-3">{b._count.bookings}</td>
+                    <td className="px-4 py-3">
+                      {THEMES.find((t) => t.value === b.theme)?.label}
+                      {b.themeChosenAt && <div className="text-[12px] font-semibold text-emerald-700">выбрал владелец</div>}
+                    </td>
                     <td className="px-4 py-3 text-zinc-600">{b.lead?.channel || ""}</td>
                   </tr>
                 ))}

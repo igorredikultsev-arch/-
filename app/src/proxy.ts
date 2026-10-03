@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { THEME_HEADER } from "@/lib/themes";
 
 // Маршрутизация по домену:
 //   koleso.<ROOT_DOMAIN>/…   → /s/koleso/…        сайт автосервиса на поддомене
@@ -7,20 +8,27 @@ import { NextResponse, type NextRequest } from "next/server";
 const RESERVED = new Set(["www", "app", "admin", "api", "cabinet", "mail"]);
 
 export function proxy(req: NextRequest) {
+  // Стиль для предпросмотра демо (?theme=plan) передаём каркасу сайта заголовком; присланный снаружи заголовок не доверяем
+  const headers = new Headers(req.headers);
+  headers.delete(THEME_HEADER);
+  const asked = req.nextUrl.searchParams.get("theme");
+  if (asked) headers.set(THEME_HEADER, asked.slice(0, 16));
+  const pass = { request: { headers } };
+
   const root = (process.env.ROOT_DOMAIN || "").toLowerCase();
   const appHost = process.env.APP_URL ? new URL(process.env.APP_URL).host.toLowerCase() : "";
   const host = (req.headers.get("host") || "").toLowerCase().replace(/:\d+$/, "");
   const { pathname } = req.nextUrl;
 
   if (!host || host === "localhost" || host === "127.0.0.1" || host === root || host === appHost.replace(/:\d+$/, "")) {
-    return NextResponse.next();
+    return NextResponse.next(pass);
   }
 
   let key: string | null = null;
   if (root && host.endsWith(`.${root}`)) {
     const sub = host.slice(0, -(root.length + 1));
     if (!sub.includes(".") && !RESERVED.has(sub)) key = sub;
-    else return NextResponse.next();
+    else return NextResponse.next(pass);
   } else {
     key = `~${host}`;
   }
@@ -31,7 +39,7 @@ export function proxy(req: NextRequest) {
   }
   const url = req.nextUrl.clone();
   url.pathname = pathname.startsWith("/api/s/") ? pathname : `/s/${encodeURIComponent(key)}${pathname === "/" ? "" : pathname}`;
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, pass);
 }
 
 export const config = {

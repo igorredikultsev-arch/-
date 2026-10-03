@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDayLong, formatDayShort } from "@/lib/time";
-import { PICK_EVENT } from "./services-list";
+import { PICK_EVENT, SLOT_EVENT, STATE_EVENT, type SlotPick } from "./events";
 
 export type WidgetService = {
   id: string;
@@ -107,6 +107,28 @@ export function BookingWidget(p: Props) {
     window.addEventListener(PICK_EVENT, on);
     return () => window.removeEventListener(PICK_EVENT, on);
   }, [chooseService]);
+
+  // Время выбрано на плане постов или на шкале дня: сразу к контактам
+  useEffect(() => {
+    const on = async (e: Event) => {
+      const { serviceId: sid, date: d, time: t } = (e as CustomEvent<SlotPick>).detail;
+      setServiceId(sid);
+      setDate(d);
+      setTime(t);
+      setNotice(null);
+      setStep(3);
+      loadSlots(sid, d);
+      const r = await fetch(`${p.apiBase}/days?service=${sid}`);
+      setDays(r.ok ? (await r.json()).days : []);
+    };
+    window.addEventListener(SLOT_EVENT, on);
+    return () => window.removeEventListener(SLOT_EVENT, on);
+  }, [p.apiBase, loadSlots]);
+
+  // Сообщаем витрине (план, шкала), какая услуга и время выбраны
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(STATE_EVENT, { detail: { serviceId, date, time } }));
+  }, [serviceId, date, time]);
 
   // Яндекс SmartCaptcha на шаге контактов
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daySlots, horizonDates, inHorizon, peakLoad, resolveDayWindow, type SlotInput } from "@/lib/slots";
+import { dayLanes, daySlots, horizonDates, inHorizon, peakLoad, resolveDayWindow, type SlotInput } from "@/lib/slots";
 import { addDays, localToUtc, toLocal, weekdayOf } from "@/lib/time";
 
 const TZ = "Asia/Yekaterinburg"; // Пермь, UTC+5
@@ -204,6 +204,29 @@ describe("горизонт записи", () => {
 
 import { layoutLanes } from "@/lib/cabinet";
 
+describe("dayLanes", () => {
+  const input = (over = {}) => ({ date: DATE, tz: TZ, window: { openMin: h(10), closeMin: h(18) }, posts: 2, bookings: [], blocksAll: [], blocksOnePost: [], ...over });
+  it("раскладывает записи по постам и склеивает соседние на одном посту", () => {
+    const r = dayLanes(input({
+      bookings: [
+        { start: at(h(10)), end: at(h(11)) },
+        { start: at(h(10, 30)), end: at(h(11, 30)) },
+        { start: at(h(11)), end: at(h(12)) },
+      ],
+    }));
+    expect(r.lanes[0]).toEqual([{ from: h(10), to: h(12) }]);
+    expect(r.lanes[1]).toEqual([{ from: h(10, 30), to: h(11, 30) }]);
+  });
+  it("закрытие всего сервиса занимает все посты и обрезается часами работы", () => {
+    const r = dayLanes(input({ blocksAll: [{ start: at(h(17)), end: at(h(19)) }] }));
+    expect(r.lanes).toEqual([[{ from: h(17), to: h(18) }], [{ from: h(17), to: h(18) }]]);
+  });
+  it("запись сверх числа постов не теряется", () => {
+    const r = dayLanes(input({ posts: 1, bookings: [{ start: at(h(10)), end: at(h(11)) }, { start: at(h(10)), end: at(h(12)) }] }));
+    expect(r.lanes[0]).toEqual([{ from: h(10), to: h(12) }]);
+  });
+});
+
 describe("layoutLanes", () => {
   it("раскладывает пересекающиеся записи по разным постам, а последовательные — на один", () => {
     const lanes = layoutLanes(2, { start: 0, end: 100 }, [
@@ -229,5 +252,18 @@ describe("slugify", () => {
     expect(slugify("Шиномонтаж «Колесо»")).toBe("koleso");
     expect(slugify("Автосервис Ёжик 24")).toBe("ezhik-24");
     expect(slugify("Шиномонтаж")).toBe("shinomontazh");
+  });
+});
+
+import { radiusBands, radiusList } from "@/lib/radius";
+describe("radiusBands", () => {
+  const svc = (name: string, id = name) => ({ id, name });
+  it("находит диапазоны радиусов в названиях услуг шиномонтажа", () => {
+    const bands = radiusBands([svc("Смена колёс R13-R16", "a"), svc("Смена колёс R17-R19", "b"), svc("Смена колёс R20 и больше", "c"), svc("Балансировка 4 колёс", "d")]);
+    expect(bands).toEqual([{ from: 13, to: 16, serviceId: "a" }, { from: 17, to: 19, serviceId: "b" }, { from: 20, to: 22, serviceId: "c" }]);
+    expect(radiusList(bands)).toEqual([13, 14, 15, 16, 17, 18, 19, 20, 21, 22]);
+  });
+  it("без диапазонов выбора по радиусу нет", () => {
+    expect(radiusList(radiusBands([svc("Замена масла"), svc("Развал-схождение")]))).toEqual([]);
   });
 });

@@ -9,9 +9,9 @@ const db = new PrismaClient();
 async function main() {
   await db.business.deleteMany({ where: { slug: { in: ["koleso", "kniga", "asfalt"] } } });
   const themes = [
-    { slug: "koleso", theme: "garage" as const, accent: "#ff6a1f", headline: "Шиномонтаж без очереди. Запись за минуту" },
-    { slug: "kniga", theme: "book" as const, accent: "#2350d6", headline: "Шиномонтаж и развал без очереди" },
-    { slug: "asfalt", theme: "road" as const, accent: "#f2c200", headline: "Переобуем без очереди" },
+    { slug: "koleso", theme: "taxi" as const, accent: "#1f9d55", headline: "Шиномонтаж без очереди" },
+    { slug: "kniga", theme: "tire" as const, accent: "#f2c230", headline: "Переобуем без очереди" },
+    { slug: "asfalt", theme: "plan" as const, accent: "#ffc400", headline: "Шиномонтаж без очереди" },
   ];
   for (const t of themes) {
     await db.business.create({

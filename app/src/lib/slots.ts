@@ -87,3 +87,56 @@ export function horizonDates(nowMs: number, tz: string, horizonDays: number): st
 export function dayBounds(date: string, tz: string): Interval {
   return { start: localToUtc(date, 0, tz), end: localToUtc(addDays(date, 1), 0, tz) };
 }
+
+export type LaneSpan = { from: number; to: number }; // минуты от полуночи по местному времени
+
+export type DayLanesInput = {
+  date: string;
+  tz: string;
+  window: DayWindow;
+  posts: number;
+  bookings: Interval[];
+  blocksAll: Interval[];
+  blocksOnePost: Interval[];
+};
+
+/**
+ * Занятость постов за день для сайта: на каком посту и когда занято. Только время, без данных клиентов.
+ * Записи и закрытие одного поста раскладываются по постам жадно (как в кабинете), закрытие всего сервиса
+ * занимает все посты. Пересекающиеся и соседние промежутки на одном посту склеиваются.
+ */
+export function dayLanes(input: DayLanesInput): { open: number; close: number; lanes: LaneSpan[][] } {
+  const { date, tz, window } = input;
+  const n = Math.max(input.posts, 1);
+  const dayStart = localToUtc(date, 0, tz);
+  const toMin = (ms: number) => Math.round((ms - dayStart) / 60000);
+  const clip = (iv: Interval): LaneSpan | null => {
+    const from = Math.max(toMin(iv.start), window.openMin);
+    const to = Math.min(toMin(iv.end), window.closeMin);
+    return to > from ? { from, to } : null;
+  };
+  const lanes: LaneSpan[][] = Array.from({ length: n }, () => []);
+  const busyUntil = new Array<number>(n).fill(-Infinity);
+  for (const iv of [...input.bookings, ...input.blocksOnePost].sort((a, b) => a.start - b.start)) {
+    let lane = busyUntil.findIndex((t) => t <= iv.start);
+    if (lane === -1) lane = busyUntil.indexOf(Math.min(...busyUntil));
+    busyUntil[lane] = Math.max(busyUntil[lane], iv.end);
+    const s = clip(iv);
+    if (s) lanes[lane].push(s);
+  }
+  for (const iv of input.blocksAll) {
+    const s = clip(iv);
+    if (s) lanes.forEach((l) => l.push({ ...s }));
+  }
+  const merged = lanes.map((l) =>
+    l
+      .sort((a, b) => a.from - b.from)
+      .reduce<LaneSpan[]>((acc, s) => {
+        const last = acc[acc.length - 1];
+        if (last && s.from <= last.to) last.to = Math.max(last.to, s.to);
+        else acc.push({ ...s });
+        return acc;
+      }, []),
+  );
+  return { open: window.openMin, close: window.closeMin, lanes: merged };
+}

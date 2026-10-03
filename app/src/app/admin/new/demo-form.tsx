@@ -7,8 +7,8 @@ import { btn, F, inp, Result } from "../ui";
 
 export function DemoForm() {
   const [state, action, pending] = useActionState(createDemo, null);
-  const [theme, setTheme] = useState<string>("garage");
-  const [accent, setAccent] = useState<string>("#ff6a1f");
+  const [theme, setTheme] = useState<string>("taxi");
+  const [accent, setAccent] = useState<string>("#1f9d55");
   return (
     <form action={action} className="grid gap-5 rounded-2xl bg-white p-5 ring-1 ring-zinc-200">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -39,7 +39,7 @@ export function DemoForm() {
         <F label="Акцент под логотип" id="d-accent">
           <div className="flex gap-2">
             <input id="d-accent" type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-11 w-14 rounded-lg border border-zinc-300" />
-            <input name="accent" value={accent} onChange={(e) => setAccent(e.target.value)} className={inp} aria-label="Цвет в формате #ff6a1f" />
+            <input name="accent" value={accent} onChange={(e) => setAccent(e.target.value)} className={inp} aria-label="Цвет в формате #1f9d55" />
           </div>
         </F>
         <F label="Постов" id="d-posts"><input id="d-posts" name="posts" type="number" min={1} max={20} defaultValue={2} className={inp} /></F>

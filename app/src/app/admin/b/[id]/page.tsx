@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/phone";
 import { publicSiteUrl } from "@/lib/site-url";
 import { deleteBusiness, extendDemo, setReceiptSent, setStatus } from "../../actions";
-import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL } from "../../labels";
+import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
 import { btn2, CopyBox } from "../../ui";
 import { InfoForm, LeadForm, PaymentForm, TrialForm } from "./forms";
 
@@ -55,6 +55,10 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           {b.status === "demo" && b.demoExpiresAt && <span>Демо до {date(b.demoExpiresAt)}</span>}
           {b.status === "trial" && b.trialEndsAt && <span>Пробный до {date(b.trialEndsAt)}</span>}
           {b.paidUntil && <span>Оплачено до {date(b.paidUntil)}</span>}
+          <span>
+            Стиль: {THEMES.find((t) => t.value === b.theme)?.label}
+            {b.themeChosenAt ? <b className="text-emerald-700">, владелец выбрал сам {date(b.themeChosenAt)}</b> : ""}
+          </span>
         </div>
       </div>
 
