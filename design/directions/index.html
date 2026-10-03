@@ -1,0 +1,57 @@
+<title>Автослот: три направления</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Витрина трёх макетов: короткое вступление, затем три колонки «снимок телефона + описание + открыть» (на телефоне друг под другом). */
+:root {
+  --bg: #ecedea; --card: #f8f8f6; --fg: #1c2023; --muted: #5d6468; --line: #d3d6d0; --link: #0f6b3b;
+  --font: "Golos Text", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #1b1e20; --card: #24282a; --fg: #ecede9; --muted: #a4aaad; --line: #383d40; --link: #6fd39b; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #1b1e20; --card: #24282a; --fg: #ecede9; --muted: #a4aaad; --line: #383d40; --link: #6fd39b; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 400 16px/1.5 var(--font); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 56px; }
+h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.1; letter-spacing: -.02em; margin: 0 0 12px; text-wrap: balance; }
+.intro { max-width: 62ch; color: var(--muted); margin: 0 0 32px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; max-width: 420px; } }
+.dir { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.shot { display: block; border-radius: 22px; overflow: hidden; border: 6px solid var(--fg); background: var(--card); }
+.shot img { display: block; width: 100%; height: auto; }
+.dir h2 { font-size: 21px; line-height: 1.2; margin: 0; letter-spacing: -.01em; }
+.dir p { margin: 0; color: var(--muted); font-size: 15px; }
+.open { justify-self: start; color: var(--link); font-weight: 600; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.open:focus-visible, .shot:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+.note { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14.5px; max-width: 70ch; }
+</style>
+
+<div class="wrap">
+  <h1>Сайт шиномонтажа: три направления</h1>
+  <p class="intro">Один и тот же демо-сервис «Колесо» в трёх вариантах. Откройте любой на телефоне и на компьютере: время, радиус и места на плане можно нажимать. Оранжевого нет ни в одном.</p>
+
+  <div class="grid">
+    <article class="dir">
+      <a class="shot" href="1-svobodno.html"><img src="shots/1-svobodno-phone.png" alt="Направление «Свободно» на телефоне" width="780" height="1688"></a>
+      <h2>1. Свободно</h2>
+      <p>Спокойная сильная база. Светлый фон, зелёный цвет означает свободное время. Ближайшие окна видны сразу, запись в одну кнопку.</p>
+      <a class="open" href="1-svobodno.html">Открыть макет</a>
+    </article>
+    <article class="dir">
+      <a class="shot" href="2-bokovina.html"><img src="shots/2-bokovina-phone.png" alt="Направление «Боковина» на телефоне" width="780" height="1688"></a>
+      <h2>2. Боковина</h2>
+      <p>Смелый вариант про шины. Цвет резины, шина с надписью по кругу. Клиент выбирает радиус и сразу видит свою цену.</p>
+      <a class="open" href="2-bokovina.html">Открыть макет</a>
+    </article>
+    <article class="dir">
+      <a class="shot" href="3-plan.html"><img src="shots/3-plan-phone-pick.png" alt="Направление «План» на телефоне" width="780" height="1688"></a>
+      <h2>3. План</h2>
+      <p>Необычный вариант. Вид сверху на посты на сегодня: занятые места с машинами, свободные размечены жёлтым. Нажал на место и выбрал время.</p>
+      <a class="open" href="3-plan.html">Открыть макет</a>
+    </article>
+  </div>
+
+  <p class="note">Во всех трёх список услуг показан один раз (сейчас на сайте он повторяется в записи), а на компьютере форма записи стоит справа и не уезжает при прокрутке. Это макеты: в настоящий сайт пока ничего не перенесено.</p>
+</div>
