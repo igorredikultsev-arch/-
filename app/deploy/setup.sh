@@ -39,11 +39,13 @@ if [[ ! -f .env ]]; then
   EMAIL=$(ask "Ваша почта (для сертификатов и в документах)")
   PNAME=$(ask "ФИО полностью (попадёт в согласие и политику)")
   PINN=$(ask "ИНН (Enter, если пока нет)")
+  CAPTCHA_CLIENT=$(ask "SmartCaptcha: ключ клиента (Enter, чтобы пропустить)")
+  CAPTCHA_SERVER=$(ask "SmartCaptcha: ключ сервера (Enter, чтобы пропустить)")
   cat > .env <<EOF
 ROOT_DOMAIN="$DOMAIN"
 APP_URL="https://$DOMAIN"
-SMARTCAPTCHA_CLIENT_KEY=""
-SMARTCAPTCHA_SERVER_KEY=""
+SMARTCAPTCHA_CLIENT_KEY="$CAPTCHA_CLIENT"
+SMARTCAPTCHA_SERVER_KEY="$CAPTCHA_SERVER"
 CRON_SECRET="$(openssl rand -hex 24)"
 PROCESSOR_NAME="$PNAME, самозанятый"
 PROCESSOR_INN="$PINN"
