@@ -7,5 +7,7 @@
   --color-paper: #eef0f3;
 }
 
+:root { --font-golos: "Golos Text Variable"; }
+
 html { -webkit-text-size-adjust: 100%; }
 body { font-variant-numeric: tabular-nums; }

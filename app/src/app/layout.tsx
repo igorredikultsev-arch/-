@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Golos_Text } from "next/font/google";
+// Шрифты лежат в проекте (fontsource), а не скачиваются с Google при сборке: сборка не зависит от доступа к Google,
+// а браузер посетителя не обращается к зарубежным серверам. Имя шрифта — в --font-golos (globals.css)
+import "@fontsource-variable/golos-text";
 import "./globals.css";
-
-const golos = Golos_Text({ subsets: ["latin", "cyrillic"], variable: "--font-golos", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Автослот", template: "%s" },
@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={golos.variable}>
+    <html lang="ru">
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

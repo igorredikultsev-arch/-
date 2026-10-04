@@ -3,6 +3,7 @@
    Общие блоки (услуги, запись, отзывы, контакты) берут цвета и шрифты из токенов,
    отличия тем — в конце файла. Сначала телефон, компьютер — от 960px. */
 .site {
+  --font-unbounded: "Unbounded Variable"; --font-sofia: "Sofia Sans Variable"; --font-sofia-cond: "Sofia Sans Extra Condensed Variable";
   min-height: 100dvh; background: var(--s-bg); color: var(--s-fg); font-family: var(--s-body);
   font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
 }
