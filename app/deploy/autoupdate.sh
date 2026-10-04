@@ -67,6 +67,10 @@ main() {
     echo "$target" > "$failed"
     rm -f "$waiting"
     echo "$(date '+%F %T') ${target:0:7}: обновление не удалось, сайт работает на прошлой версии"
+    # Мониторинг пишет вам сразу, а не когда кто-то заглянет в журнал
+    local hc
+    hc=$(sed -n 's/^HEALTHCHECK_URL=//p' .env | tr -d "\"'" | tail -1)
+    [[ -n $hc ]] && curl -fsS -m 10 -o /dev/null --data-raw "Обновление ${target:0:7} не удалось, см. deploy/update.log" "$hc/fail" || true
   fi
 }
 

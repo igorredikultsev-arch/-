@@ -14,7 +14,7 @@ export default async function BlockPage({ searchParams }: { searchParams: Promis
   const blocks = await db.block.findMany({ where: { businessId: business.id, endAt: { gt: new Date() } }, orderBy: { startAt: "asc" }, take: 30 });
   return (
     <>
-      <SubHead back={date === today ? "/cabinet" : `/cabinet?date=${date}`} backLabel="Записи" title="Закрыть время">
+      <SubHead back={date === today ? "/cabinet" : `/cabinet?date=${date}`} backLabel={date === today ? "Сегодня" : "К дню"} title="Закрыть время">
         Свой ремонт, учёба, внеплановый выходной. На сайте это время нельзя будет выбрать.
       </SubHead>
       <BlockForm today={today} date={date} posts={business.posts} />

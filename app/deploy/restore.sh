@@ -12,6 +12,10 @@ if [[ "${2:-}" != "--yes" ]]; then
   [[ $ok == "да" ]] || { echo "Отменено"; exit 1; }
 fi
 
+# Пока идёт восстановление, автообновление и ночные задачи ждут: та же блокировка, что у autoupdate.sh
+exec 9>/tmp/avtoslot-update.lock
+flock 9
+
 docker compose up -d --wait db >/dev/null
 mkdir -p deploy/backups
 now="deploy/backups/before-restore-$(date +%Y%m%d-%H%M%S).sql.gz"

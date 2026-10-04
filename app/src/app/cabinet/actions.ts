@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import "@/lib/zod-ru";
+import { firstIssue } from "@/lib/zod-ru";
 import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
 import { hit } from "@/lib/ratelimit";
 import { bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
@@ -19,6 +19,13 @@ import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 export type ActionResult = { ok?: boolean; error?: string; message?: string } | null;
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+
+// Названия полей для сообщений об ошибке: «Цена: слишком большое число…»
+const LABELS: Record<string, string> = {
+  name: "Название", category: "Раздел", description: "Пояснение", priceFrom: "Цена", durationMin: "Длительность",
+  posts: "Посты", cancelHours: "Отмена", horizonDays: "Запись вперёд", minLeadMin: "Самое раннее время", headline: "Главная фраза", addressNote: "Как найти въезд",
+  phone: "Телефон", comment: "Комментарий",
+};
 
 async function ownBooking(id: string) {
   const { user, business } = await requireOwner();
@@ -109,7 +116,7 @@ const NewBooking = z.object({
 export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Promise<{ error?: string; warning?: string; id?: string }> {
   const { user, business } = await requireOwner();
   const p = NewBooking.safeParse(input);
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   let phone: string | null = null;
   if (p.data.phone && p.data.phone.replace(/\D/g, "").length > 1) {
     phone = normalizePhone(p.data.phone);
@@ -189,7 +196,7 @@ function readService(f: FormData) {
 export async function saveService(id: string | null, _prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
   const p = readService(f);
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   if (id) {
     const r = await db.service.updateMany({ where: { id, businessId: business.id }, data: { ...p.data, description: p.data.description || null } });
     if (!r.count) return { error: "Услуга не найдена" };
@@ -300,7 +307,7 @@ function siteChanged() {
 export async function saveTexts(_prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
   const p = Texts.safeParse(pick(f, ["headline", "addressNote"]));
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const facts = [0, 1, 2]
     .map((i) => ({ value: str(f, `factValue${i}`).slice(0, 20), label: str(f, `factLabel${i}`).slice(0, 40) }))
     .filter((x) => x.value && x.label);
@@ -313,7 +320,7 @@ export async function saveTexts(_prev: ActionResult, f: FormData): Promise<Actio
 export async function saveRules(_prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
   const p = Rules.safeParse(pick(f, ["posts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]));
-  if (!p.success) return { error: p.error.issues[0].message };
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
   await db.business.update({ where: { id: business.id }, data: p.data });
   await audit("settings.save", { userId: user.id, businessId: business.id, details: { part: "rules" } });
   siteChanged();

@@ -11,6 +11,8 @@ const minutesWord = (n: number) =>
 const wait = (min: number) => (min < 60 ? `через ${min} ${minutesWord(min)}` : `через ${Math.floor(min / 60)} ч${min % 60 ? ` ${min % 60} мин` : ""}`);
 
 /** «Такси»: ближайшее свободное время крупно и свободные окна кнопками. Нажали на время — форма сразу просит контакты. */
+const windowsWord = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? "окно" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "окна" : "окон");
+
 export function DayLoad(p: { services: WidgetService[]; defaultServiceId: string; apiBase: string; phone: string; phoneLabel: string }) {
   const d = useDay(p.apiBase, p.defaultServiceId);
   const free = (d.slots ?? []).filter((s) => s.free).map((s) => s.time);
@@ -66,7 +68,7 @@ export function DayLoad(p: { services: WidgetService[]; defaultServiceId: string
               )}
             </div>
           )}
-          {free.length > MAX_TIMES && <p className="tl-more">Ещё {free.length - MAX_TIMES} окон в этот день — в форме записи</p>}
+          {free.length > MAX_TIMES && <p className="tl-more">Ещё {free.length - MAX_TIMES} {windowsWord(free.length - MAX_TIMES)} в этот день — в форме записи</p>}
         </>
       )}
     </section>

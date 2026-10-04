@@ -108,7 +108,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 /* Выбор услуги и дня кнопками (витрины «План» и «Такси») */
 .svc-chips, .day-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .svc-chips::-webkit-scrollbar, .day-chips::-webkit-scrollbar { display: none; }
-.svc-chips button, .day-chips button { all: unset; box-sizing: border-box; flex: none; cursor: pointer; padding: 9px 14px; border-radius: 999px; font: 500 14px var(--s-body); white-space: nowrap; border: 1.5px solid var(--s-line); background: var(--s-card); color: var(--s-fg); }
+.svc-chips button, .day-chips button { all: unset; box-sizing: border-box; flex: none; cursor: pointer; min-height: 42px; display: inline-flex; align-items: center; padding: 9px 14px; border-radius: 999px; font: 500 14px var(--s-body); white-space: nowrap; border: 1.5px solid var(--s-line); background: var(--s-card); color: var(--s-fg); }
 .svc-chips button[aria-pressed="true"], .day-chips button[aria-pressed="true"] { background: var(--s-fg); color: var(--s-bg); border-color: var(--s-fg); }
 .svc-chips button:focus-visible, .day-chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .day-chips button:disabled { opacity: .4; cursor: default; text-decoration: line-through; }
@@ -139,7 +139,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .contacts dd { margin: 0; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .foot { margin-top: 44px; padding: 20px 18px 34px; font-size: 12px; line-height: 1.7; color: var(--s-muted); border-top: 1px solid var(--s-line); }
-.foot a { color: inherit; }
+.foot a { color: inherit; display: inline-block; padding: 6px 0; }
 
 /* ---------- форма записи ---------- */
 .book { padding: 22px 16px 20px; background: var(--s-card); border-radius: var(--r); scroll-margin-top: 16px; }
@@ -150,7 +150,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .steps .is-done::before, .steps .is-cur::before { background: var(--accent); }
 .steps .is-cur { color: var(--s-fg); font-weight: 600; }
 .picked { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; padding: 12px 14px; border-radius: min(var(--r-ctl), 14px); background: var(--s-card-2); margin-bottom: 14px; }
-.picked button { all: unset; cursor: pointer; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.picked button { all: unset; cursor: pointer; min-height: 40px; display: inline-flex; align-items: center; padding: 0 2px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
 .svc-pick { display: grid; gap: 8px; }
 .svc-pick button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 14px; border-radius: min(var(--r), 16px); background: var(--s-bg); border: 1.5px solid var(--s-line); }
 .svc-pick button:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; }
@@ -198,9 +198,9 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .switch-note { margin: 0; font-size: 12.5px; opacity: .78; text-align: center; }
 .switch-row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .switch-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--s-bg) 14%, transparent); }
-.switch-tabs a { padding: 7px 13px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; color: inherit; }
+.switch-tabs a { min-height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; color: inherit; }
 .switch-tabs a[aria-current="page"] { background: var(--s-bg); color: var(--s-fg); }
-.switch-go { appearance: none; border: 0; cursor: pointer; padding: 9px 14px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: 700 14px var(--s-body); }
+.switch-go { appearance: none; border: 0; cursor: pointer; min-height: 44px; padding: 9px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: 700 14px var(--s-body); }
 .switch-go[disabled] { opacity: .7; }
 .switch-ok { font-size: 13.5px; font-weight: 600; padding: 8px 4px; }
 .switch-ok::before { content: "✓ "; }
@@ -294,7 +294,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .t-plan .bay.off .go { position: relative; font-size: 11.5px; color: #8b9196; }
 .t-plan .yard .svc-chips { margin-bottom: 10px; }
 .t-plan .yard-days { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 12px; padding: 0 16px; }
-.t-plan .yday { appearance: none; flex: none; border: 1.5px solid var(--s-line); background: var(--s-card); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14.5px; cursor: pointer; }
+.t-plan .yday { appearance: none; flex: none; min-height: 42px; border: 1.5px solid var(--s-line); background: var(--s-card); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14.5px; cursor: pointer; }
 .t-plan .yday small { font-weight: 400; color: var(--s-muted); margin-left: 5px; }
 .t-plan .yday[aria-pressed="true"] { background: var(--s-fg); border-color: var(--s-fg); color: var(--s-bg); }
 .t-plan .yday:disabled { opacity: .45; cursor: default; }

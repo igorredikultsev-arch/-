@@ -15,11 +15,12 @@ set -euo pipefail
 
 env_value() { sed -n "s/^$1=//p" .env | tr -d "\"'" | tail -1; }
 
-# Сайт внутри контейнера отвечает на /login (до 60 секунд ожидания)
+# Сайт внутри контейнера отвечает и читает базу: /api/health читает строку сервиса со всеми полями,
+# поэтому несовпадение кода и схемы базы тоже считается неудачей (до 60 секунд ожидания)
 site_ok() {
   local i
   for i in $(seq 1 30); do
-    if docker compose exec -T app node -e "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+    if docker compose exec -T app node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
@@ -40,11 +41,13 @@ main() {
     *) target=$1 ;;
   esac
 
-  if [[ -n $target ]]; then
-    git merge --ff-only -q "$target"
-  else
-    git pull --ff-only -q
+  # На сервере своих коммитов нет (.env и копии базы git не отслеживает), поэтому код просто ставится ровно таким,
+  # как в ветке. merge --ff-only навсегда останавливал бы обновления, если ветку когда-нибудь перепишут
+  if [[ -z $target ]]; then
+    git fetch -q origin "$(git rev-parse --abbrev-ref HEAD)"
+    target=$(git rev-parse FETCH_HEAD)
   fi
+  git reset -q --hard "$target"
   local tag prev
   tag=$(git rev-parse HEAD)
   prev=$(env_value AVTOSLOT_TAG)
@@ -95,7 +98,12 @@ main() {
     if [[ -n $prev && $prev != "$tag" ]]; then
       echo "Возвращаю прошлую версию ${prev:0:12}" >&2
       AVTOSLOT_TAG=$prev docker compose up -d app
-      AVTOSLOT_TAG=$prev site_ok && echo "Прошлая версия работает" >&2
+      if AVTOSLOT_TAG=$prev site_ok; then
+        echo "Прошлая версия работает" >&2
+      else
+        # Миграции уже поменяли базу, и прошлая версия с ней не работает: вернуть и базу из копии перед обновлением
+        echo "Прошлая версия тоже не отвечает. Верните базу из копии перед обновлением: ./deploy/restore.sh $pre" >&2
+      fi
     fi
     return 1
   fi

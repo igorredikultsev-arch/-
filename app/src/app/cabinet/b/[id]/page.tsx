@@ -28,7 +28,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
   ];
   return (
     <div className="grid gap-4 px-3.5 pt-5 lg:px-0">
-      <Link href={`/cabinet?date=${date}`} className="inline-flex items-center gap-1 text-[14px] font-semibold text-zinc-600">
+      <Link href={`/cabinet?date=${date}`} className="-ml-1 inline-flex min-h-10 items-center gap-1 pr-2 text-[14px] font-semibold text-zinc-600">
         <CaretLeft size={16} /> К расписанию
       </Link>
       <div>
@@ -54,7 +54,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
         <Notice tone={noShows >= NO_SHOW_LIMIT ? "warn" : "info"}>
           {noShows >= NO_SHOW_LIMIT
             ? `Неявок с этого номера за год: ${noShows}. Записаться на сайте он больше не может, только по телефону. Чтобы снять запрет, поменяйте отметку «Не приехал» у прошлой записи.`
-            : "С этого номера уже была неявка за последний год. После второй онлайн-запись для него закроется."}
+            : "С этого номера уже была неявка за последний год. После второй неявки онлайн-запись с этого номера закроется."}
         </Notice>
       )}
       <BookingActions id={b.id} status={b.status} hasPd={!!(b.clientName || b.clientPhone || b.car || b.comment)} started={b.startAt.getTime() <= Date.now()} />

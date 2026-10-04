@@ -62,8 +62,8 @@ function DayEditor({ day, title, onChange }: { day: DayHours; title: string; onC
       <div className="flex flex-wrap items-center justify-between gap-2">
         <b className="text-[16px]">{title}</b>
         <div className="grid shrink-0 grid-cols-2 rounded-xl bg-paper p-1 text-[14px] font-semibold" role="group" aria-label={`${title}: режим`}>
-          <button type="button" aria-pressed={!day.closed} onClick={() => onChange({ closed: false })} className={`rounded-lg px-3 py-1.5 ${!day.closed ? "bg-white shadow-sm" : "text-zinc-500"}`}>Работаем</button>
-          <button type="button" aria-pressed={day.closed} onClick={() => onChange({ closed: true })} className={`rounded-lg px-3 py-1.5 ${day.closed ? "bg-white shadow-sm" : "text-zinc-500"}`}>Выходной</button>
+          <button type="button" aria-pressed={!day.closed} onClick={() => onChange({ closed: false })} className={`min-h-10 rounded-lg px-3 ${!day.closed ? "bg-white shadow-sm" : "text-zinc-500"}`}>Работаем</button>
+          <button type="button" aria-pressed={day.closed} onClick={() => onChange({ closed: true })} className={`min-h-10 rounded-lg px-3 ${day.closed ? "bg-white shadow-sm" : "text-zinc-500"}`}>Выходной</button>
         </div>
       </div>
       {!day.closed && (
@@ -85,7 +85,7 @@ function DayEditor({ day, title, onChange }: { day: DayHours; title: string; onC
               </button>
             </div>
           ) : (
-            <button type="button" onClick={() => onChange({ breakFrom: "13:00", breakTo: "14:00" })} className="inline-flex items-center gap-1.5 justify-self-start text-[14px] font-semibold text-accent">
+            <button type="button" onClick={() => onChange({ breakFrom: "13:00", breakTo: "14:00" })} className="inline-flex min-h-10 items-center gap-1.5 justify-self-start text-[14px] font-semibold text-accent">
               <Plus size={16} weight="bold" /> Добавить обед
             </button>
           )}

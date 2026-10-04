@@ -52,7 +52,7 @@ export function ServiceForm({ service, categories }: { service: Svc | null; cate
         <input id="sv-desc" name="description" defaultValue={service?.description ?? ""} maxLength={120} className={inputCls} />
       </Field>
       <Field label="Цена от, ₽" htmlFor="sv-price" hint="0 — на сайте будет написано «бесплатно»">
-        <input id="sv-price" name="priceFrom" type="number" min={0} inputMode="numeric" defaultValue={service?.priceFrom ?? 0} className={inputCls} />
+        <input id="sv-price" name="priceFrom" type="number" min={0} max={1000000} inputMode="numeric" defaultValue={service?.priceFrom ?? 0} className={inputCls} />
       </Field>
       <Choice
         name="durationMin"

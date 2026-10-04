@@ -3,7 +3,7 @@ import "@fontsource-variable/sofia-sans-extra-condensed";
 import "@fontsource-variable/unbounded";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getSiteBusiness, decodeKey } from "@/lib/business";
+import { getSiteBusiness, isExampleSlug, decodeKey } from "@/lib/business";
 import { onAccent } from "@/lib/color";
 import { formatPhone } from "@/lib/phone";
 import { isThemeKey, THEME_HEADER, themeAccent } from "@/lib/themes";
@@ -17,7 +17,8 @@ export default async function SiteLayout({ children, params }: { children: React
   if (!biz) notFound();
   // Закончившееся демо (в том числе уже убранное очисткой в архив) — понятная страница вместо ошибки 404
   const expiredDemo =
-    (biz.status === "demo" && biz.demoExpiresAt && biz.demoExpiresAt.getTime() < Date.now()) || (biz.status === "archived" && biz.demoExpiresAt);
+    (biz.status === "demo" && biz.demoExpiresAt && biz.demoExpiresAt.getTime() < Date.now() && !isExampleSlug(biz.slug)) ||
+    (biz.status === "archived" && biz.demoExpiresAt);
   if (expiredDemo || biz.status === "archived") {
     return (
       <div className="site t-taxi">
@@ -26,7 +27,7 @@ export default async function SiteLayout({ children, params }: { children: React
             <h1 className="h4">{expiredDemo ? "Демо-версия сайта закончилась" : "Сайт больше не работает"}</h1>
             <p>
               {expiredDemo
-                ? `Пример сайта для «${biz.name.replace(/[«»"]/g, "")}» был доступен 14 дней. Чтобы вернуть его или подключить сайт, ответьте на сообщение, в котором пришла ссылка.`
+                ? `Пример сайта для «${biz.name.replace(/[«»"]/g, "")}» был доступен ограниченное время. Чтобы вернуть его или подключить сайт, ответьте на сообщение, в котором пришла ссылка.`
                 : `Позвоните в сервис: ${formatPhone(biz.phone)}`}
             </p>
           </div>

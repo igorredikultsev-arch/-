@@ -47,6 +47,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: app/package-lock.json
+      - run: bash deploy/check-migrations.sh
       - run: npm ci
       - run: npx prisma generate
       - run: npx prisma migrate deploy

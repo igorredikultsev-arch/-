@@ -97,7 +97,8 @@ async function insertDemo(d: NewDemo) {
       posts: d.posts,
       headline: d.headline,
       // Число постов клиенту не показываем: в демо оно взято наугад, а записи и так учитывают все посты
-      facts: [DEFAULT_FACTS[1]],
+      // «R13–R22, любые диаметры» — только шиномонтажу: экспресс-сервису (масло, тормоза) такой факт не про него
+      facts: d.template === "tire" ? [DEFAULT_FACTS[1]] : [],
       status: "demo",
       demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000),
       hours: { create: DEFAULT_HOURS },

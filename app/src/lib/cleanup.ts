@@ -16,7 +16,12 @@ export const DEMO_KEEP_DAYS = 365;
  * 4) просроченные сессии и счётчики лимитов.
  */
 export async function runCleanup(now = new Date()) {
-  const expired = await db.business.findMany({ where: { status: "demo", demoExpiresAt: { lt: now } }, select: { id: true } });
+  // Пример с главной (EXAMPLE_SLUG) не уходит в архив никогда
+  const example = (process.env.EXAMPLE_SLUG || "").trim();
+  const expired = await db.business.findMany({
+    where: { status: "demo", demoExpiresAt: { lt: now }, ...(example ? { slug: { not: example } } : {}) },
+    select: { id: true },
+  });
   const ids = expired.map((b) => b.id);
   if (ids.length) {
     await db.booking.deleteMany({ where: { businessId: { in: ids } } });

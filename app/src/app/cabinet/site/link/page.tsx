@@ -26,10 +26,10 @@ export default async function LinkPage() {
           <SiteLink url={url} />
           <div className="flex items-center gap-4">
             {/* SVG собран на сервере библиотекой qrcode из адреса сайта */}
-            <div className="size-32 shrink-0 rounded-xl border border-zinc-200 bg-white p-1.5" dangerouslySetInnerHTML={{ __html: qr }} />
+            <div role="img" aria-label="QR-код со ссылкой на сайт" className="size-32 shrink-0 rounded-xl border border-zinc-200 bg-white p-1.5" dangerouslySetInnerHTML={{ __html: qr }} />
             <div className="grid gap-2 text-[14px] leading-snug text-zinc-600">
               <p>Для таблички у ворот, визиток и кассы: клиент наводит камеру и сразу попадает на запись.</p>
-              <a href="/cabinet/qr" className="inline-flex items-center gap-1.5 font-semibold text-accent">
+              <a href="/cabinet/qr" className="inline-flex min-h-10 items-center gap-1.5 font-semibold text-accent">
                 <DownloadSimple size={17} /> Скачать для печати
               </a>
             </div>

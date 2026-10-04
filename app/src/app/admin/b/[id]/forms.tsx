@@ -5,6 +5,7 @@ import { addPayment, saveInfo, saveLead, saveRkn, startTrial } from "../../actio
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
 import { keepValues } from "@/lib/keep-form";
+import { MONTHLY_PRICE, rub, SETUP_PRICE } from "@/lib/pricing";
 import { ZONES } from "@/lib/timezone";
 
 type Info = {
@@ -97,7 +98,7 @@ export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; log
         <CopyBox
           label="Сообщение владельцу"
           rows={6}
-          text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё». Если за 2 недели не понравится — верну деньги.`}
+          text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё».\n\nПодключение ${rub(SETUP_PRICE)}, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц. Если за 2 недели не понравится — верну деньги.`}
         />
       )}
       <button disabled={pending} className={btn}>{hasOwner ? "Выдать новый пароль" : "Создать вход и подключить"}</button>
@@ -113,7 +114,7 @@ export function PaymentForm({ id }: { id: string }) {
   return (
     <form ref={ref} onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-4">
-        <F label="Сумма, ₽" id="p-amount"><input id="p-amount" name="amount" inputMode="numeric" required className={inp} placeholder="3500" /></F>
+        <F label="Сумма, ₽" id="p-amount"><input id="p-amount" name="amount" inputMode="numeric" required className={inp} placeholder={String(SETUP_PRICE)} /></F>
         <F label="За что" id="p-purpose" className="sm:col-span-2"><input id="p-purpose" name="purpose" className={inp} placeholder="Подключение и 1 месяц" /></F>
         <F label="Продлить на, мес" id="p-months" hint="0 — без продления"><input id="p-months" name="months" type="number" min={0} max={24} defaultValue={1} className={inp} /></F>
       </div>

@@ -1,7 +1,7 @@
+import { DeleteService } from "./delete-service";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { deleteService } from "../../../actions";
 import { SubHead } from "../../../ui";
 import { ServiceForm } from "../../forms";
 
@@ -17,10 +17,10 @@ export default async function ServicePage({ params }: { params: Promise<{ id: st
       <div className="grid gap-6 px-[18px] lg:max-w-2xl lg:px-0">
         <ServiceForm service={service} categories={categories.length ? categories : ["Шиномонтаж"]} />
         {service && (
-          <form action={deleteService.bind(null, service.id)}>
-            <button className="w-full py-2 text-[14px] font-semibold text-red-700 underline underline-offset-4">Удалить услугу</button>
+          <div className="grid gap-1">
+            <DeleteService id={service.id} name={service.name} />
             <p className="text-center text-[12px] text-zinc-500">Прошлые записи на неё сохранятся. Чтобы просто убрать с сайта, снимите галочку «Показывать на сайте».</p>
-          </form>
+          </div>
         )}
       </div>
     </>

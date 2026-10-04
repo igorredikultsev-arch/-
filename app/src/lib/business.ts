@@ -36,3 +36,9 @@ export function decodeKey(s: string): string {
     return "";
   }
 }
+
+/** Пример сайта с главной avtoslot.ru (EXAMPLE_SLUG): демо, у которого не кончается срок, иначе ссылка с главной однажды умрёт. */
+export function isExampleSlug(slug: string) {
+  const ex = (process.env.EXAMPLE_SLUG || "").trim();
+  return !!ex && slug === ex;
+}

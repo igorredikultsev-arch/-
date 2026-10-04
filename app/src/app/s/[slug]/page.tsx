@@ -55,7 +55,8 @@ export default async function SitePage({ params, searchParams }: Props) {
   if (!isPublic(biz.status)) return <p className="closed-note">Сайт временно недоступен. Позвоните в сервис: {formatPhone(biz.phone)}</p>;
   const base = await siteBase(key);
   const apiBase = `/api/s/${encodeURIComponent(key)}`;
-  const season = seasonNotice(Date.now(), biz.timezone);
+  // Плашка про сезон резины — только у тех, кто меняет резину
+  const season = biz.services.some((s) => s.category.toLowerCase().includes("шиномонтаж")) ? seasonNotice(Date.now(), biz.timezone) : null;
   const facts = readFacts(biz.facts);
   const reviews = (biz.reviewsYandex ?? 0) + (biz.reviews2gis ?? 0);
   const rating = biz.rating ? Number(biz.rating).toFixed(1).replace(".", ",") : null;

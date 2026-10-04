@@ -1,11 +1,12 @@
 "use client";
 
+import { aboutDuration } from "@/lib/duration";
 import { useState } from "react";
 import type { RadiusBand } from "@/lib/radius";
 import type { WidgetService } from "./booking-widget";
 import { PICK_EVENT, scrollToBook } from "./events";
 
-const duration = (m: number) => (m < 60 ? `около ${m} минут` : m === 60 ? "около часа" : `около ${Math.round((m / 60) * 10) / 10} ч`);
+const duration = aboutDuration;
 const price = (p: number) => (p > 0 ? `${p.toLocaleString("ru-RU")} ₽` : "бесплатно");
 
 /** «Боковина»: сначала радиус, сразу цена подходящей услуги и кнопка к выбору времени. */

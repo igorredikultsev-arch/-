@@ -29,6 +29,7 @@ export function TimeSelect({ value, onChange, label, name, end }: { value: strin
   );
 }
 
+const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 const WD = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const iso = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -72,7 +73,7 @@ export function DatePick({ name, min, value, onChange }: { name?: string; min: s
               disabled={off}
               onClick={() => onChange(day)}
               aria-pressed={on}
-              aria-label={`${d} ${MONTHS[ym.m].toLowerCase()}`}
+              aria-label={`${d} ${MONTHS_GEN[ym.m]}`}
               className={`h-11 rounded-xl text-[15px] font-semibold tabular-nums ${on ? "bg-ink text-white" : off ? "text-zinc-300" : "hover:bg-zinc-100"} ${day === min && !on ? "ring-1 ring-inset ring-zinc-300" : ""}`}
             >
               {d}

@@ -26,16 +26,25 @@ const pos = (s: Slot) => ({ left: `${((min(s.from) - OPEN) / SPAN) * 100}%`, wid
 const STEPS = [
   { h: "Присылаю пример", p: "Собираю сайт по вашей карточке в 2ГИС или на Яндекс Картах: услуги, цены, адрес, часы работы. Вы смотрите и решаете, ничего не платя." },
   { h: "Сверяем услуги и время", p: "В переписке уточняем цены, сколько длится каждая работа и сколько у вас постов. Обычно это полчаса." },
-  { h: "Ставите ссылку", p: "В карточку на картах, во ВКонтакте, в Telegram, на табличку у ворот. Клиенты начинают записываться, вы получаете вход в кабинет." },
+  { h: "Подключаем и ставите ссылку", p: "Оплачиваете подключение, получаете вход в кабинет. Ссылку ставите в карточку на картах, во ВКонтакте, на табличку у ворот, и клиенты начинают записываться." },
 ];
 
 const FEATURES = [
   { h: "Только свободное время", p: "Сайт учитывает число постов, длительность работ, обед и выходные. Два клиента на одно окно не попадут." },
+  { h: "Записи приходят в телефон", p: "Уведомление о каждой новой записи и отмене, утром — сводка на день. Кабинет открывается в браузере, ставить ничего не нужно." },
   { h: "Звонки в то же расписание", p: "Записали клиента по телефону, внесли в кабинет за десять секунд. Сайт сразу закроет это время." },
   { h: "Отмена без звонка", p: "Не получается приехать? Клиент отменяет запись по ссылке, и время снова становится свободным." },
-  { h: "Цены меняете сами", p: "Услуги, цены, часы работы и праздники правятся в кабинете с телефона. Изменения сразу на сайте." },
-  { h: "Закон соблюдён", p: "Согласие клиента на обработку данных по 152-ФЗ, данные хранятся на сервере в России." },
-  { h: "Ничего не нужно ставить", p: "Кабинет открывается в браузере телефона, его можно добавить на главный экран как приложение." },
+  { h: "Цены меняете сами", p: "Услуги, цены, часы работы, праздники и логотип правятся в кабинете с телефона. Изменения сразу на сайте." },
+  { h: "Видно, что сайт работает", p: "В кабинете статистика: сколько клиентов записались сами, на какие услуги и на какую сумму." },
+];
+
+// Частые вопросы владельцев (раздел 8.4 плана): ответ прямо на странице, до переписки
+const FAQ = [
+  { q: "Мои клиенты не будут записываться онлайн", a: "Все и не нужно. Многие звонят, но часть клиентов записывается вечером, когда вы уже не берёте трубку. Даже пять таких записей в месяц окупают сервис, а звонки вы вносите в то же расписание." },
+  { q: "Кто будет этим заниматься?", a: "Сайт работает сам: записи приходят вам в телефон, свободное время считается автоматически. Поменять цену или закрыть день — минута в кабинете. Если что-то непонятно, помогаю в переписке." },
+  { q: "Нужно ли покупать домен, хостинг, программы?", a: "Нет. Сайт получает адрес вида ваш-сервис.avtoslot.ru, всё остальное уже работает. Кабинет открывается в браузере телефона или компьютера." },
+  { q: "А как с законом о персональных данных?", a: "На сайте есть согласие клиента, политика и ваши реквизиты, данные хранятся на сервере в России. Уведомление в Роскомнадзор подаёт сам сервис: присылаю готовый текст, это около 20 минут на сайте РКН." },
+  { q: "Что если не понравится?", a: `Напишите в течение ${GUARANTEE_DAYS} дней после подключения, и я верну деньги полностью, без объяснения причин.` },
 ];
 
 export default function Home() {
@@ -51,8 +60,8 @@ export default function Home() {
           <span className="grid size-9 place-items-center rounded-xl bg-accent text-white" aria-hidden="true">А</span>
           Автослот
         </Link>
-        <Link href="/login" className="rounded-full px-4 py-2 text-[15px] font-semibold text-zinc-700 ring-1 ring-zinc-300 hover:bg-white">
-          Вход для клиентов
+        <Link href="/login" className="inline-flex min-h-11 items-center rounded-full px-4 text-[15px] font-semibold text-zinc-700 ring-1 ring-zinc-300 hover:bg-white">
+          Вход в кабинет
         </Link>
       </header>
 
@@ -75,6 +84,9 @@ export default function Home() {
                 </Link>
               )}
             </div>
+            <p className="text-[15px] leading-snug text-zinc-600">
+              Пример сайта для вашего сервиса — бесплатно. Подключение {rub(SETUP_PRICE)}, дальше {rub(MONTHLY_PRICE)} в месяц. Не понравится за {GUARANTEE_DAYS} дней — верну деньги.
+            </p>
           </div>
 
           <figure className="board" aria-label="Пример расписания в кабинете владельца: два поста, обед, новая запись с сайта на 14:30">
@@ -104,7 +116,7 @@ export default function Home() {
               <span className="board-push-icon" aria-hidden="true">А</span>
               <span>
                 <b>Новая запись с сайта</b>
-                Суббота, 14:30, смена колёс R13–R16
+                Суббота, 14:30, смена колёс <span className="whitespace-nowrap">R13–R16</span>
               </span>
             </figcaption>
           </figure>
@@ -162,16 +174,40 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <section className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_2fr] lg:gap-14 lg:py-20">
+          <h2 className="section-title">Частые вопросы</h2>
+          <div className="grid gap-3">
+            {FAQ.map((f) => (
+              <details key={f.q} className="faq group rounded-2xl bg-white ring-1 ring-zinc-200">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-[17px] font-bold tracking-tight">
+                  {f.q}
+                  <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-paper text-[20px] font-semibold transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="px-5 pb-5 leading-relaxed text-zinc-600">{f.a}</p>
+              </details>
+            ))}
+            {contactHref && (
+              <p className="pt-3 text-[16px] text-zinc-700">
+                Не нашли ответ?{" "}
+                <a href={contactHref} className="font-semibold text-ink underline underline-offset-4">
+                  {c.telegram ? `Напишите в Telegram ${c.telegramName}` : `Напишите на ${c.email}`}
+                </a>
+                , обычно отвечаю в тот же день.
+              </p>
+            )}
+          </div>
+        </section>
       </main>
 
       <footer className="mx-auto grid max-w-6xl gap-4 px-4 py-10 text-[14px] text-zinc-600 sm:px-8">
         <p>
-          Автослот. {pr.name}, ИНН {pr.inn}.{c.email && <> Почта: <a className="underline underline-offset-4" href={`mailto:${c.email}`}>{c.email}</a>.</>}
+          Автослот. {pr.name}, самозанятый, ИНН {pr.inn}.{c.email && <> Почта: <a className="underline underline-offset-4" href={`mailto:${c.email}`}>{c.email}</a>.</>}
         </p>
         <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Документы">
           <Link className="underline underline-offset-4" href="/offer">Договор-оферта</Link>
           <Link className="underline underline-offset-4" href="/privacy">Политика обработки данных</Link>
-          <Link className="underline underline-offset-4" href="/login">Вход для клиентов</Link>
+          <Link className="underline underline-offset-4" href="/login">Вход в кабинет</Link>
         </nav>
       </footer>
     </div>

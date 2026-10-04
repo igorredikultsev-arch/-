@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getSiteBusiness, isPublic, decodeKey } from "./business";
+import { getSiteBusiness, isExampleSlug, isPublic, decodeKey } from "./business";
 
 /** Сервис для публичного API: только опубликованные и не просроченные демо. */
 export async function publicBusiness(slug: string) {
   const biz = await getSiteBusiness(decodeKey(slug));
   if (!biz || !isPublic(biz.status)) return null;
-  if (biz.status === "demo" && biz.demoExpiresAt && biz.demoExpiresAt.getTime() < Date.now()) return null;
+  if (biz.status === "demo" && biz.demoExpiresAt && biz.demoExpiresAt.getTime() < Date.now() && !isExampleSlug(biz.slug)) return null;
   return biz;
 }
 

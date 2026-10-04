@@ -1,3 +1,4 @@
+import { aboutDuration } from "@/lib/duration";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CalendarPlus, Check, NavigationArrow, X } from "@phosphor-icons/react/dist/ssr";
@@ -52,7 +53,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
           <div className="what">
             <b>{biz.name}</b>
             <br />
-            {b.serviceName}, около {minutes} минут
+            {b.serviceName}, {aboutDuration(minutes)}
           </div>
         </div>
         <div className="cut" />

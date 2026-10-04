@@ -1,11 +1,12 @@
 "use client";
 
+import { aboutDuration } from "@/lib/duration";
 import { useMemo, useState } from "react";
 import type { WidgetService } from "./booking-widget";
 import { PICK_EVENT, scrollToBook } from "./events";
 
 
-const duration = (m: number) => (m < 60 ? `около ${m} минут` : m === 60 ? "около часа" : `около ${Math.round((m / 60) * 10) / 10} ч`);
+const duration = aboutDuration;
 
 export function ServicesList({ services }: { services: WidgetService[] }) {
   const categories = useMemo(() => [...new Set(services.map((s) => s.category))], [services]);

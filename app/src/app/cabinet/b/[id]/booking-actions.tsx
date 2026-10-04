@@ -68,7 +68,7 @@ export function BookingActions({ id, status, hasPd, started }: { id: string; sta
         <button type="button" disabled={pending} className={btnSecondary} onClick={() => restore(false)}>Вернуть в активные</button>
       )}
       {hasPd && (
-        <button type="button" className="py-2 text-[13px] font-semibold text-zinc-500 underline underline-offset-4" onClick={() => setConfirm("erase")}>
+        <button type="button" className="min-h-11 text-[13.5px] font-semibold text-zinc-500 underline underline-offset-4" onClick={() => setConfirm("erase")}>
           Удалить данные клиента по его просьбе
         </button>
       )}

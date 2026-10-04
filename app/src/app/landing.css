@@ -58,3 +58,5 @@
 .price-num { font-size: clamp(2.6rem, 7vw, 4.2rem); font-weight: 850; letter-spacing: -0.035em; line-height: 1; }
 
 .landing a:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+
+.faq summary::-webkit-details-marker { display: none; }

@@ -13,7 +13,7 @@ const plural = (n: number, one: string, few: string, many: string) =>
 function DayStrip({ date, today }: { date: string; today: string }) {
   const first = addDays(date, -2);
   const days = Array.from({ length: 7 }, (_, i) => addDays(first, i));
-  const arrow = "grid w-9 shrink-0 place-items-center rounded-xl text-zinc-500 hover:bg-white";
+  const arrow = "grid w-10 shrink-0 place-items-center rounded-xl text-zinc-500 hover:bg-white";
   return (
     <nav aria-label="Выбор дня" className="mt-3 flex items-stretch gap-1">
       <Link href={`/cabinet?date=${addDays(date, -7)}`} aria-label="Неделей раньше" className={arrow}><CaretLeft size={18} /></Link>

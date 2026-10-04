@@ -24,8 +24,13 @@ export function configProblems(env: Record<string, string | undefined> = process
   }
   if (!env.PROCESSOR_EMAIL?.trim()) out.push("Не вписана ваша почта для документов (PROCESSOR_EMAIL)");
   if (!env.DB_LOCATION?.trim()) out.push("Не указано, где стоит сервер (DB_LOCATION, например «Россия, г. Москва, Timeweb Cloud»): попадает в черновики уведомлений клиентов в Роскомнадзор");
+  if (!env.S3_BUCKET?.trim()) {
+    out.push("Копии базы лежат только на этом же сервере (S3_BUCKET не задан): если сервер сломается, пропадут все записи и клиенты. Настройте хранилище, README, «Копии и мониторинг»");
+  }
+  if (!env.HEALTHCHECK_URL?.trim()) out.push("Нет мониторинга (HEALTHCHECK_URL): если сайт упадёт, вы узнаете об этом от клиентов");
+  if (!env.CONTACT_TELEGRAM?.trim()) out.push("Не указан ваш Telegram (CONTACT_TELEGRAM): владельцам в кабинете остаётся только почта для связи");
   if (!env.CRON_SECRET || env.CRON_SECRET === "change-me") {
-    out.push("Не задан CRON_SECRET: не работают ночная очистка и сертификаты для адресов клиентов");
+    out.push("Не задан CRON_SECRET: не работают утренние сводки владельцам и сертификаты для адресов клиентов");
   }
   return out;
 }
