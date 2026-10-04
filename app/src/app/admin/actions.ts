@@ -249,13 +249,20 @@ export async function saveLead(id: string, _prev: AdminResult, f: FormData): Pro
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const prev = await db.lead.findUnique({ where: { businessId: id } });
   const contactedAt = p.data.status !== "new" && (!prev || prev.status === "new") ? new Date() : prev?.contactedAt;
+  // Отказ: контакт для связи и текст первого сообщения стираются, демо закрывается (политика avtoslot.ru/privacy, п. 3.3).
+  // Карточка с названием и отметкой «отказ» остаётся, чтобы не написать повторно, и удаляется очисткой через 12 месяцев
+  const refused = p.data.status === "refused";
+  const data = refused ? { ...p.data, contact: null, firstMessage: null } : p.data;
   await db.lead.upsert({
     where: { businessId: id },
-    create: { businessId: id, ...p.data, contactedAt },
-    update: { ...p.data, contactedAt },
+    create: { businessId: id, ...data, contactedAt },
+    update: { ...data, contactedAt },
   });
+  if (refused) {
+    await db.business.updateMany({ where: { id, status: "demo" }, data: { status: "archived", demoExpiresAt: new Date() } });
+  }
   revalidatePath("/admin", "layout");
-  return { ok: true, message: "Сохранено" };
+  return { ok: true, message: refused ? "Сохранено. Контакт удалён, демо закрыто" : "Сохранено" };
 }
 
 /**
