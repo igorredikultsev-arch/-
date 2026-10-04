@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { THEME_HEADER } from "@/lib/themes";
 
+const SESSION_COOKIE = "as_session"; // то же имя, что в lib/auth.ts
+
 // Маршрутизация по домену:
 //   koleso.<ROOT_DOMAIN>/…   → /s/koleso/…        сайт автосервиса на поддомене
 //   avtoservis-ivanov.ru/…   → /s/~avtoservis-ivanov.ru/…   собственный домен клиента
@@ -20,7 +22,17 @@ export function proxy(req: NextRequest) {
   const host = (req.headers.get("host") || "").toLowerCase().replace(/:\d+$/, "");
   const { pathname } = req.nextUrl;
 
+  // Проверку для Caddy (ключ в адресе) и служебные адреса не переписываем на сайт клиента: Caddy спрашивает по http://app:3000
+  if (pathname === "/api/tls-check") return NextResponse.next(pass);
+
   if (!host || host === "localhost" || host === "127.0.0.1" || host === root || host === appHost.replace(/:\d+$/, "")) {
+    // Второй рубеж: без cookie входа в кабинет и админку не пускаем. Основная проверка — на каждой странице
+    if ((pathname.startsWith("/admin") || pathname.startsWith("/cabinet")) && !req.cookies.has(SESSION_COOKIE)) {
+      const login = req.nextUrl.clone();
+      login.pathname = "/login";
+      login.search = "";
+      return NextResponse.redirect(login);
+    }
     return NextResponse.next(pass);
   }
 

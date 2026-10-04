@@ -364,7 +364,7 @@ export function BookingWidget(p: Props) {
           </label>
           {p.captchaKey && <div ref={captchaRef} style={{ minHeight: 102, marginBottom: 12 }} />}
           {fieldErr.captcha && <p className="form-err">{fieldErr.captcha}</p>}
-          {p.demo && <p className="demo-note">Это демо-версия сайта: запись пробная, сервис её пока не получает.</p>}
+          {p.demo && <p className="demo-note">Это пример сайта: запись пробная, сервис её не получит. Имя и телефон не сохраняются.</p>}
           <button className="btn wide" type="submit" disabled={sending}>
             {sending ? "Записываем…" : "Записаться"}
           </button>

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { outreach } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
+import { operatorMissing } from "@/lib/readiness";
 import { publicSiteUrl } from "@/lib/site-url";
 import { deleteBusiness, extendDemo, setReceiptSent, setStatus } from "../../actions";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
@@ -21,6 +23,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 export default async function AdminBusiness({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
+  await requireAdmin();
   const id = (await params).id;
   const created = (await searchParams).created === "1";
   const b = await db.business.findUnique({
@@ -73,7 +76,12 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
         {b.users.length > 0 && (
           <p className="text-[14px] text-zinc-600">Владелец: {b.users.map((u) => `${u.name ? `${u.name}, ` : ""}${formatPhone(u.phone)}`).join("; ")}</p>
         )}
-        {(!b.operatorName || !b.operatorInn) && b.status === "demo" && (
+        {operatorMissing(b) && b.status !== "archived" && (
+          <p className="rounded-xl bg-red-50 px-3 py-2.5 text-[13.5px] font-medium text-red-800">
+            Онлайн-запись на сайте выключена: не заполнены «Оператор ПДн» и «ИНН оператора» в блоке «Данные сервиса». Клиенты видят «позвоните в сервис».
+          </p>
+        )}
+        {(!b.operatorName || !b.operatorInn) && (b.status === "demo" || b.status === "archived") && (
           <p className="rounded-xl bg-orange-50 px-3 py-2.5 text-[13.5px] text-orange-900">
             Чтобы начать пробный период, заполните «Оператор ПДн» и «ИНН оператора» в блоке «Данные сервиса»: они попадают в согласие клиента на сайте.
           </p>

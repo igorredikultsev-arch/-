@@ -90,7 +90,9 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
       {!cancelled && !closed && (
         <div className="keep">
           <b>Сохраните эту страницу в закладки.</b>{" "}
-          {canCancel ? (
+          {canCancel && biz.cancelHours === 0 ? (
+            <>Не получается приехать? Отмените запись здесь, чтобы время досталось другим. Вопросы по телефону {tel}.</>
+          ) : canCancel ? (
             <>Отменить онлайн можно до {deadline}. Позже только по телефону {tel}.</>
           ) : (
             <>Отменить онлайн уже нельзя. Если не успеваете, позвоните: {tel}.</>

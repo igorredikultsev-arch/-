@@ -144,6 +144,8 @@ export type SiteBookingInput = {
   nowMs?: number;
   /** Не больше стольких будущих записей на один номер (проверяется под той же блокировкой). */
   maxActivePerPhone?: number;
+  /** Демо: время занимается как обычно, но имя, телефон, машина и комментарий не сохраняются (сервис ещё не наш клиент). */
+  withoutPersonalData?: boolean;
 };
 
 /** Запись с сайта. Окно перепроверяется под блокировкой: если его успели занять — ошибка slot_taken. */
@@ -154,12 +156,13 @@ export async function createSiteBooking(input: SiteBookingInput) {
     const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
     const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId, active: true } });
     if (!biz || !service) throw new BookingError("not_found", "Сервис или услуга не найдены");
-    if (input.maxActivePerPhone) {
+    const pd = !input.withoutPersonalData;
+    if (pd && input.maxActivePerPhone) {
       const active = await tx.booking.count({
         where: { businessId: input.businessId, clientPhone: input.clientPhone, status: "active", startAt: { gt: new Date(nowMs) } },
       });
       if (active >= input.maxActivePerPhone) {
-        throw new BookingError("too_many", "На этот номер уже есть несколько записей. Чтобы записаться ещё, позвоните в сервис");
+        throw new BookingError("too_many", "На этот номер уже есть запись в этом сервисе. Чтобы записать ещё одну машину, позвоните в сервис");
       }
     }
     const slots = await getDaySlots(biz, input.date, service.durationMin, nowMs, tx);
@@ -176,14 +179,14 @@ export async function createSiteBooking(input: SiteBookingInput) {
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "site",
-        clientName: input.clientName,
-        clientPhone: input.clientPhone,
-        car: input.car,
-        comment: input.comment || null,
+        clientName: pd ? input.clientName : null,
+        clientPhone: pd ? input.clientPhone : null,
+        car: pd ? input.car : null,
+        comment: pd ? input.comment || null : null,
         cancelToken: newToken(),
-        consentVersion: CONSENT_VERSION,
-        consentAt: new Date(nowMs),
-        consentIp: input.consentIp ?? null,
+        consentVersion: pd ? CONSENT_VERSION : null,
+        consentAt: pd ? new Date(nowMs) : null,
+        consentIp: pd ? (input.consentIp ?? null) : null,
       },
     });
   }, TX_OPTIONS);

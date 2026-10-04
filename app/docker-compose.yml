@@ -3,10 +3,16 @@
 # Версия (коммит) — AVTOSLOT_TAG в .env, её прописывает update.sh после удачного обновления.
 # Если ghcr.io недоступен, deploy/update.sh --build соберёт образы на самом сервере (docker-compose.build.yml),
 # но это 10-15 минут и почти вся память — только на крайний случай.
+# Журналы контейнеров не больше 3 файлов по 10 МБ, иначе за месяцы они съедают диск
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
 services:
   db:
     image: postgres:16
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: avtoslot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
@@ -27,11 +33,13 @@ services:
       DATABASE_URL: postgresql://avtoslot:${POSTGRES_PASSWORD}@db:5432/avtoslot
     depends_on: { db: { condition: service_healthy } }
     profiles: ["tools"]
+    logging: *logging
 
   app:
     image: ${AVTOSLOT_IMAGE:-ghcr.io/igorredikultsev-arch/avtoslot}:app-${AVTOSLOT_TAG:-none}
     pull_policy: never
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
       DATABASE_URL: postgresql://avtoslot:${POSTGRES_PASSWORD}@db:5432/avtoslot
@@ -40,10 +48,12 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    logging: *logging
     ports: ["80:80", "443:443"]
     environment:
       ROOT_DOMAIN: ${ROOT_DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
+      CRON_SECRET: ${CRON_SECRET}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

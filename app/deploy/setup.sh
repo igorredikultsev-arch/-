@@ -82,12 +82,9 @@ docker compose up -d db
 ./deploy/update.sh
 unset AVTOSLOT_TAG # версию дальше берём из .env, её только что записал update.sh
 
-step "Расписание: резервные копии и очистка"
-chmod +x deploy/backup.sh
-( crontab -l 2>/dev/null | grep -v '# avtoslot$' || true
-  echo "15 3 * * * cd $DIR/app && ./deploy/backup.sh >> deploy/backup.log 2>&1 # avtoslot"
-  echo "30 3 * * * curl -s -X POST -H 'Authorization: Bearer $CRON_SECRET' https://$ROOT_DOMAIN/api/cron/cleanup >/dev/null # avtoslot"
-) | crontab -
+step "Расписание: резервные копии и очистка (ночью по Перми)"
+chmod +x deploy/schedule.sh
+./deploy/schedule.sh
 chmod +x deploy/autoupdate.sh
 ./deploy/autoupdate.sh install
 

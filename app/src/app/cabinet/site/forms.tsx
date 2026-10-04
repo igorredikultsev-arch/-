@@ -118,7 +118,7 @@ export function SettingsForm({ s }: { s: Settings }) {
             <option value={15}>15 минут</option><option value={30}>30 минут</option><option value={60}>1 час</option>
           </select>
         </Field>
-        <Field label="Отмена клиентом, ч" htmlFor="st-cancel" hint="Не позже чем за"><input id="st-cancel" name="cancelHours" type="number" min={0} max={168} defaultValue={s.cancelHours} className={inputCls} /></Field>
+        <Field label="Отмена клиентом, ч" htmlFor="st-cancel" hint="За сколько часов до визита, 0 — до самого визита"><input id="st-cancel" name="cancelHours" type="number" min={0} max={168} defaultValue={s.cancelHours} className={inputCls} /></Field>
         <Field label="Запись вперёд, дней" htmlFor="st-hor"><input id="st-hor" name="horizonDays" type="number" min={1} max={60} defaultValue={s.horizonDays} className={inputCls} /></Field>
         <Field label="Не раньше чем через, мин" htmlFor="st-lead" hint="От текущего момента"><input id="st-lead" name="minLeadMin" type="number" min={0} step={15} defaultValue={s.minLeadMin} className={inputCls} /></Field>
       </div>

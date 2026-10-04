@@ -204,7 +204,10 @@ export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Pro
   const d = p.data;
   const phone = normalizePhone(d.phone);
   if (!phone) return { error: "Телефон: 10 цифр после +7" };
-  const before = await db.business.findUniqueOrThrow({ where: { id }, select: { city: true } });
+  const before = await db.business.findUniqueOrThrow({ where: { id }, select: { city: true, status: true } });
+  if (["trial", "active", "suspended"].includes(before.status) && (!d.operatorName.trim() || !d.operatorInn)) {
+    return { error: "У подключённого сервиса нельзя стереть «Оператор ПДн» и «ИНН оператора»: без них сайт перестанет принимать записи" };
+  }
   try {
     await db.business.update({
       where: { id },
@@ -261,7 +264,8 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   if (!phone) return { error: "Телефон владельца: 10 цифр после +7" };
   const biz = await db.business.findUniqueOrThrow({ where: { id }, include: { users: true } });
   // Живой сайт собирает персональные данные: в согласии оператором должен значиться ИП или ООО с ИНН
-  if (biz.status === "demo" && (!biz.operatorName || !biz.operatorInn)) {
+  const fromDemo = biz.status === "demo" || biz.status === "archived";
+  if (!biz.operatorName || !biz.operatorInn) {
     return { error: "Сначала заполните «Оператор ПДн» и «ИНН оператора» в «Данных сервиса» ниже: они попадают в согласие клиента" };
   }
   const existing = await db.user.findUnique({ where: { phone } });
@@ -276,14 +280,15 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
     db.business.update({
       where: { id },
       data: {
-        status: biz.status === "demo" ? "trial" : biz.status,
+        status: fromDemo ? "trial" : biz.status,
         demoExpiresAt: null,
         trialEndsAt: biz.trialEndsAt ?? new Date(Date.now() + TRIAL_DAYS * 86400000),
         // Демо, созданные до исправления, могли получить адрес с дефисом на конце: поддомен с ним не откроется
         ...(fixedSlug ? { slug: fixedSlug } : {}),
       },
     }),
-    db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "trial" }, update: { status: "trial" } }),
+    // Новый пароль платящему клиенту не возвращает его в воронке на «Пробный период»
+    db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "trial" }, update: fromDemo ? { status: "trial" } : {} }),
     // Пробные записи из демо (владелец пробовал форму) не должны занимать время на живом сайте
     ...(biz.status === "demo" ? [db.booking.deleteMany({ where: { businessId: id } })] : []),
   ]);

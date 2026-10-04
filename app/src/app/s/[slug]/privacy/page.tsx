@@ -5,7 +5,8 @@ import { formatPhone } from "@/lib/phone";
 import { siteBase } from "@/lib/site-url";
 import { Doc } from "../doc";
 
-export const metadata: Metadata = { title: PRIVACY_TITLE };
+// Документы поисковикам не нужны, а у демо их нельзя показывать в поиске вовсе
+export const metadata: Metadata = { title: PRIVACY_TITLE, robots: { index: false, follow: false } };
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const key = decodeURIComponent((await params).slug);

@@ -1,17 +1,20 @@
 // Яндекс SmartCaptcha (раздел 6.3: российский сервис, данные не уходят за рубеж).
-// Без ключей капча выключена — так удобно в разработке. На боевом сервере ключи обязательны.
+// Капча включена, только когда заданы оба ключа. Без них (или с одним) капча выключена: в разработке так удобно,
+// а на боевом сервере сайт пускает записи реже (см. api/s/[slug]/bookings) и админка показывает предупреждение.
 
-export const captchaClientKey = () => process.env.SMARTCAPTCHA_CLIENT_KEY || "";
+export const captchaEnabled = () => !!(process.env.SMARTCAPTCHA_CLIENT_KEY && process.env.SMARTCAPTCHA_SERVER_KEY);
 
-export type CaptchaResult = "ok" | "fail" | "unavailable";
+export const captchaClientKey = () => (captchaEnabled() ? process.env.SMARTCAPTCHA_CLIENT_KEY! : "");
+
+export type CaptchaResult = "ok" | "fail" | "unavailable" | "off";
 
 /**
  * Проверка токена SmartCaptcha. «unavailable» — сервис Яндекса не ответил: запись не теряем,
- * но вызывающий код ужесточает лимиты. Без ключей капча выключена (только для разработки).
+ * но вызывающий код ужесточает лимиты. «off» — капча не настроена.
  */
 export async function verifyCaptcha(token: string | undefined, ip: string | undefined): Promise<CaptchaResult> {
-  const secret = process.env.SMARTCAPTCHA_SERVER_KEY;
-  if (!secret) return "ok";
+  if (!captchaEnabled()) return "off";
+  const secret = process.env.SMARTCAPTCHA_SERVER_KEY!;
   if (!token) return "fail";
   try {
     const body = new URLSearchParams({ secret, token, ...(ip ? { ip } : {}) });

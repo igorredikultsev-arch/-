@@ -37,7 +37,8 @@ main() {
   # Новый коммит берём со второго захода: за 5 минут GitHub успевает завести по нему проверку
   if [[ "$target" != "$(cat "$seen" 2>/dev/null)" ]]; then echo "$target" > "$seen"; return 0; fi
 
-  # Ждём проверку на GitHub (тесты и сборка). Нет проверок — не ждём.
+  # Ждём проверку на GitHub (тесты и сборка). Нет проверок или API не ответил — не ждём:
+  # образы публикуются только после зелёных тестов, без них update.sh вернёт «образов ещё нет»
   local checks
   if checks=$(curl -fsS -m 20 -H "Accept: application/vnd.github+json" "$REPO_API/commits/$target/check-runs" 2>/dev/null); then
     if grep -Eq '"status": *"(queued|in_progress|waiting|pending)"' <<<"$checks"; then return 0; fi

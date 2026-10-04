@@ -4,8 +4,9 @@ import "@/lib/zod-ru";
 import { Prisma } from "@prisma/client";
 import { BookingError, createSiteBooking } from "@/lib/booking";
 import { verifyCaptcha } from "@/lib/captcha";
-import { normalizePhone } from "@/lib/phone";
+import { formatPhone, normalizePhone } from "@/lib/phone";
 import { hit } from "@/lib/ratelimit";
+import { operatorMissing, strictWithoutCaptcha } from "@/lib/readiness";
 import { clientIp } from "@/lib/request";
 import { json, notFound, publicBusiness } from "@/lib/site-api";
 import { isDateString } from "@/lib/time";
@@ -23,11 +24,16 @@ const Body = z.object({
   website: z.string().optional(), // ловушка для ботов: люди это поле не видят
 });
 
-const MAX_ACTIVE_PER_PHONE = 3;
+// Одна будущая запись на номер в одном сервисе: с одного телефона нельзя занять всё расписание.
+// Вторую машину записывают по телефону или после первого визита
+const MAX_ACTIVE_PER_PHONE = 1;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const biz = await publicBusiness((await ctx.params).slug);
   if (!biz) return notFound();
+  if (operatorMissing(biz)) {
+    return json({ error: `Онлайн-запись временно недоступна. Позвоните в сервис: ${formatPhone(biz.phone)}` }, 503);
+  }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -52,8 +58,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   }
   const captcha = await verifyCaptcha(b.captcha, ip);
   if (captcha === "fail") return json({ error: "Подтвердите, что вы не робот" }, 400);
-  // Сервис капчи не ответил: запись не теряем, но с одного адреса пускаем реже
-  if (captcha === "unavailable" && ip && !(await hit(`booking:nocaptcha:${ip}`, 3, 3600))) {
+  // Сервис капчи не ответил или капча не настроена на сервере: запись не теряем, но с одного адреса пускаем реже
+  const noCaptcha = captcha === "unavailable" || (captcha === "off" && strictWithoutCaptcha());
+  if (noCaptcha && ip && !(await hit(`booking:nocaptcha:${ip}`, 3, 3600))) {
     return json({ error: "Не получилось проверить, что вы не робот. Попробуйте позже или позвоните в сервис" }, 429);
   }
 
@@ -69,6 +76,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       comment: b.comment,
       consentIp: ip,
       maxActivePerPhone: MAX_ACTIVE_PER_PHONE,
+      withoutPersonalData: biz.status === "demo",
     });
     return json({ token: booking.cancelToken }, 201);
   } catch (e) {

@@ -6,6 +6,7 @@ next-env.d.ts
 coverage
 .admin-created
 deploy/*.log
+deploy/backups/
 deploy/.deployed
 deploy/.failed
 deploy/.seen

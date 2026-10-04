@@ -220,6 +220,7 @@
 .doc p { margin: 0 0 10px; max-width: 65ch; }
 .doc .back { display: inline-block; margin-bottom: 18px; font-size: 14px; }
 .closed-note { padding: 40px 20px; text-align: center; color: var(--s-muted); }
+.closed-note a { white-space: nowrap; }
 
 /* =================  «БОКОВИНА»: отличия  ================= */
 .t-tire .h4 { font-size: 21px; font-weight: 700; letter-spacing: -.01em; }

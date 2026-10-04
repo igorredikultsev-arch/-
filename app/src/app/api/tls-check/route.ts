@@ -1,14 +1,23 @@
+import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+
+/** Ключ, который знает только Caddy на нашем сервере (deploy/Caddyfile передаёт его в адресе проверки). */
+function keyOk(key: string | null) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || secret === "change-me" || !key) return false;
+  const a = Buffer.from(key);
+  const b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 /**
  * Caddy спрашивает перед выпуском сертификата on-demand: можно ли выпустить для этого домена.
  * Разрешаем только основной домен, поддомены подключённых клиентов и их собственные домены.
+ * Без ключа не отвечаем, чтобы по этому адресу нельзя было перебирать, какие клиенты есть.
  */
 export async function GET(req: NextRequest) {
-  // Спрашивает только Caddy изнутри сети (http://app:3000). Запрос снаружи приходит через Caddy с X-Forwarded-For:
-  // ему не отвечаем, чтобы по этому адресу нельзя было перебирать, какие клиенты есть
-  if (req.headers.get("x-forwarded-for")) return new Response(null, { status: 404 });
+  if (!keyOk(req.nextUrl.searchParams.get("key"))) return new Response(null, { status: 404 });
   const domain = (req.nextUrl.searchParams.get("domain") || "").toLowerCase();
   const root = (process.env.ROOT_DOMAIN || "").toLowerCase();
   if (!domain || !root) return new Response(null, { status: 404 });

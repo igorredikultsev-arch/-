@@ -19,7 +19,7 @@ export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath }: { shown
 
   return (
     <div className="switch" role="region" aria-label="Выбор стиля сайта">
-      <p className="switch-note">Демо-версия. Посмотрите сайт в трёх стилях и выберите свой</p>
+      <p className="switch-note">Пример сайта от Автослота, не официальный сайт сервиса. Посмотрите три стиля и выберите свой</p>
       <div className="switch-row">
         <nav className="switch-tabs" aria-label="Стиль сайта">
           {THEMES.map((t) => (

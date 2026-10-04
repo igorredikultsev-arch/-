@@ -69,8 +69,24 @@ main() {
   fi
 
   export AVTOSLOT_TAG=$tag
+
+  # Копия базы перед миграциями: откат ниже возвращает прошлую версию сайта, а прошлую базу — только эта копия.
+  # Хранятся три последние, восстановление: deploy/restore.sh <файл>
+  docker compose up -d --wait db >/dev/null
+  mkdir -p deploy/backups
+  local pre
+  pre="deploy/backups/before-update-$(date +%Y%m%d-%H%M%S).sql.gz"
+  if ! { docker compose exec -T db pg_dump -U avtoslot avtoslot | gzip > "$pre"; } || ! gzip -t "$pre"; then
+    rm -f "$pre"
+    echo "Не получилось сделать копию базы перед обновлением, обновление отменено. Сайт работает на прошлой версии." >&2
+    return 1
+  fi
+  ls -1t deploy/backups/before-update-*.sql.gz | tail -n +4 | xargs -r rm -f
+
   docker compose run --rm -T migrate </dev/null
   docker compose up -d
+  # Caddyfile мог поменяться вместе с кодом: перечитать без остановки
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 || true
 
   # Новая версия должна ответить за минуту. Иначе возвращаем прошлую (её образ хранится на сервере)
   if ! site_ok; then
@@ -98,6 +114,8 @@ main() {
   docker rmi app-app app-migrate >/dev/null 2>&1 || true
   docker image prune -f >/dev/null
   (( build )) || docker builder prune -af >/dev/null 2>&1 || true
+  # Ночное расписание могло поменяться вместе с кодом
+  ./deploy/schedule.sh || echo "Не получилось обновить ночное расписание (deploy/schedule.sh)" >&2
   echo "Готово: версия ${tag:0:12}. Свободно на диске: $(df -h / | awk 'NR==2 {print $4}')"
 }
 

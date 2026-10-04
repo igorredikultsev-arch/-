@@ -84,7 +84,7 @@ model Business {
   slotStepMin  Int @default(30)
   minLeadMin   Int @default(120)
   horizonDays  Int @default(14)
-  cancelHours  Int @default(24)
+  cancelHours  Int @default(0) // за сколько часов до визита клиент ещё может отменить онлайн; 0 — до начала
 
   // Оператор персональных данных — сам автосервис (раздел 6.3)
   operatorName String?

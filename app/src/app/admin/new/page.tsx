@@ -1,6 +1,8 @@
+import { requireAdmin } from "@/lib/auth";
 import { DemoForm } from "./demo-form";
 
-export default function NewDemoPage() {
+export default async function NewDemoPage() {
+  await requireAdmin();
   return (
     <div className="grid gap-4">
       <div>

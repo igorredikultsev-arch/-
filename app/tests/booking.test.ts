@@ -98,8 +98,9 @@ describe("записи владельца и закрытое время", () =>
 });
 
 describe("отмена клиентом", () => {
-  it("можно не позже чем за 24 часа, после отмены окно снова свободно", async () => {
+  it("срок владельца (24 часа) соблюдается, после отмены окно снова свободно", async () => {
     const biz = await makeBusiness();
+    await db.business.update({ where: { id: biz.id }, data: { cancelHours: 24 } });
     const b = await createSiteBooking(siteInput(biz.id, biz.services[0].id, 1));
     const tooLate = b.startAt.getTime() - 23 * 3600000;
     await expect(cancelByClient(b.cancelToken, tooLate)).rejects.toMatchObject({ code: "too_late" });
@@ -107,6 +108,13 @@ describe("отмена клиентом", () => {
     await expect(cancelByClient(b.cancelToken, NOW)).rejects.toMatchObject({ code: "already_cancelled" });
     const again = await createSiteBooking(siteInput(biz.id, biz.services[0].id, 2));
     expect(again.id).not.toBe(b.id);
+  });
+
+  it("по умолчанию — до самого визита, после начала уже нельзя", async () => {
+    const biz = await makeBusiness();
+    const b = await createSiteBooking(siteInput(biz.id, biz.services[0].id, 1));
+    await expect(cancelByClient(b.cancelToken, b.startAt.getTime() + 60000)).rejects.toMatchObject({ code: "too_late" });
+    await cancelByClient(b.cancelToken, b.startAt.getTime() - 5 * 60000);
   });
 });
 

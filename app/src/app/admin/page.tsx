@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
@@ -6,6 +7,7 @@ const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
 const ended = (d: Date) => d.getTime() < Date.now();
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<{ lead?: string }> }) {
+  await requireAdmin();
   const lead = (await searchParams).lead;
   const [all, counts] = await Promise.all([
     db.business.findMany({

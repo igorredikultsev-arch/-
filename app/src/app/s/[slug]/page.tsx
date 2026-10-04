@@ -9,6 +9,7 @@ import { resolveDayWindow } from "@/lib/slots";
 import { hhmm, toLocal } from "@/lib/time";
 import { radiusBands, radiusList } from "@/lib/radius";
 import { isThemeKey, type ThemeKey } from "@/lib/themes";
+import { operatorMissing } from "@/lib/readiness";
 import { BookingWidget, type WidgetService } from "./booking-widget";
 import { DayLoad } from "./day-load";
 import { PostsPlan } from "./posts-plan";
@@ -95,7 +96,12 @@ export default async function SitePage({ params, searchParams }: Props) {
   const reviewsWord = reviews > 0 ? `${reviews} ${plural(reviews, "отзыв", "отзыва", "отзывов")} на картах` : null;
   const phone = formatPhone(biz.phone);
 
-  const widget = (
+  // Подключённый сервис без реквизитов оператора: согласие клиента было бы недействительным, запись только по телефону
+  const widget = operatorMissing(biz) ? (
+    <p className="closed-note">
+      Онлайн-запись временно недоступна. Позвоните в сервис: <a href={`tel:${biz.phone}`}>{phone}</a>
+    </p>
+  ) : (
     <BookingWidget
       services={services}
       apiBase={apiBase}
