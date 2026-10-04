@@ -2,14 +2,16 @@ import Link from "next/link";
 import { CaretLeft, CaretRight, Phone } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { loadDayForOwner, partOfDay, timeline } from "@/lib/cabinet";
+import { db } from "@/lib/db";
 import { addDays, formatDayLong, hhmm, isDateString, toLocal } from "@/lib/time";
 import { Card, PageHead, Tag } from "./ui";
 
 const STATUS_LABEL = { cancelled: "отменена", no_show: "не приехал", done: "выполнена" } as const;
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
-  const { business } = await requireOwner();
+  const { business, asAdmin } = await requireOwner();
   const tz = business.timezone;
+  const noPush = !asAdmin && business.status !== "demo" && (await db.pushSubscription.count({ where: { businessId: business.id } })) === 0;
   const today = toLocal(Date.now(), tz).date;
   const q = (await searchParams).date;
   const date = q && isDateString(q) ? q : today;
@@ -56,6 +58,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             <span className="text-[11.5px] text-zinc-500">выручка, примерно</span>
           </Card>
         </div>
+        {noPush && (
+          <Link href="/cabinet/more#push" className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-orange-50 px-3.5 py-3 text-[14px] font-semibold text-orange-900">
+            Включите уведомления, чтобы сразу узнавать о новых записях <CaretRight size={16} className="shrink-0" />
+          </Link>
+        )}
       </PageHead>
 
       {day.isWorkday ? (

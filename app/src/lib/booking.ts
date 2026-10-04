@@ -17,7 +17,7 @@ const TX_OPTIONS = { maxWait: 10000, timeout: 15000 };
 
 export class BookingError extends Error {
   constructor(
-    public code: "slot_taken" | "bad_slot" | "not_found" | "closed" | "too_late" | "already_cancelled" | "too_many",
+    public code: "slot_taken" | "bad_slot" | "not_found" | "closed" | "too_late" | "already_cancelled" | "too_many" | "no_shows",
     message: string,
   ) {
     super(message);
@@ -148,6 +148,16 @@ export type SiteBookingInput = {
   withoutPersonalData?: boolean;
 };
 
+/** Сколько неявок за год закрывают онлайн-запись с номера. */
+export const NO_SHOW_LIMIT = 2;
+
+/** Неявки клиента в этом сервисе за последний год. */
+export function noShowCount(tx: Prisma.TransactionClient | typeof db, businessId: string, phone: string, nowMs = Date.now()) {
+  return tx.booking.count({
+    where: { businessId, clientPhone: phone, status: "no_show", startAt: { gt: new Date(nowMs - 365 * 86400000) } },
+  });
+}
+
 /** Запись с сайта. Окно перепроверяется под блокировкой: если его успели занять — ошибка slot_taken. */
 export async function createSiteBooking(input: SiteBookingInput) {
   const nowMs = input.nowMs ?? Date.now();
@@ -164,6 +174,11 @@ export async function createSiteBooking(input: SiteBookingInput) {
       if (active >= input.maxActivePerPhone) {
         throw new BookingError("too_many", "На этот номер уже есть запись в этом сервисе. Чтобы записать ещё одну машину, позвоните в сервис");
       }
+    }
+    // Дважды за год не приехал — онлайн запись с этого номера закрыта, записаться можно по телефону.
+    // Владелец снимает запрет, поменяв отметку «Не приехал» у прошлой записи
+    if (pd && (await noShowCount(tx, input.businessId, input.clientPhone, nowMs)) >= NO_SHOW_LIMIT) {
+      throw new BookingError("no_shows", "Онлайн-запись с этого номера недоступна. Позвоните в сервис, вас запишут по телефону");
     }
     const slots = await getDaySlots(biz, input.date, service.durationMin, nowMs, tx);
     const slot = slots.find((s) => s.time === input.time);

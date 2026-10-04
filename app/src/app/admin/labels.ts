@@ -3,14 +3,14 @@ export const LEAD_LABEL = {
   demo_sent: "Демо отправлено",
   replied: "Ответил",
   interested: "Интересно",
-  trial: "Пробный период",
+  trial: "Подключён, ждёт оплату",
   paid: "Платит",
   refused: "Отказ",
 } as const;
 
 export const STATUS_LABEL = {
   demo: "Демо",
-  trial: "Пробный",
+  trial: "Пробный (старый)",
   active: "Активен",
   suspended: "Приостановлен",
   archived: "Архив",

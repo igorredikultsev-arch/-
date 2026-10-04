@@ -89,6 +89,12 @@ model Business {
   // Оператор персональных данных — сам автосервис (раздел 6.3)
   operatorName String?
   operatorInn  String?
+  // Уведомление сервиса в Роскомнадзор об обработке данных клиентов: когда подано и номер (отмечает администратор)
+  rknFiledAt   DateTime?
+  rknNumber    String?
+  // Принятие оферты владельцем в кабинете (галочка при первом входе): когда и какая редакция
+  offerAcceptedAt DateTime?
+  offerVersion    String?
 
   status         BusinessStatus @default(demo)
   demoExpiresAt  DateTime?
@@ -109,6 +115,7 @@ model Business {
   users        User[]
   lead         Lead?
   payments     Payment[]
+  pushSubs     PushSubscription[]
 }
 
 model Service {
@@ -215,6 +222,28 @@ model User {
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
   sessions     Session[]
+  pushSubs     PushSubscription[]
+}
+
+/// Подписка телефона или компьютера владельца на уведомления кабинета (Web Push). В уведомлении нет имени и телефона клиента
+model PushSubscription {
+  id         String   @id @default(cuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+}
+
+/// Служебные настройки, которые сервер создаёт сам (например, ключи для уведомлений)
+model AppSetting {
+  key   String @id
+  value String
 }
 
 model Session {

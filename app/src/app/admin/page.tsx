@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
+import { formatDate } from "@/lib/time";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
 const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
 const ended = (d: Date) => d.getTime() < Date.now();
+// Когда очистка приостановит сайт без оплаты (оферта, п. 4.1)
+const suspendOn = (d: Date) => formatDate(d.getTime() + UNPAID_GRACE_DAYS * 86400000, "Asia/Yekaterinburg");
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<{ lead?: string }> }) {
   await requireAdmin();
@@ -23,6 +27,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const reached = FUNNEL.map((s, i) => ({ s, count: FUNNEL.slice(i).reduce((sum, x) => sum + n(x), 0) }));
   const expiring = all.filter((b) => b.status === "trial" && b.trialEndsAt && b.trialEndsAt.getTime() - Date.now() < 3 * 86400000);
   const unpaid = all.filter((b) => b.status === "active" && b.paidUntil && b.paidUntil.getTime() < Date.now() + 3 * 86400000);
+  const noRkn = all.filter((b) => b.status === "active" && !b.rknFiledAt);
 
   return (
     <div className="grid gap-6">
@@ -44,17 +49,22 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         </p>
       </section>
 
-      {(expiring.length > 0 || unpaid.length > 0) && (
+      {(expiring.length > 0 || unpaid.length > 0 || noRkn.length > 0) && (
         <section className="grid gap-2 rounded-2xl bg-orange-50 p-4 text-[14px] text-orange-950">
           <b>Нужно внимание</b>
           {expiring.map((b) => (
             <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">
-              {b.name}: {ended(b.trialEndsAt!) ? "пробный период закончился, сайт ещё принимает записи. Запишите оплату или приостановите сайт" : "пробный период заканчивается"}
+              {b.name}: {ended(b.trialEndsAt!) ? `пробный период закончился, без оплаты сайт приостановится ${suspendOn(b.trialEndsAt!)}` : "пробный период заканчивается"}
             </Link>
           ))}
           {unpaid.map((b) => (
             <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">
-              {b.name}: {ended(b.paidUntil!) ? "оплаченный период закончился, сайт ещё принимает записи" : "скоро конец оплаченного периода"}
+              {b.name}: {ended(b.paidUntil!) ? `не оплачено, без оплаты сайт приостановится ${suspendOn(b.paidUntil!)}` : "скоро конец оплаченного периода"}
+            </Link>
+          ))}
+          {noRkn.map((b) => (
+            <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">
+              {b.name}: не отмечено уведомление в Роскомнадзор
             </Link>
           ))}
         </section>

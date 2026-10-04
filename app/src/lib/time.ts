@@ -101,6 +101,12 @@ export function formatDayShort(date: string): { weekday: string; day: number; mo
   return { weekday: WEEKDAY_SHORT[weekdayOf(date)], day: d, month: MONTHS_GEN[m - 1] };
 }
 
+/** «12 октября» по местному времени. */
+export function formatDate(ms: number, tz: string): string {
+  const { day, month } = formatDayShort(toLocal(ms, tz).date);
+  return `${day} ${month}`;
+}
+
 export function formatDateTime(ms: number, tz: string): string {
   const l = toLocal(ms, tz);
   return `${formatDayLong(l.date)}, ${hhmm(l.minutes)}`;

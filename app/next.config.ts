@@ -16,7 +16,11 @@ const config: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["@node-rs/argon2"],
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Обработчик уведомлений кабинета: браузер всегда проверяет свежую версию
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+    ];
   },
 };
 

@@ -9,6 +9,8 @@ import { bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelec
 import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
+import { OFFER_VERSION } from "@/lib/legal";
+import { notifyBusiness } from "@/lib/push";
 import { normalizePhone } from "@/lib/phone";
 import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
@@ -311,4 +313,59 @@ export async function changePassword(_prev: ActionResult, f: FormData): Promise<
   await endOtherSessions(user.id);
   await audit("password.change", { userId: user.id });
   return { ok: true, message: "Пароль изменён" };
+}
+
+/* ---------- оферта ---------- */
+
+/** Владелец принимает условия оферты галочкой при первом входе (оферта, п. 1.2). */
+export async function acceptOffer(_prev: ActionResult, f: FormData): Promise<ActionResult> {
+  const { user, business, asAdmin } = await requireOwner();
+  if (asAdmin) return { error: "Условия принимает сам владелец, при своём входе в кабинет" };
+  if (f.get("agree") !== "on") return { error: "Отметьте, что принимаете условия" };
+  await db.business.update({ where: { id: business.id }, data: { offerAcceptedAt: new Date(), offerVersion: OFFER_VERSION } });
+  await audit("offer.accept", { userId: user.id, businessId: business.id, details: { version: OFFER_VERSION } });
+  revalidatePath("/cabinet", "layout");
+  return { ok: true };
+}
+
+/* ---------- уведомления ---------- */
+
+const PushSub = z.object({
+  endpoint: z.string().max(1000).refine((u) => u.startsWith("https://")),
+  keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(8).max(100) }),
+});
+
+/** Телефон владельца подписался на уведомления кабинета. */
+export async function savePushSubscription(raw: unknown): Promise<ActionResult> {
+  const { user, business, asAdmin } = await requireOwner();
+  if (asAdmin) return { error: "Уведомления включает сам владелец на своём телефоне" };
+  const p = PushSub.safeParse(raw);
+  if (!p.success) return { error: "Не получилось включить уведомления. Обновите страницу и попробуйте ещё раз" };
+  const { endpoint, keys } = p.data;
+  await db.pushSubscription.upsert({
+    where: { endpoint },
+    create: { endpoint, p256dh: keys.p256dh, auth: keys.auth, userId: user.id, businessId: business.id },
+    update: { p256dh: keys.p256dh, auth: keys.auth, userId: user.id, businessId: business.id },
+  });
+  // Не больше 10 устройств на сервис: самые старые подписки уходят
+  const extra = await db.pushSubscription.findMany({ where: { businessId: business.id }, orderBy: { createdAt: "desc" }, skip: 10, select: { id: true } });
+  if (extra.length) await db.pushSubscription.deleteMany({ where: { id: { in: extra.map((x) => x.id) } } });
+  await audit("push.subscribe", { userId: user.id, businessId: business.id });
+  revalidatePath("/cabinet", "layout");
+  return { ok: true };
+}
+
+export async function removePushSubscription(endpoint: string): Promise<ActionResult> {
+  const { business } = await requireOwner();
+  await db.pushSubscription.deleteMany({ where: { endpoint, businessId: business.id } });
+  revalidatePath("/cabinet", "layout");
+  return { ok: true };
+}
+
+/** Проверочное уведомление на все телефоны владельца (и при подключении из админки). */
+export async function testPush(): Promise<ActionResult> {
+  const { business } = await requireOwner();
+  const r = await notifyBusiness(business.id, { title: "Уведомления работают", body: "Так будут приходить новые записи и отмены", url: "/cabinet", tag: "test" });
+  if (!r.sent) return { error: "Нет телефонов с включёнными уведомлениями" };
+  return { ok: true, message: r.sent === 1 ? "Отправлено. Уведомление придёт через несколько секунд" : `Отправлено на ${r.sent} устройства` };
 }

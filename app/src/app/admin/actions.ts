@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
 import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin, requireOwner, setAdminView } from "@/lib/auth";
+import { isDateString } from "@/lib/time";
 import { timezoneForCity } from "@/lib/timezone";
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
@@ -15,7 +16,6 @@ import { normalizePhone } from "@/lib/phone";
 import { readTable } from "@/lib/sheet";
 import { publicSiteUrl } from "@/lib/site-url";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
-import { TRIAL_DAYS } from "@/lib/pricing";
 import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
 
 export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
@@ -257,7 +257,11 @@ export async function saveLead(id: string, _prev: AdminResult, f: FormData): Pro
   return { ok: true, message: "Сохранено" };
 }
 
-/** Демо → пробный период: вход для владельца, индексация, срок 14 дней (раздел 2.3, п. 3). */
+/**
+ * Подключение: вход для владельца, сайт выходит из демо и открывается поисковикам.
+ * Пробного периода нет (решение 4 октября): сервис сразу «Активен», оплачено «до сегодня» — пока не записана оплата,
+ * через UNPAID_GRACE_DAYS дней сайт приостановится сам (оферта, п. 4.1). Повторный вызов — новый пароль владельцу.
+ */
 export async function startTrial(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
   const admin = await requireAdmin();
   const phone = normalizePhone(str(f, "ownerPhone"));
@@ -280,14 +284,14 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
     db.business.update({
       where: { id },
       data: {
-        status: fromDemo ? "trial" : biz.status,
+        status: fromDemo ? "active" : biz.status,
         demoExpiresAt: null,
-        trialEndsAt: biz.trialEndsAt ?? new Date(Date.now() + TRIAL_DAYS * 86400000),
+        ...(fromDemo && !biz.paidUntil ? { paidUntil: new Date() } : {}),
         // Демо, созданные до исправления, могли получить адрес с дефисом на конце: поддомен с ним не откроется
         ...(fixedSlug ? { slug: fixedSlug } : {}),
       },
     }),
-    // Новый пароль платящему клиенту не возвращает его в воронке на «Пробный период»
+    // Этап «Подключён, ждёт оплату»; новый пароль уже подключённому клиенту этап не трогает
     db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "trial" }, update: fromDemo ? { status: "trial" } : {} }),
     // Пробные записи из демо (владелец пробовал форму) не должны занимать время на живом сайте
     ...(biz.status === "demo" ? [db.booking.deleteMany({ where: { businessId: id } })] : []),
@@ -296,7 +300,13 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   if (existing) await endAllSessions(existing.id);
   await audit("admin.trial_start", { userId: admin.id, businessId: id });
   revalidatePath(`/admin/b/${id}`);
-  return { ok: true, message: "Вход создан. Пароль показан один раз: перешлите его владельцу", password };
+  return {
+    ok: true,
+    message: fromDemo
+      ? "Сервис подключён. Пароль показан один раз: перешлите его владельцу. Запишите оплату подключения в блоке «Оплаты», без неё через 7 дней сайт приостановится"
+      : "Новый пароль создан. Он показан один раз: перешлите его владельцу",
+    password,
+  };
 }
 
 export async function addPayment(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
@@ -335,6 +345,21 @@ export async function setStatus(id: string, status: "demo" | "trial" | "active" 
   await audit("admin.status", { userId: admin.id, businessId: id, details: { status } });
   revalidatePath(`/admin/b/${id}`);
   revalidatePath("/admin");
+}
+
+/** Отметка, что сервис подал уведомление в Роскомнадзор (дата и номер из ответа РКН, номер необязателен). */
+export async function saveRkn(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const filed = str(f, "rknFiledAt");
+  if (filed && !isDateString(filed)) return { error: "Дата подачи: выберите день" };
+  await db.business.update({
+    where: { id },
+    data: { rknFiledAt: filed ? new Date(`${filed}T12:00:00Z`) : null, rknNumber: str(f, "rknNumber").slice(0, 60) || null },
+  });
+  await audit("admin.rkn_save", { userId: admin.id, businessId: id });
+  revalidatePath(`/admin/b/${id}`);
+  revalidatePath("/admin");
+  return { ok: true, message: "Сохранено" };
 }
 
 /** Открыть кабинет сервиса от имени администратора: внести услуги, часы и посты при подключении. */

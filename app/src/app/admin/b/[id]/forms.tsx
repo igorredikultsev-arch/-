@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { addPayment, saveInfo, saveLead, startTrial } from "../../actions";
+import { addPayment, saveInfo, saveLead, saveRkn, startTrial } from "../../actions";
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
 import { keepValues } from "@/lib/keep-form";
@@ -94,7 +94,7 @@ export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; log
           text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё». Первые 2 недели бесплатно.`}
         />
       )}
-      <button disabled={pending} className={btn}>{hasOwner ? "Выдать новый пароль" : "Создать вход и начать пробный период"}</button>
+      <button disabled={pending} className={btn}>{hasOwner ? "Выдать новый пароль" : "Создать вход и подключить"}</button>
     </form>
   );
 }
@@ -114,6 +114,20 @@ export function PaymentForm({ id }: { id: string }) {
       <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" name="receiptSent" className="size-4 accent-accent" /> Чек в «Мой налог» уже отправлен</label>
       <Result state={state} />
       <button disabled={pending} className={btn}>Записать оплату</button>
+    </form>
+  );
+}
+
+export function RknForm({ id, filedAt, number }: { id: string; filedAt: string; number: string }) {
+  const [state, action, pending] = useActionState(saveRkn.bind(null, id), null);
+  return (
+    <form onSubmit={keepValues(action)} className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <F label="Сервис подал уведомление" id="r-date" hint="Пусто — ещё не подал"><input id="r-date" name="rknFiledAt" type="date" defaultValue={filedAt} className={inp} /></F>
+        <F label="Номер в реестре РКН" id="r-num" hint="Если уже пришёл"><input id="r-num" name="rknNumber" defaultValue={number} className={inp} /></F>
+      </div>
+      <Result state={state} />
+      <button disabled={pending} className={btn}>Сохранить</button>
     </form>
   );
 }

@@ -5,11 +5,13 @@ import { db } from "@/lib/db";
 import { outreach } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
 import { operatorMissing } from "@/lib/readiness";
+import { processor } from "@/lib/legal";
+import { rknDraft } from "@/lib/rkn";
 import { publicSiteUrl } from "@/lib/site-url";
 import { deleteBusiness, extendDemo, openCabinet, setReceiptSent, setStatus } from "../../actions";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
 import { btn2, CopyBox } from "../../ui";
-import { InfoForm, LeadForm, PaymentForm, TrialForm } from "./forms";
+import { InfoForm, LeadForm, PaymentForm, RknForm, TrialForm } from "./forms";
 
 const date = (d: Date | null) => (d ? d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) : "");
 
@@ -51,6 +53,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           {b.status === "demo" && b.demoExpiresAt && <span>Демо до {date(b.demoExpiresAt)}</span>}
           {b.status === "trial" && b.trialEndsAt && <span>Пробный до {date(b.trialEndsAt)}</span>}
           {b.paidUntil && <span>Оплачено до {date(b.paidUntil)}</span>}
+          {b.status !== "demo" && <span>{b.offerAcceptedAt ? `Оферта принята ${date(b.offerAcceptedAt)}` : "Оферту владелец ещё не принял"}</span>}
           <span>
             Стиль: {THEMES.find((t) => t.value === b.theme)?.label}
             {b.themeChosenAt ? <b className="text-emerald-700">, владелец выбрал сам {date(b.themeChosenAt)}</b> : ""}
@@ -83,7 +86,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
         )}
         {(!b.operatorName || !b.operatorInn) && (b.status === "demo" || b.status === "archived") && (
           <p className="rounded-xl bg-orange-50 px-3 py-2.5 text-[13.5px] text-orange-900">
-            Чтобы начать пробный период, заполните «Оператор ПДн» и «ИНН оператора» в блоке «Данные сервиса»: они попадают в согласие клиента на сайте.
+            Чтобы подключить сервис, заполните «Оператор ПДн» и «ИНН оператора» в блоке «Данные сервиса»: они попадают в согласие клиента на сайте.
           </p>
         )}
         <TrialForm id={b.id} loginUrl={loginUrl} siteUrl={siteUrl} hasOwner={b.users.length > 0} />
@@ -92,6 +95,18 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           <p className="text-[13px] text-zinc-500">Внести услуги, цены, часы и посты за владельца, например при подключении. Пароль владельца не нужен.</p>
         </form>
       </Card>
+
+      {b.status !== "demo" && (
+        <Card title="Уведомление в Роскомнадзор">
+          <p className="text-[14px] leading-snug text-zinc-600">
+            Сервис — оператор данных своих клиентов и сам подаёт уведомление, до начала онлайн-записи (штраф для ИП и ООО за неподачу — 100–300 тыс. ₽).
+            Перешлите владельцу черновик: в нём готовые ответы на поля формы. Это черновик, его стоит показать юристу.
+          </p>
+          {!b.rknFiledAt && <p className="rounded-xl bg-orange-50 px-3 py-2.5 text-[13.5px] text-orange-900">Подача не отмечена.</p>}
+          <CopyBox label="Черновик для владельца" rows={10} text={rknDraft(b, processor(), date(b.payments.reduce<Date>((min, p) => (p.createdAt < min ? p.createdAt : min), new Date())))} />
+          <RknForm key={b.rknFiledAt?.getTime() ?? 0} id={b.id} filedAt={b.rknFiledAt ? b.rknFiledAt.toISOString().slice(0, 10) : ""} number={b.rknNumber ?? ""} />
+        </Card>
+      )}
 
       <Card title="Оплаты">
         {b.payments.length > 0 && (

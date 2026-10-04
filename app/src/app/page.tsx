@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { brandContacts } from "@/lib/brand";
 import { processor } from "@/lib/legal";
-import { MONTHLY_PRICE, SETUP_PRICE, TRIAL_DAYS, rub } from "@/lib/pricing";
+import { GUARANTEE_DAYS, MONTHLY_PRICE, SETUP_PRICE, rub } from "@/lib/pricing";
 import "./landing.css";
 
 // Контакты и реквизиты берутся из .env на сервере, поэтому страница собирается при каждом запросе
@@ -144,15 +144,15 @@ export default function Home() {
               <div className="grid gap-8 sm:grid-cols-2">
                 <div className="grid gap-1">
                   <p className="price-num">{rub(SETUP_PRICE)}</p>
-                  <p className="text-zinc-300">подключение, один раз</p>
+                  <p className="text-zinc-300">подключение, в него входит первый месяц</p>
                 </div>
                 <div className="grid gap-1">
                   <p className="price-num">{rub(MONTHLY_PRICE)}</p>
-                  <p className="text-zinc-300">в месяц: сайт, кабинет и поддержка</p>
+                  <p className="text-zinc-300">в месяц со второго месяца: сайт, кабинет и поддержка</p>
                 </div>
               </div>
               <p className="max-w-[36rem] text-[18px] leading-relaxed text-white">
-                Первые {TRIAL_DAYS} дней бесплатно. Платите, только если записи пошли и вам удобно. Одна переобувка окупает месяц.
+                Если за {GUARANTEE_DAYS} дней не понравится, верну деньги полностью. Одна переобувка окупает месяц.
               </p>
               {contactHref && (
                 <a href={contactHref} className="justify-self-start rounded-2xl bg-accent px-6 py-4 text-[16px] font-semibold text-white hover:brightness-105">

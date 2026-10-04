@@ -107,8 +107,6 @@
 .fact { border-radius: var(--r); background: var(--s-card); padding: 14px 16px; display: grid; gap: 2px; }
 .fact b { font: 700 20px/1.15 var(--s-head); }
 .fact span { font-size: 13.5px; color: var(--s-muted); }
-.photo { border-radius: var(--r); border: 1.5px dashed var(--s-line); display: grid; place-content: center; justify-items: center; gap: 6px; text-align: center; padding: 26px 16px; color: var(--s-muted); font-size: 13.5px; }
-.photo .ic { font-size: 24px; }
 
 .reviews { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; }
 .score b { display: block; font: 800 52px/1 var(--s-head); letter-spacing: -.03em; }
@@ -413,7 +411,6 @@
   .day { width: auto; }
   .svc-list { grid-template-columns: 1fr; }
   .about { grid-template-columns: 1fr 1fr; }
-  .about .photo { min-height: 150px; }
   .two { max-width: 440px; }
   .foot { padding: 24px var(--gutter) 40px; }
   .switch { padding: 10px var(--gutter); grid-template-columns: 1fr auto; align-items: center; }

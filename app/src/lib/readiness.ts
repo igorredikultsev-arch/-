@@ -19,6 +19,7 @@ export function configProblems(env: Record<string, string | undefined> = process
     out.push("Не вписаны ваши ФИО или ИНН (PROCESSOR_NAME, PROCESSOR_INN): в оферте и согласиях будет «не указан»");
   }
   if (!env.PROCESSOR_EMAIL?.trim()) out.push("Не вписана ваша почта для документов (PROCESSOR_EMAIL)");
+  if (!env.DB_LOCATION?.trim()) out.push("Не указано, где стоит сервер (DB_LOCATION, например «Россия, г. Москва, Timeweb Cloud»): попадает в черновики уведомлений клиентов в Роскомнадзор");
   if (!env.CRON_SECRET || env.CRON_SECRET === "change-me") {
     out.push("Не задан CRON_SECRET: не работают ночная очистка и сертификаты для адресов клиентов");
   }

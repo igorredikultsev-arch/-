@@ -1,10 +1,11 @@
-import type { NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 import { z } from "zod";
 import "@/lib/zod-ru";
 import { Prisma } from "@prisma/client";
 import { BookingError, createSiteBooking } from "@/lib/booking";
 import { verifyCaptcha } from "@/lib/captcha";
 import { formatPhone, normalizePhone } from "@/lib/phone";
+import { newBookingMessage, notifyBusiness } from "@/lib/push";
 import { hit } from "@/lib/ratelimit";
 import { operatorMissing, strictWithoutCaptcha } from "@/lib/readiness";
 import { clientIp } from "@/lib/request";
@@ -78,9 +79,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       maxActivePerPhone: MAX_ACTIVE_PER_PHONE,
       withoutPersonalData: biz.status === "demo",
     });
+    // Владельцу — уведомление на телефон (без имени и телефона клиента), уже после ответа клиенту
+    if (biz.status !== "demo") after(() => notifyBusiness(biz.id, newBookingMessage(booking, biz.timezone)).then(() => {}));
     return json({ token: booking.cancelToken }, 201);
   } catch (e) {
-    if (e instanceof BookingError) return json({ error: e.message, code: e.code }, e.code === "slot_taken" || e.code === "too_many" ? 409 : 400);
+    if (e instanceof BookingError) return json({ error: e.message, code: e.code }, e.code === "slot_taken" || e.code === "too_many" || e.code === "no_shows" ? 409 : 400);
     // Наплыв записей: очередь к базе не дождалась. Двойной записи не будет, просим повторить
     if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2028" || e.code === "P2034")) {
       return json({ error: "Сейчас много записей одновременно. Нажмите «Записаться» ещё раз" }, 503);

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Camera, NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
+import { NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
 import { getSiteBusiness, readFacts, type SiteBusiness } from "@/lib/business";
 import { captchaClientKey } from "@/lib/captcha";
 import { formatPhone } from "@/lib/phone";
@@ -146,14 +146,6 @@ export default async function SitePage({ params, searchParams }: Props) {
                 <span>{f.label}</span>
               </div>
             ))}
-          </div>
-        )}
-        {demo && (
-          <div className="photo">
-            <span className="ic">
-              <Camera />
-            </span>
-            Фото мастерской появится после подключения
           </div>
         )}
       </div>
