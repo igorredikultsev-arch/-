@@ -9,6 +9,8 @@ import { newToken, sha256 } from "./tokens";
 
 const COOKIE = "as_session";
 const SESSION_DAYS = 30;
+// Какой кабинет открыл администратор (кнопка «Открыть кабинет владельца»). Действует только вместе со входом администратора
+const VIEW_COOKIE = "as_view";
 
 export const hashPassword = (p: string) => hash(p);
 export const verifyPassword = (h: string, p: string) => verify(h, p).catch(() => false);
@@ -62,16 +64,34 @@ export const getSessionUser = cache(async () => {
   return s.user;
 });
 
-/** Владелец с его сервисом. Без входа — на страницу входа. */
+/**
+ * Владелец с его сервисом. Без входа — на страницу входа.
+ * Администратор попадает в кабинет сервиса, который открыл из админки (asAdmin: true), иначе — в админку.
+ */
 export const requireOwner = cache(async () => {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (user.role === "admin" && !user.businessId) redirect("/admin");
+  if (user.role === "admin") {
+    const viewId = (await cookies()).get(VIEW_COOKIE)?.value;
+    const viewed = viewId ? await db.business.findUnique({ where: { id: viewId } }) : null;
+    if (viewed) return { user, business: viewed, asAdmin: true };
+    if (!user.businessId) redirect("/admin");
+  }
   if (!user.businessId) redirect("/login");
   const business = await db.business.findUnique({ where: { id: user.businessId } });
   if (!business) redirect("/login");
-  return { user, business };
+  return { user, business, asAdmin: false };
 });
+
+/** Администратор открывает кабинет сервиса (или закрывает, null). Проверку прав делает вызывающий код. */
+export async function setAdminView(businessId: string | null) {
+  const store = await cookies();
+  if (!businessId) {
+    store.delete(VIEW_COOKIE);
+    return;
+  }
+  store.set(VIEW_COOKIE, businessId, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 8 * 3600 });
+}
 
 export const requireAdmin = cache(async () => {
   const user = await getSessionUser();

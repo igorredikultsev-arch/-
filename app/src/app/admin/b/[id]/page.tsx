@@ -6,7 +6,7 @@ import { outreach } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
 import { operatorMissing } from "@/lib/readiness";
 import { publicSiteUrl } from "@/lib/site-url";
-import { deleteBusiness, extendDemo, setReceiptSent, setStatus } from "../../actions";
+import { deleteBusiness, extendDemo, openCabinet, setReceiptSent, setStatus } from "../../actions";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
 import { btn2, CopyBox } from "../../ui";
 import { InfoForm, LeadForm, PaymentForm, TrialForm } from "./forms";
@@ -87,6 +87,10 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           </p>
         )}
         <TrialForm id={b.id} loginUrl={loginUrl} siteUrl={siteUrl} hasOwner={b.users.length > 0} />
+        <form action={openCabinet.bind(null, b.id)} className="grid gap-1.5 border-t border-zinc-100 pt-3">
+          <button className={`${btn2} justify-self-start`}>Открыть кабинет владельца</button>
+          <p className="text-[13px] text-zinc-500">Внести услуги, цены, часы и посты за владельца, например при подключении. Пароль владельца не нужен.</p>
+        </form>
       </Card>
 
       <Card title="Оплаты">

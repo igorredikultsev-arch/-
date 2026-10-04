@@ -300,7 +300,8 @@ export async function saveSettings(_prev: ActionResult, f: FormData): Promise<Ac
 /* ---------- пароль ---------- */
 
 export async function changePassword(_prev: ActionResult, f: FormData): Promise<ActionResult> {
-  const { user } = await requireOwner();
+  const { user, asAdmin } = await requireOwner();
+  if (asAdmin) return { error: "Это кабинет клиента: новый пароль владельцу выдаётся в админке" };
   const current = String(f.get("current") ?? "");
   const next = String(f.get("next") ?? "");
   if (next.length < 8) return { error: "Новый пароль: не меньше 8 символов" };

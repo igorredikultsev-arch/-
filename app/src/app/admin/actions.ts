@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
-import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin } from "@/lib/auth";
+import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin, requireOwner, setAdminView } from "@/lib/auth";
 import { timezoneForCity } from "@/lib/timezone";
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
@@ -335,6 +335,22 @@ export async function setStatus(id: string, status: "demo" | "trial" | "active" 
   await audit("admin.status", { userId: admin.id, businessId: id, details: { status } });
   revalidatePath(`/admin/b/${id}`);
   revalidatePath("/admin");
+}
+
+/** Открыть кабинет сервиса от имени администратора: внести услуги, часы и посты при подключении. */
+export async function openCabinet(id: string) {
+  const admin = await requireAdmin();
+  await db.business.findUniqueOrThrow({ where: { id }, select: { id: true } });
+  await setAdminView(id);
+  await audit("admin.open_cabinet", { userId: admin.id, businessId: id });
+  redirect("/cabinet");
+}
+
+export async function closeCabinet() {
+  const { asAdmin, business } = await requireOwner();
+  if (!asAdmin) redirect("/cabinet");
+  await setAdminView(null);
+  redirect(`/admin/b/${business.id}`);
 }
 
 export async function extendDemo(id: string) {

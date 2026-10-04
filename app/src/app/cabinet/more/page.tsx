@@ -7,7 +7,7 @@ import { Card, PageHead, Section } from "../ui";
 import { PasswordForm } from "./password-form";
 
 export default async function MorePage() {
-  const { user, business } = await requireOwner();
+  const { user, business, asAdmin } = await requireOwner();
   return (
     <>
       <PageHead title="Ещё" kicker={business.name} />
@@ -26,17 +26,22 @@ export default async function MorePage() {
           <p className="text-zinc-500">Кабинет откроется как приложение, без адресной строки.</p>
         </Card>
       </Section>
-      <Section title="Пароль">
-        <PasswordForm />
-      </Section>
-      <Section title="Аккаунт">
-        <Card className="grid gap-3 p-4 text-[14px]">
-          <span className="text-zinc-600">Вы вошли как {formatPhone(user.phone)}</span>
-          <form action={logoutAction}>
-            <button className="inline-flex items-center gap-2 font-semibold text-red-700"><SignOut size={18} /> Выйти</button>
-          </form>
-        </Card>
-      </Section>
+      {/* Администратор в кабинете клиента не меняет пароль и не выходит отсюда: для этого админка */}
+      {!asAdmin && (
+        <>
+          <Section title="Пароль">
+            <PasswordForm />
+          </Section>
+          <Section title="Аккаунт">
+            <Card className="grid gap-3 p-4 text-[14px]">
+              <span className="text-zinc-600">Вы вошли как {formatPhone(user.phone)}</span>
+              <form action={logoutAction}>
+                <button className="inline-flex items-center gap-2 font-semibold text-red-700"><SignOut size={18} /> Выйти</button>
+              </form>
+            </Card>
+          </Section>
+        </>
+      )}
     </>
   );
 }
