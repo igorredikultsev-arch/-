@@ -397,8 +397,8 @@ export function BookingWidget(p: Props) {
           <label className="consent" htmlFor="bk-consent">
             <input id="bk-consent" type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); clearErr("consent"); }} />
             <span>
-              Даю <a href={p.consentHref} target="_blank" rel="noopener">согласие на обработку персональных данных</a> по{" "}
-              <a href={p.privacyHref} target="_blank" rel="noopener">политике</a>
+              Даю <a href={p.consentHref} target="_blank" rel="noopener noreferrer">согласие на обработку персональных данных</a> по{" "}
+              <a href={p.privacyHref} target="_blank" rel="noopener noreferrer">политике</a>
               {fieldErr.consent && (
                 <>
                   <br />

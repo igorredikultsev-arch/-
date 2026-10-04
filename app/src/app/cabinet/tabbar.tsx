@@ -78,7 +78,7 @@ export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
           );
         })}
       </nav>
-      <a href={siteUrl} target="_blank" rel="noopener" className="mt-auto flex min-h-11 items-center gap-3 rounded-xl px-3 text-[14.5px] text-zinc-600 hover:bg-zinc-50 hover:text-ink">
+      <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="mt-auto flex min-h-11 items-center gap-3 rounded-xl px-3 text-[14.5px] text-zinc-600 hover:bg-zinc-50 hover:text-ink">
         <ArrowSquareOut size={20} /> Открыть мой сайт
       </a>
     </aside>

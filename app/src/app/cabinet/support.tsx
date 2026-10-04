@@ -10,7 +10,7 @@ export function SupportLink({ children = "Написать нам" }: { children
   const href = supportHref();
   if (!href) return null;
   return (
-    <a href={href} target="_blank" rel="noopener" className="font-semibold underline underline-offset-2">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">
       {children}
     </a>
   );

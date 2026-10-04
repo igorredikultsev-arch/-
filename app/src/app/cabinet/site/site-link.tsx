@@ -33,7 +33,7 @@ export function SiteLink({ url }: { url: string }) {
         >
           {done ? <Check size={18} /> : <Copy size={18} />} {done ? "Скопировано" : "Скопировать"}
         </button>
-        <a href={url} target="_blank" rel="noopener" className={btnSecondary}>
+        <a href={url} target="_blank" rel="noopener noreferrer" className={btnSecondary}>
           <ArrowSquareOut size={18} /> Открыть
         </a>
       </div>

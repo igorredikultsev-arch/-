@@ -96,7 +96,7 @@ export function ImportForm() {
                 </div>
                 {r.url && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <a href={r.url} target="_blank" rel="noopener" className="mr-auto break-all text-[14px] font-semibold text-accent">
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="mr-auto break-all text-[14px] font-semibold text-accent">
                       {r.url.replace(/^https?:\/\//, "")}
                     </a>
                     {r.message && <Copy text={r.message} />}

@@ -107,7 +107,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           <span className={`rounded-md px-2 py-0.5 text-[12px] font-semibold ${STATUS_CLS[b.status]}`}>{STATUS_LABEL[b.status]}</span>
           {b.lead && <span className="text-[13px] text-zinc-500">{LEAD_LABEL[b.lead.status]}</span>}
         </div>
-        <a href={siteUrl} target="_blank" rel="noopener" className="justify-self-start text-[14.5px] font-semibold text-accent hover:underline">{siteUrl.replace(/^https?:\/\//, "")}</a>
+        <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="justify-self-start text-[14.5px] font-semibold text-accent hover:underline">{siteUrl.replace(/^https?:\/\//, "")}</a>
       </div>
 
       {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте его, проверьте и отправьте владельцу.</p>}
