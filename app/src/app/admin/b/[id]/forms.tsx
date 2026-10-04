@@ -91,7 +91,7 @@ export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; log
         <CopyBox
           label="Сообщение владельцу"
           rows={6}
-          text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё». Первые 2 недели бесплатно.`}
+          text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё». Если за 2 недели не понравится — верну деньги.`}
         />
       )}
       <button disabled={pending} className={btn}>{hasOwner ? "Выдать новый пароль" : "Создать вход и подключить"}</button>
