@@ -37,7 +37,7 @@ export default async function LinkPage() {
         </section>
         <Group>
           <details className="group px-4 py-4">
-            <summary className="cursor-pointer list-none text-[16px] font-semibold marker:hidden">Добавить в Яндекс Карты</summary>
+            <summary className="flex min-h-11 cursor-pointer list-none items-center text-[16px] font-semibold marker:hidden">Добавить в Яндекс Карты</summary>
             {steps([
               "Откройте Яндекс Бизнес (business.yandex.ru) под аккаунтом, к которому привязана карточка сервиса.",
               "Выберите свою организацию и откройте данные о ней: адрес, телефон, сайт.",
@@ -46,7 +46,7 @@ export default async function LinkPage() {
             ])}
           </details>
           <details className="group px-4 py-4">
-            <summary className="cursor-pointer list-none text-[16px] font-semibold">Добавить в 2ГИС</summary>
+            <summary className="flex min-h-11 cursor-pointer list-none items-center text-[16px] font-semibold">Добавить в 2ГИС</summary>
             {steps([
               "Зайдите в личный кабинет 2ГИС для бизнеса, где управляете карточкой сервиса.",
               "В контактах организации добавьте сайт: вставьте ссылку и сохраните.",

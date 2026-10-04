@@ -208,7 +208,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           {tab === "info" && (
             <Card title="Данные сервиса">
               <InfoForm
-                key={b.updatedAt.getTime()}
+                key={b.id} // не updatedAt: иначе после сохранения форма пересоздаётся и «Сохранено» пропадает, не успев показаться
                 id={b.id}
                 info={{
                   name: b.name, city: b.city, address: b.address, phone: formatPhone(b.phone), yandexMapsUrl: b.yandexMapsUrl ?? "", twoGisUrl: b.twoGisUrl ?? "",

@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSiteBusiness, decodeKey } from "@/lib/business";
 import { PRIVACY_TITLE, privacyText, processor } from "@/lib/legal";
@@ -10,7 +11,9 @@ export const metadata: Metadata = { title: PRIVACY_TITLE, robots: { index: false
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const key = decodeKey((await params).slug);
-  const biz = (await getSiteBusiness(key))!;
+  const biz = await getSiteBusiness(key);
+  // Макет тоже отвечает «не найдено», но страница рисуется параллельно с ним и не должна падать
+  if (!biz) notFound();
   const op = {
     name: biz.operatorName || biz.name,
     inn: biz.operatorInn,

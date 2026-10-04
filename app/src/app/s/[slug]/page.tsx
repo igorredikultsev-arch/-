@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
 import { getSiteBusiness, isPublic, readFacts, type SiteBusiness, decodeKey } from "@/lib/business";
@@ -51,7 +52,9 @@ const plural = (n: number, one: string, few: string, many: string) =>
 
 export default async function SitePage({ params, searchParams }: Props) {
   const key = decodeKey((await params).slug);
-  const biz = (await getSiteBusiness(key))!;
+  const biz = await getSiteBusiness(key);
+  // Макет тоже отвечает «не найдено», но страница рисуется параллельно с ним и не должна падать
+  if (!biz) notFound();
   if (!isPublic(biz.status)) return <p className="closed-note">Сайт временно недоступен. Позвоните в сервис: {formatPhone(biz.phone)}</p>;
   const base = await siteBase(key);
   const apiBase = `/api/s/${encodeURIComponent(key)}`;

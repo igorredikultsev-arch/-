@@ -139,7 +139,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .contacts dd { margin: 0; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .foot { margin-top: 44px; padding: 20px 18px 34px; font-size: 12px; line-height: 1.7; color: var(--s-muted); border-top: 1px solid var(--s-line); }
-.foot a { color: inherit; display: inline-block; padding: 6px 0; }
+.foot a { color: inherit; display: inline-block; padding: 9px 0; }
 
 /* ---------- форма записи ---------- */
 .book { padding: 22px 16px 20px; background: var(--s-card); border-radius: var(--r); scroll-margin-top: 16px; }
@@ -232,8 +232,9 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .doc { padding: 26px 20px 40px; line-height: 1.6; font-size: 15px; }
 .doc h1 { font: 700 24px/1.2 var(--s-head); margin: 0 0 18px; text-wrap: balance; }
 .doc h2 { font-size: 16px; margin: 22px 0 6px; }
-.doc p { margin: 0 0 10px; max-width: 65ch; }
-.doc .back { display: inline-block; margin-bottom: 18px; font-size: 14px; }
+/* Длинные адреса (ссылка на условия капчи) переносятся, а не растягивают страницу вбок */
+.doc p { margin: 0 0 10px; max-width: 65ch; overflow-wrap: anywhere; }
+.doc .back { display: inline-flex; align-items: center; min-height: 40px; margin-bottom: 10px; font-size: 14px; }
 .closed-note { padding: 40px 20px; text-align: center; color: var(--s-muted); }
 .closed-note a { white-space: nowrap; }
 

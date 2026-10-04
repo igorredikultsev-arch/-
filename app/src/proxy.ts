@@ -10,6 +10,12 @@ const SESSION_COOKIE = "as_session"; // то же имя, что в lib/auth.ts
 const RESERVED = new Set(["www", "app", "admin", "api", "cabinet", "mail"]);
 
 export function proxy(req: NextRequest) {
+  // Битый адрес («%» без кода): сразу «не найдено», иначе Next отвечает ошибкой сервера
+  try {
+    decodeURIComponent(req.nextUrl.pathname);
+  } catch {
+    return new NextResponse("Страница не найдена", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  }
   // Стиль для предпросмотра демо (?theme=plan) передаём каркасу сайта заголовком; присланный снаружи заголовок не доверяем
   const headers = new Headers(req.headers);
   headers.delete(THEME_HEADER);

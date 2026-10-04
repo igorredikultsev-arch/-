@@ -52,7 +52,7 @@ export default async function MorePage() {
         )}
 
         <Group>
-          {support && <MenuRow href={support} icon={<ChatCircleText size={22} />} title="Вопросы и помощь" value="Ответим, поможем настроить или поменять сайт" />}
+          {support && <MenuRow href={support} icon={<ChatCircleText size={22} />} title="Вопросы и помощь" value="Поможем с сайтом и кабинетом" />}
           <MenuRow href="/offer" icon={<FileText size={22} />} title="Договор-оферта" value="Условия работы и оплаты" />
         </Group>
 

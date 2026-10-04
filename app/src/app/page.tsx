@@ -204,10 +204,10 @@ export default function Home() {
         <p>
           Автослот. {pr.name}, самозанятый, ИНН {pr.inn}.{c.email && <> Почта: <a className="underline underline-offset-4" href={`mailto:${c.email}`}>{c.email}</a>.</>}
         </p>
-        <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Документы">
-          <Link className="underline underline-offset-4" href="/offer">Договор-оферта</Link>
-          <Link className="underline underline-offset-4" href="/privacy">Политика обработки данных</Link>
-          <Link className="underline underline-offset-4" href="/login">Вход в кабинет</Link>
+        <nav className="flex flex-wrap gap-x-6 gap-y-0" aria-label="Документы">
+          <Link className="inline-flex min-h-10 items-center underline underline-offset-4" href="/offer">Договор-оферта</Link>
+          <Link className="inline-flex min-h-10 items-center underline underline-offset-4" href="/privacy">Политика обработки данных</Link>
+          <Link className="inline-flex min-h-10 items-center underline underline-offset-4" href="/login">Вход в кабинет</Link>
         </nav>
       </footer>
     </div>
