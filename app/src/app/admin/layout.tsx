@@ -17,9 +17,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-white">А</span> <span className="hidden sm:inline">Автослот</span>
           </Link>
           <nav className="flex gap-1 text-[14px]">
-            <Link href="/admin" className="hidden rounded-lg px-3 py-1.5 hover:bg-zinc-100 sm:block">Сервисы</Link>
-            <Link href="/admin/import" className="rounded-lg px-3 py-1.5 hover:bg-zinc-100">Из таблицы</Link>
-            <Link href="/admin/new" className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-white">Новое демо</Link>
+            <Link href="/admin" className="rounded-lg px-3 py-1.5 hover:bg-zinc-100">Сервисы</Link>
+            <Link href="/admin/import" className="hidden rounded-lg px-3 py-1.5 hover:bg-zinc-100 sm:block">Из таблицы</Link>
+            <Link href="/admin/new" className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-white">+ Демо</Link>
           </nav>
           <form action={logoutAction} className="ml-auto">
             <button className="text-[14px] text-zinc-500 hover:text-ink">Выйти</button>
@@ -28,12 +28,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </header>
       {problems.length > 0 && (
         <div className="border-b border-red-200 bg-red-50">
-          <ul className="mx-auto grid max-w-5xl gap-1 px-4 py-3 text-[14px] text-red-800">
-            <li className="font-semibold">Сервер настроен не до конца (файл .env на сервере):</li>
-            {problems.map((p) => (
-              <li key={p}>· {p}</li>
-            ))}
-          </ul>
+          <div className="mx-auto max-w-5xl px-4 py-3 text-[14px] text-red-800">
+            <p className="font-semibold">Сервер настроен не до конца (файл .env на сервере):</p>
+            <ul className="mt-1 grid list-disc gap-1 pl-5">
+              {problems.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>

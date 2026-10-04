@@ -6,6 +6,8 @@ import { formatPhone } from "@/lib/phone";
 import { seasonNotice } from "@/lib/season";
 import { routeUrl, siteBase } from "@/lib/site-url";
 import { resolveDayWindow } from "@/lib/slots";
+import { hoursLines } from "@/lib/hours-text";
+import { logoSrc } from "@/lib/logo";
 import { hhmm, toLocal } from "@/lib/time";
 import { radiusBands, radiusList } from "@/lib/radius";
 import { isThemeKey, type ThemeKey } from "@/lib/themes";
@@ -21,34 +23,18 @@ import { TireArt } from "./tire-art";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ theme?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const biz = await getSiteBusiness(decodeURIComponent((await params).slug));
+  const key = decodeURIComponent((await params).slug);
+  const biz = await getSiteBusiness(key);
   if (!biz) return {};
+  const logo = logoSrc(await siteBase(key), biz.logoAt);
   return {
+    // Логотип сервиса — значок вкладки браузера; без него остаётся общий значок
+    ...(logo ? { icons: { icon: logo, apple: logo } } : {}),
     title: `${biz.name}: онлайн-запись`,
     description: `${biz.name}, ${biz.city}, ${biz.address}. Запись на свободное время без звонка.`,
     // Демо не индексируется (раздел 6.7 плана)
     robots: biz.status === "demo" || biz.status === "archived" ? { index: false, follow: false } : undefined,
   };
-}
-
-const WD = ["", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-
-/** «Пн-Пт 9:00-20:00», «Сб 10:00-16:00», «Вс выходной» — подряд идущие одинаковые дни склеиваются. */
-function hoursLines(hours: { weekday: number; closed: boolean; openMin: number; closeMin: number }[]) {
-  const byDay = (d: number) => {
-    const h = hours.find((x) => x.weekday === d);
-    return !h || h.closed ? "выходной" : `${hhmm(h.openMin).replace(/^0/, "")}-${hhmm(h.closeMin).replace(/^0/, "")}`;
-  };
-  const lines: string[] = [];
-  let start = 1;
-  for (let d = 2; d <= 8; d++) {
-    if (d === 8 || byDay(d) !== byDay(start)) {
-      const days = d - 1 === start ? WD[start] : `${WD[start]}-${WD[d - 1]}`;
-      lines.push(`${days} ${byDay(start)}`);
-      start = d;
-    }
-  }
-  return lines;
 }
 
 /** «Открыто до 20:00» или «Обед до 14:00» с учётом праздников и сокращённых дней. */
@@ -95,6 +81,9 @@ export default async function SitePage({ params, searchParams }: Props) {
 
   const reviewsWord = reviews > 0 ? `${reviews} ${plural(reviews, "отзыв", "отзыва", "отзывов")} на картах` : null;
   const phone = formatPhone(biz.phone);
+  const logoUrl = logoSrc(base, biz.logoAt);
+  // eslint-disable-next-line @next/next/no-img-element -- логотип с нашего же адреса, размер задан стилем
+  const brandLogo = logoUrl && <img className="brand-logo" src={logoUrl} alt={biz.name} />;
 
   // Подключённый сервис без реквизитов оператора: согласие клиента было бы недействительным, запись только по телефону
   const widget = operatorMissing(biz) ? (
@@ -265,6 +254,7 @@ export default async function SitePage({ params, searchParams }: Props) {
       <>
         <header className="hero">
           <div className="top">
+            {brandLogo}
             <div className="who">
               <b>{biz.name}</b>
               <span>
@@ -294,6 +284,7 @@ export default async function SitePage({ params, searchParams }: Props) {
     content = (
       <>
         <header className="top">
+          {brandLogo}
           <div className="who">
             <b>{biz.name}</b>
             <span>
@@ -326,6 +317,7 @@ export default async function SitePage({ params, searchParams }: Props) {
     content = (
       <>
         <header className="nav">
+          {brandLogo}
           <span className={`logo${logo.length > 18 ? " long" : ""}`} title={logo}>{logo}</span>
           {callBtn}
         </header>

@@ -77,7 +77,8 @@ model Business {
   theme         Theme     @default(taxi)
   accent        String    @default("#1f9d55")
   themeChosenAt DateTime? // владелец сам выбрал стиль в демо
-  logoLetter  String?
+  // Логотип загружает владелец в кабинете; сама картинка — в BusinessLogo, здесь время загрузки для адреса без кеша
+  logoAt      DateTime?
 
   // Настройки расписания (раздел 4.1)
   posts        Int @default(1)
@@ -116,6 +117,17 @@ model Business {
   lead         Lead?
   payments     Payment[]
   pushSubs     PushSubscription[]
+  logo         BusinessLogo?
+}
+
+/// Картинка логотипа отдельно от Business: сервис читается на каждой странице, а картинка нужна только сайту.
+/// Хранится в базе, поэтому попадает в резервные копии вместе со всем остальным.
+model BusinessLogo {
+  businessId String   @id
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  data       Bytes
+  mime       String
+  updatedAt  DateTime @updatedAt
 }
 
 model Service {

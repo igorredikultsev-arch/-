@@ -1,10 +1,40 @@
 import Link from "next/link";
-import { CaretLeft, CaretRight, Phone } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeft, CaretRight, LockSimple, Phone } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { loadDayForOwner, partOfDay, timeline } from "@/lib/cabinet";
 import { db } from "@/lib/db";
-import { addDays, formatDayLong, hhmm, isDateString, toLocal } from "@/lib/time";
+import { addDays, formatDayLong, formatDayShort, hhmm, isDateString, toLocal } from "@/lib/time";
 import { Card, PageHead, Tag } from "./ui";
+
+const plural = (n: number, one: string, few: string, many: string) =>
+  n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
+
+/** Полоса дней как в календаре: выбранный день тёмный, сегодня отмечено точкой. Стрелки листают на неделю. */
+function DayStrip({ date, today }: { date: string; today: string }) {
+  const first = addDays(date, -2);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(first, i));
+  const arrow = "grid w-9 shrink-0 place-items-center rounded-xl text-zinc-500 hover:bg-white";
+  return (
+    <nav aria-label="Выбор дня" className="mt-3 flex items-stretch gap-1">
+      <Link href={`/cabinet?date=${addDays(date, -7)}`} aria-label="Неделей раньше" className={arrow}><CaretLeft size={18} /></Link>
+      <div className="grid flex-1 grid-cols-7 gap-1">
+        {days.map((d) => {
+          const f = formatDayShort(d);
+          const on = d === date;
+          return (
+            <Link key={d} href={d === today ? "/cabinet" : `/cabinet?date=${d}`} aria-current={on ? "date" : undefined}
+              className={`relative grid justify-items-center rounded-xl py-2 ${on ? "bg-ink text-white" : "bg-white text-ink ring-1 ring-zinc-200 hover:ring-zinc-400"}`}>
+              <span className={`text-[11.5px] ${on ? "text-white/70" : "text-zinc-500"}`}>{f.weekday}</span>
+              <b className="text-[17px] leading-tight tabular-nums">{f.day}</b>
+              {d === today && <i className={`absolute bottom-1 size-1 rounded-full ${on ? "bg-white" : "bg-accent"}`} />}
+            </Link>
+          );
+        })}
+      </div>
+      <Link href={`/cabinet?date=${addDays(date, 7)}`} aria-label="Неделей позже" className={arrow}><CaretRight size={18} /></Link>
+    </nav>
+  );
+}
 
 const STATUS_LABEL = { cancelled: "отменена", no_show: "не приехал", done: "выполнена" } as const;
 
@@ -28,45 +58,25 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHead kicker={formatDayLong(date)} title={title}>
-        <div className="mt-1 flex flex-wrap gap-2">
-          <Link href={`/cabinet?date=${addDays(date, -1)}`} aria-label="Предыдущий день" className="grid size-10 place-items-center rounded-full bg-white text-zinc-600 ring-1 ring-zinc-200">
-            <CaretLeft size={18} />
-          </Link>
-          <Link href={`/cabinet?date=${addDays(date, 1)}`} aria-label="Следующий день" className="grid size-10 place-items-center rounded-full bg-white text-zinc-600 ring-1 ring-zinc-200">
-            <CaretRight size={18} />
-          </Link>
-          <Link href="/cabinet/block" className="grid h-10 place-items-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-zinc-200">
-            Закрыть время
-          </Link>
-          {date !== today && (
-            <Link href="/cabinet" className="grid h-10 place-items-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-semibold ring-1 ring-zinc-200">
-              Сегодня
-            </Link>
-          )}
-        </div>
-        <div className="mt-4 grid grid-cols-[.8fr_.8fr_1.4fr] gap-2">
-          <Card className="grid gap-0.5 p-3">
-            <b className="text-[21px] leading-none">{day.stats.total}</b>
-            <span className="text-[11.5px] text-zinc-500">записей</span>
-          </Card>
-          <Card className="grid gap-0.5 p-3">
-            <b className="text-[21px] leading-none">{day.stats.fromSite}</b>
-            <span className="text-[11.5px] text-zinc-500">с сайта</span>
-          </Card>
-          <Card className="grid gap-0.5 p-3">
-            <b className="whitespace-nowrap text-[21px] leading-none">{day.stats.revenue.toLocaleString("ru-RU")} ₽</b>
-            <span className="text-[11.5px] text-zinc-500">выручка, примерно</span>
-          </Card>
-        </div>
+        <DayStrip date={date} today={today} />
+        {day.stats.total > 0 && (
+          <p className="mt-3 text-[14.5px] text-zinc-600">
+            <b className="text-ink">{day.stats.total} {plural(day.stats.total, "запись", "записи", "записей")}</b>
+            {day.stats.fromSite > 0 && <>, с сайта {day.stats.fromSite}</>}
+            {day.stats.revenue > 0 && <>, около {day.stats.revenue.toLocaleString("ru-RU")} ₽</>}
+          </p>
+        )}
         {noPush && (
-          <Link href="/cabinet/more#push" className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-orange-50 px-3.5 py-3 text-[14px] font-semibold text-orange-900">
+          <Link href="/cabinet/more/push" className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-orange-50 px-3.5 py-3 text-[14px] font-semibold text-orange-900">
             Включите уведомления, чтобы сразу узнавать о новых записях <CaretRight size={16} className="shrink-0" />
           </Link>
         )}
       </PageHead>
 
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+      <div className="lg:sticky lg:top-6 lg:order-2">
       {day.isWorkday ? (
-        <Card className="mx-3.5 p-3.5">
+        <Card className="mx-3.5 p-3.5 lg:mx-0">
           <div className="mb-3 flex justify-between text-[13px]">
             <b>Загрузка постов</b>
             <span className="text-zinc-500">
@@ -108,10 +118,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           </div>
         </Card>
       ) : (
-        <Card className="mx-3.5 p-4 text-[14px] text-zinc-600">Выходной по графику. Записи с сайта в этот день не принимаются.</Card>
+        <Card className="mx-3.5 p-4 text-[14px] text-zinc-600 lg:mx-0">Выходной по графику. Записи с сайта в этот день не принимаются.</Card>
       )}
+      </div>
 
-      <div className="grid gap-2 px-3.5 pt-4">
+      <div className="grid gap-2 px-3.5 pt-4 lg:order-1 lg:px-0 lg:pt-0">
         {entries.length === 0 && (
           <Card className="grid gap-3 p-5 text-center">
             <p className="text-[15px] text-zinc-600">На этот день записей нет.</p>
@@ -128,7 +139,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             return (
               <div key={`lunch${e.at}`} className="contents">
                 {head}
-                <Link href="/cabinet/site#hours" className="grid grid-cols-[56px_1fr] items-center gap-2.5 rounded-[14px] border border-zinc-200 bg-[repeating-linear-gradient(45deg,#fff_0_9px,#eef0f3_9px_18px)] p-3">
+                <Link href="/cabinet/site/hours" className="grid grid-cols-[56px_1fr] items-center gap-2.5 rounded-[14px] border border-zinc-200 bg-[repeating-linear-gradient(45deg,#fff_0_9px,#eef0f3_9px_18px)] p-3">
                   <div className="text-[16.5px] font-bold">
                     {hhmm(toLocal(e.at, tz).minutes)}
                     <small className="block text-[11.5px] font-medium text-zinc-500">{Math.round((e.end - e.at) / 60000)} мин</small>
@@ -193,6 +204,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             </div>
           );
         })}
+        <Link href={`/cabinet/block?date=${date}`} className="mt-2 inline-flex min-h-11 items-center gap-2 justify-self-start rounded-xl px-2 text-[14.5px] font-semibold text-zinc-600 hover:bg-white">
+          <LockSimple size={18} /> Закрыть время в этот день
+        </Link>
+      </div>
       </div>
     </>
   );

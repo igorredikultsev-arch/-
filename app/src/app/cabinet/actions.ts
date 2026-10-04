@@ -10,6 +10,7 @@ import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { OFFER_VERSION } from "@/lib/legal";
+import { imageMime, LOGO_MAX_BYTES } from "@/lib/logo";
 import { notifyBusiness } from "@/lib/push";
 import { normalizePhone } from "@/lib/phone";
 import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
@@ -197,7 +198,7 @@ export async function saveService(id: string | null, _prev: ActionResult, f: For
   await audit("service.save", { userId: user.id, businessId: business.id });
   revalidatePath("/cabinet/site", "layout");
   revalidatePath("/s/[slug]", "layout");
-  if (!id) redirect("/cabinet/site");
+  if (!id) redirect("/cabinet/site/services");
   return { ok: true, message: "Сохранено" };
 }
 
@@ -205,7 +206,7 @@ export async function deleteService(id: string) {
   const { business } = await requireOwner();
   await db.service.deleteMany({ where: { id, businessId: business.id } });
   revalidatePath("/cabinet/site", "layout");
-  redirect("/cabinet/site");
+  redirect("/cabinet/site/services");
 }
 
 /* ---------- часы работы и особые дни ---------- */
@@ -272,9 +273,12 @@ export async function deleteException(id: string) {
 
 /* ---------- настройки и тексты сайта ---------- */
 
-const Settings = z.object({
+const Texts = z.object({
   headline: z.string().trim().max(70),
   addressNote: z.string().trim().max(120),
+});
+
+const Rules = z.object({
   posts: z.coerce.number().int().min(1, "Хотя бы 1 пост").max(20),
   cancelHours: z.coerce.number().int().min(0).max(168),
   horizonDays: z.coerce.number().int().min(1).max(60),
@@ -282,21 +286,66 @@ const Settings = z.object({
   slotStepMin: z.coerce.number().int().refine((v) => [15, 30, 60].includes(v), "Шаг 15, 30 или 60 минут"),
 });
 
-export async function saveSettings(_prev: ActionResult, f: FormData): Promise<ActionResult> {
+const pick = (f: FormData, keys: string[]) => Object.fromEntries(keys.map((k) => [k, str(f, k)]));
+
+function siteChanged() {
+  revalidatePath("/cabinet", "layout");
+  revalidatePath("/s/[slug]", "layout");
+}
+
+export async function saveTexts(_prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
-  const p = Settings.safeParse(Object.fromEntries(["headline", "addressNote", "posts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"].map((k) => [k, str(f, k)])));
+  const p = Texts.safeParse(pick(f, ["headline", "addressNote"]));
   if (!p.success) return { error: p.error.issues[0].message };
   const facts = [0, 1, 2]
     .map((i) => ({ value: str(f, `factValue${i}`).slice(0, 20), label: str(f, `factLabel${i}`).slice(0, 40) }))
     .filter((x) => x.value && x.label);
-  await db.business.update({
-    where: { id: business.id },
-    data: { ...p.data, headline: p.data.headline || null, addressNote: p.data.addressNote || null, facts },
-  });
-  await audit("settings.save", { userId: user.id, businessId: business.id });
-  revalidatePath("/cabinet", "layout");
-  revalidatePath("/s/[slug]", "layout");
+  await db.business.update({ where: { id: business.id }, data: { headline: p.data.headline || null, addressNote: p.data.addressNote || null, facts } });
+  await audit("settings.save", { userId: user.id, businessId: business.id, details: { part: "texts" } });
+  siteChanged();
   return { ok: true, message: "Сохранено. Изменения уже на сайте" };
+}
+
+export async function saveRules(_prev: ActionResult, f: FormData): Promise<ActionResult> {
+  const { user, business } = await requireOwner();
+  const p = Rules.safeParse(pick(f, ["posts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]));
+  if (!p.success) return { error: p.error.issues[0].message };
+  await db.business.update({ where: { id: business.id }, data: p.data });
+  await audit("settings.save", { userId: user.id, businessId: business.id, details: { part: "rules" } });
+  siteChanged();
+  return { ok: true, message: "Сохранено. Сайт уже считает свободное время по новым правилам" };
+}
+
+/* ---------- логотип ---------- */
+
+/** Картинку заранее уменьшает браузер (до 512 точек по длинной стороне), здесь — проверка типа и размера. */
+export async function uploadLogo(_prev: ActionResult, f: FormData): Promise<ActionResult> {
+  const { user, business } = await requireOwner();
+  const file = f.get("logo");
+  if (!(file instanceof File) || file.size === 0) return { error: "Выберите картинку с логотипом" };
+  if (file.size > LOGO_MAX_BYTES) return { error: "Картинка слишком большая. Попробуйте другой файл: PNG или JPG" };
+  const data = new Uint8Array(await file.arrayBuffer());
+  const mime = imageMime(data);
+  if (!mime) return { error: "Подходят картинки PNG, JPG или WebP" };
+  const now = new Date();
+  await db.$transaction([
+    db.businessLogo.upsert({ where: { businessId: business.id }, create: { businessId: business.id, data, mime }, update: { data, mime } }),
+    db.business.update({ where: { id: business.id }, data: { logoAt: now } }),
+  ]);
+  await audit("logo.upload", { userId: user.id, businessId: business.id });
+  siteChanged();
+  return { ok: true, message: "Логотип загружен и уже виден на сайте" };
+}
+
+export async function removeLogo(): Promise<ActionResult> {
+  const { user, business } = await requireOwner();
+  await db.$transaction([
+    db.businessLogo.deleteMany({ where: { businessId: business.id } }),
+    db.business.update({ where: { id: business.id }, data: { logoAt: null } }),
+  ]);
+  await audit("logo.remove", { userId: user.id, businessId: business.id });
+  siteChanged();
+  return { ok: true, message: "Логотип убран с сайта" };
 }
 
 /* ---------- пароль ---------- */

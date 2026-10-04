@@ -8,7 +8,7 @@ import { keepValues } from "@/lib/keep-form";
 
 type Info = {
   name: string; city: string; address: string; phone: string; yandexMapsUrl: string; twoGisUrl: string; rating: string;
-  reviewsYandex: string; reviews2gis: string; theme: string; accent: string; logoLetter: string; operatorName: string; operatorInn: string; customDomain: string;
+  reviewsYandex: string; reviews2gis: string; theme: string; accent: string; operatorName: string; operatorInn: string; customDomain: string;
 };
 
 export function InfoForm({ id, info }: { id: string; info: Info }) {
@@ -44,7 +44,6 @@ export function InfoForm({ id, info }: { id: string; info: Info }) {
             <input name="accent" value={accent} onChange={(e) => setAccent(e.target.value)} className={inp} aria-label="Цвет" />
           </div>
         </F>
-        {field("logoLetter", "Буква в логотипе", { maxLength: 2 }, "По умолчанию из названия")}
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {field("operatorName", "Оператор ПДн", {}, "Как в реквизитах: ИП Шаров Д. А.")}

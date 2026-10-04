@@ -32,7 +32,7 @@ const optRating = z.union([z.literal(""), z.preprocess((v) => String(v).replace(
 const LABELS: Record<string, string> = {
   name: "Название", city: "Город", address: "Адрес", phone: "Телефон", yandexMapsUrl: "Яндекс Карты", twoGisUrl: "2ГИС",
   rating: "Рейтинг", reviewsYandex: "Отзывов в Яндексе", reviews2gis: "Отзывов в 2ГИС", template: "Набор услуг", theme: "Тема",
-  accent: "Цвет", posts: "Постов", headline: "Заголовок", channel: "Канал", contact: "Контакт", logoLetter: "Буква в логотипе",
+  accent: "Цвет", posts: "Постов", headline: "Заголовок", channel: "Канал", contact: "Контакт",
   operatorName: "Оператор ПДн", operatorInn: "ИНН оператора", customDomain: "Свой домен", status: "Этап", notes: "Заметки",
 };
 
@@ -191,7 +191,6 @@ const Info = z.object({
   reviews2gis: optInt,
   theme: z.enum(THEME_KEYS),
   accent: z.string().refine(isHexColor, "Цвет в формате #1f9d55"),
-  logoLetter: z.string().max(2),
   operatorName: z.string().max(120),
   operatorInn: z.union([z.literal(""), z.string().regex(/^\d{10}(\d{2})?$/, "ИНН: 10 или 12 цифр")]),
   customDomain: z.union([z.literal(""), z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "Домен вида avtoservis-ivanov.ru")]),
@@ -221,7 +220,6 @@ export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Pro
         rating: d.rating === "" ? null : d.rating,
         reviewsYandex: d.reviewsYandex === "" ? null : d.reviewsYandex,
         reviews2gis: d.reviews2gis === "" ? null : d.reviews2gis,
-        logoLetter: d.logoLetter || null,
         operatorName: d.operatorName || null,
         operatorInn: d.operatorInn || null,
         customDomain: d.customDomain ? d.customDomain.toLowerCase() : null,

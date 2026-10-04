@@ -5,7 +5,8 @@ import { OFFER_EDITION, OFFER_VERSION } from "@/lib/legal";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { formatDate } from "@/lib/time";
 import { OfferGate } from "./offer-gate";
-import { Tabbar } from "./tabbar";
+import { publicSiteUrl } from "@/lib/site-url";
+import { Sidebar, Tabbar } from "./tabbar";
 
 const DAY = 86400000;
 
@@ -39,32 +40,35 @@ export default async function CabinetLayout({ children }: { children: React.Reac
   // Подключённый сервис: владелец принимает действующую редакцию оферты до работы в кабинете. Администратор за него не принимает
   const needOffer = !asAdmin && business.status !== "demo" && business.offerVersion !== OFFER_VERSION;
   return (
-    <div className="min-h-dvh bg-paper text-ink">
+    <div className="min-h-dvh bg-paper text-ink lg:flex">
+      {!needOffer && <Sidebar name={business.name} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
+      <div className="min-w-0 flex-1">
       {asAdmin && (
         <div className="sticky top-0 z-20 bg-ink text-white">
-          <form action={closeCabinet} className="mx-auto flex max-w-md items-center justify-between gap-3 px-4 py-2.5 text-[13.5px]">
+          <form action={closeCabinet} className="mx-auto flex max-w-md items-center lg:max-w-4xl lg:px-10 justify-between gap-3 px-4 py-2.5 text-[13.5px]">
             <span className="min-w-0">{business.name}: вы в кабинете как администратор, изменения сразу видны клиенту</span>
             <button className="shrink-0 rounded-lg bg-white/15 px-3 py-1.5 font-semibold">В админку</button>
           </form>
         </div>
       )}
       {billing && (
-        <div className="mx-auto max-w-md px-3.5 pt-3">
+        <div className="mx-auto max-w-md px-3.5 pt-3 lg:max-w-4xl lg:px-10">
           <p role={billing.tone === "error" ? "alert" : undefined} className={`rounded-xl px-3.5 py-3 text-[13.5px] leading-snug ${billing.tone === "error" ? "bg-red-50 text-red-800" : "bg-orange-50 text-orange-900"}`}>
             {billing.text}
           </p>
         </div>
       )}
       {needOffer ? (
-        <main className="mx-auto max-w-md pb-16">
+        <main className="mx-auto max-w-md pb-16 lg:max-w-2xl">
           <OfferGate edition={OFFER_EDITION} name={business.name} />
         </main>
       ) : (
         <>
-          <main className="mx-auto max-w-md pb-32">{children}</main>
+          <main className="mx-auto max-w-md pb-32 lg:max-w-4xl lg:px-10 lg:pb-16">{children}</main>
           <Tabbar />
         </>
       )}
+      </div>
     </div>
   );
 }

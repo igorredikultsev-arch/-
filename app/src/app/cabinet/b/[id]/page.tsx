@@ -27,7 +27,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
     ["Создана", formatDateTime(b.createdAt.getTime(), tz)],
   ];
   return (
-    <div className="grid gap-4 px-3.5 pt-5">
+    <div className="grid gap-4 px-3.5 pt-5 lg:px-0">
       <Link href={`/cabinet?date=${date}`} className="inline-flex items-center gap-1 text-[14px] font-semibold text-zinc-600">
         <CaretLeft size={16} /> К расписанию
       </Link>

@@ -11,8 +11,9 @@ export function DemoForm() {
   const [theme, setTheme] = useState<string>("taxi");
   const [accent, setAccent] = useState<string>("#1f9d55");
   return (
-    <form onSubmit={keepValues(action)} className="grid gap-5 rounded-2xl bg-white p-5 ring-1 ring-zinc-200">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={keepValues(action)} className="grid gap-4">
+      <fieldset className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-zinc-200 sm:grid-cols-2">
+        <legend className="float-left mb-1 text-[17px] font-bold sm:col-span-2">Из карточки на картах</legend>
         <F label="Название, как на картах" id="d-name"><input id="d-name" name="name" required className={inp} placeholder="Шиномонтаж «Колесо»" /></F>
         <F label="Телефон из карточки" id="d-phone"><input id="d-phone" name="phone" type="tel" required className={inp} placeholder="+7 (342) 254-18-73" /></F>
         <F label="Город" id="d-city"><input id="d-city" name="city" defaultValue="Пермь" required className={inp} /></F>
@@ -24,8 +25,9 @@ export function DemoForm() {
           <F label="Отзывов в Яндексе" id="d-ry"><input id="d-ry" name="reviewsYandex" inputMode="numeric" className={inp} /></F>
           <F label="Отзывов в 2ГИС" id="d-r2"><input id="d-r2" name="reviews2gis" inputMode="numeric" className={inp} /></F>
         </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      </fieldset>
+      <fieldset className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-zinc-200 sm:grid-cols-3">
+        <legend className="float-left mb-1 text-[17px] font-bold sm:col-span-3">Как будет выглядеть сайт</legend>
         <F label="Набор услуг" id="d-tpl">
           <select id="d-tpl" name="template" className={inp} defaultValue="tire">
             <option value="tire">Шиномонтаж</option>
@@ -37,7 +39,7 @@ export function DemoForm() {
             {THEMES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </F>
-        <F label="Акцент под логотип" id="d-accent">
+        <F label="Цвет кнопок" id="d-accent" hint="Под цвет вывески или логотипа">
           <div className="flex gap-2">
             <input id="d-accent" type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="h-11 w-14 rounded-lg border border-zinc-300" />
             <input name="accent" value={accent} onChange={(e) => setAccent(e.target.value)} className={inp} aria-label="Цвет в формате #1f9d55" />
@@ -45,11 +47,14 @@ export function DemoForm() {
         </F>
         <F label="Машин одновременно (постов)" id="d-posts" hint="Клиенту не показывается, нужно для расчёта свободного времени"><input id="d-posts" name="posts" type="number" min={1} max={20} defaultValue={2} className={inp} /></F>
         <F label="Заголовок, необязательно" id="d-head" className="sm:col-span-2"><input id="d-head" name="headline" maxLength={70} className={inp} placeholder="Шиномонтаж без очереди. Запись за минуту" /></F>
+      </fieldset>
+      <fieldset className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-zinc-200 sm:grid-cols-3">
+        <legend className="float-left mb-1 text-[17px] font-bold sm:col-span-3">Куда написать владельцу</legend>
         <F label="Канал связи" id="d-ch"><input id="d-ch" name="channel" className={inp} placeholder="Telegram, ВКонтакте, почта" /></F>
         <F label="Контакт" id="d-contact" className="sm:col-span-2"><input id="d-contact" name="contact" className={inp} placeholder="@koleso_perm или почта" /></F>
-      </div>
+      </fieldset>
       <Result state={state} />
-      <button disabled={pending} className={btn}>{pending ? "Создаём…" : "Создать демо"}</button>
+      <button disabled={pending} className={`${btn} sm:justify-self-start sm:px-8`}>{pending ? "Создаём…" : "Создать демо"}</button>
     </form>
   );
 }

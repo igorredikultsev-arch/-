@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { deleteService } from "../../../actions";
-import { PageHead } from "../../../ui";
+import { SubHead } from "../../../ui";
 import { ServiceForm } from "../../forms";
 
 export default async function ServicePage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,11 +13,8 @@ export default async function ServicePage({ params }: { params: Promise<{ id: st
   const categories = (await db.service.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true } })).map((c) => c.category);
   return (
     <>
-      <div className="px-[18px] pt-5">
-        <Link href="/cabinet/site" className="inline-flex items-center gap-1 text-[14px] font-semibold text-zinc-600"><CaretLeft size={16} /> Сайт</Link>
-      </div>
-      <PageHead title={service ? "Услуга" : "Новая услуга"} />
-      <div className="grid gap-6 px-[18px]">
+      <SubHead back="/cabinet/site/services" backLabel="Услуги" title={service ? service.name : "Новая услуга"} />
+      <div className="grid gap-6 px-[18px] lg:max-w-2xl lg:px-0">
         <ServiceForm service={service} categories={categories.length ? categories : ["Шиномонтаж"]} />
         {service && (
           <form action={deleteService.bind(null, service.id)}>
