@@ -62,7 +62,7 @@ const url = (s: string) => (/^https?:\/\/\S+$/i.test(s.trim()) ? s.trim() : null
 
 function theme(s: string): ThemeKey {
   const v = s.toLowerCase().trim();
-  return THEMES.find((t) => t.label.toLowerCase() === v || t.value === v)?.value ?? "taxi";
+  return THEMES.find((t) => t.label.toLowerCase() === v || t.old.toLowerCase() === v || t.value === v)?.value ?? "taxi";
 }
 
 /** «Telegram: t.me/x» из таблицы лидов → канал и контакт. */

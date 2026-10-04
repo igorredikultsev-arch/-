@@ -30,17 +30,15 @@ export function ServicesList({ services }: { services: WidgetService[] }) {
       )}
       <div className="svc-list">
         {shown.map((s) => (
-          <div className="svc" key={s.id}>
+          // Вся строка — кнопка: нажали на услугу, и форма записи открывается с ней
+          <button type="button" className="svc" key={s.id} onClick={() => pick(s.id)}>
             <div className="n">{s.name}</div>
             <div className="m">{[s.description, duration(s.durationMin)].filter(Boolean).map((t) => t!.replace(/^./, (c) => c.toUpperCase())).join(". ")}</div>
             <div className="p">
               {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : "бесплатно"}
               {s.priceFrom > 0 && <small>от</small>}
             </div>
-            <button type="button" className="go" onClick={() => pick(s.id)}>
-              Записаться
-            </button>
-          </div>
+          </button>
         ))}
       </div>
     </>

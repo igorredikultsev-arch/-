@@ -15,6 +15,10 @@ export function configProblems(env: Record<string, string | undefined> = process
   const server = !!env.SMARTCAPTCHA_SERVER_KEY;
   if (client !== server) out.push("Капча: вписан только один ключ SmartCaptcha из двух, капча выключена. Нужны оба: ключ клиента и ключ сервера");
   else if (!client) out.push("Капча выключена: не вписаны ключи SmartCaptcha. Сайты пускают не больше 3 записей в час с одного адреса");
+  // Ключ клиента у SmartCaptcha начинается с ysc1_, ключ сервера — с ysc2_; перепутанные ключи дают «некорректный ключ» на сайте
+  else if (!env.SMARTCAPTCHA_CLIENT_KEY!.trim().startsWith("ysc1_") || !env.SMARTCAPTCHA_SERVER_KEY!.trim().startsWith("ysc2_")) {
+    out.push("Капча: ключи похожи на перепутанные. SMARTCAPTCHA_CLIENT_KEY должен начинаться с ysc1_, SMARTCAPTCHA_SERVER_KEY — с ysc2_");
+  }
   if (!env.PROCESSOR_NAME?.trim() || !env.PROCESSOR_INN?.trim()) {
     out.push("Не вписаны ваши ФИО или ИНН (PROCESSOR_NAME, PROCESSOR_INN): в оферте и согласиях будет «не указан»");
   }

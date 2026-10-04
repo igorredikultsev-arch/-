@@ -1,7 +1,16 @@
-/** «Боковина»: шина с надписью по кругу, литой диск, метки балансировки. Чистый SVG, без картинок. */
+// Длина окружности надписи (r = 142) и сколько букв на ней помещается без сжатия
+const ARC = 2 * Math.PI * 142;
+// Unbounded широкий: заглавная буква около 1 em, вместе с разрядкой примерно 21 точка при размере 19
+const FIT = 40;
+
+/** «Боковина»: шина с надписью по кругу и литой диск. Чистый SVG, без картинок. */
 export function TireArt({ text }: { text: string }) {
-  // Надпись повторяем, пока не заполнит окружность
-  const ring = (text + "   ").repeat(Math.max(1, Math.ceil(46 / (text.length + 3))));
+  // Надпись повторяется целиком, пока помещается, и растягивается ровно на круг: конец не наезжает на начало
+  const unit = `${text.trim()} • `;
+  const times = Math.max(1, Math.floor(FIT / unit.length));
+  const ring = unit.repeat(times);
+  // Длинное название не сжимаем буквами друг на друга, а уменьшаем шрифт
+  const size = ring.length > FIT ? Math.max(11, Math.floor((19 * FIT) / ring.length)) : 19;
   return (
     <div className="tire" aria-hidden="true">
       <svg viewBox="0 0 400 400" width="100%" height="100%">
@@ -21,11 +30,11 @@ export function TireArt({ text }: { text: string }) {
         <circle cx="200" cy="200" r="198" fill="url(#tire-rubber)" />
         <circle cx="200" cy="200" r="188" fill="none" stroke="#2c3033" strokeWidth="16" strokeDasharray="9 7" />
         <circle cx="200" cy="200" r="176" fill="none" stroke="#141617" strokeWidth="2" />
-        <text fontFamily="var(--font-unbounded), sans-serif" fontWeight="800" fontSize="19" letterSpacing="2" fill="#141618" dy="1.5">
-          <textPath href="#tire-arc" textLength="880" lengthAdjust="spacing">{ring}</textPath>
+        <text fontFamily="var(--font-unbounded), sans-serif" fontWeight="800" fontSize={size} letterSpacing="2" fill="#141618" dy="1.5">
+          <textPath href="#tire-arc" textLength={Math.floor(ARC - 6)} lengthAdjust="spacing">{ring}</textPath>
         </text>
-        <text fontFamily="var(--font-unbounded), sans-serif" fontWeight="800" fontSize="19" letterSpacing="2" fill="#3a3e41">
-          <textPath href="#tire-arc" textLength="880" lengthAdjust="spacing">{ring}</textPath>
+        <text fontFamily="var(--font-unbounded), sans-serif" fontWeight="800" fontSize={size} letterSpacing="2" fill="#3a3e41">
+          <textPath href="#tire-arc" textLength={Math.floor(ARC - 6)} lengthAdjust="spacing">{ring}</textPath>
         </text>
         <circle cx="200" cy="200" r="118" fill="#141617" />
         <circle cx="200" cy="200" r="110" fill="url(#tire-metal)" />
@@ -42,8 +51,6 @@ export function TireArt({ text }: { text: string }) {
           <circle cx="200" cy="186" r="4" /><circle cx="213.3" cy="195.7" r="4" /><circle cx="208.2" cy="211.3" r="4" /><circle cx="191.8" cy="211.3" r="4" /><circle cx="186.7" cy="195.7" r="4" />
         </g>
         <circle cx="200" cy="200" r="7" fill="#c9cdcf" />
-        <circle cx="76" cy="132" r="7" fill="var(--accent)" />
-        <circle cx="318" cy="276" r="7" fill="#d8343b" />
       </svg>
     </div>
   );

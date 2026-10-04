@@ -3,6 +3,7 @@
 import { formatDayShort, hhmm } from "@/lib/time";
 import type { WidgetService } from "./booking-widget";
 import { pickSlot } from "./events";
+import { ServiceChips } from "./service-chips";
 import { busyAt, useDay } from "./use-day";
 
 const CAR_COLORS = ["#8d969d", "#b7bcc0", "#5f6b75", "#a3896f", "#c3c7ca", "#6d7a84", "#9aa3a9", "#7d8890"];
@@ -48,16 +49,7 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
           <span className="o">не успеть</span>
         </div>
       </div>
-      <label className="yard-svc">
-        <span>Услуга</span>
-        <select value={d.serviceId} onChange={(e) => d.setServiceId(e.target.value)}>
-          {p.services.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ServiceChips services={p.services} value={d.serviceId} onChange={d.setServiceId} label="Услуга" />
       <div className="yard-days" role="group" aria-label="День">
         {d.days === null && <div className="skeleton" style={{ height: 40 }} />}
         {d.days?.slice(0, 7).map((x, i) => {

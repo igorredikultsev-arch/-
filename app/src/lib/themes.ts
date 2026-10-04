@@ -2,10 +2,12 @@
 export const THEME_KEYS = ["tire", "plan", "taxi"] as const;
 export type ThemeKey = (typeof THEME_KEYS)[number];
 
-export const THEMES: { value: ThemeKey; label: string; accent: string; about: string }[] = [
-  { value: "tire", label: "Боковина", accent: "#f2c230", about: "тёмная, шина в шапке, цена по радиусу" },
-  { value: "plan", label: "План", accent: "#ffc400", about: "светлая, время записи местами на стоянке" },
-  { value: "taxi", label: "Такси", accent: "#1f9d55", about: "чёрно-белая, загрузка сервиса на сегодня" },
+// Названия видят владельцы сервисов, поэтому они описывают вид сайта. Прежние рабочие названия (old) ещё
+// принимаются в таблице для загрузки демо, чтобы старые таблицы не сломались.
+export const THEMES: { value: ThemeKey; label: string; old: string; accent: string; about: string }[] = [
+  { value: "tire", label: "Тёмный", old: "Боковина", accent: "#f2c230", about: "тёмный фон, колесо в шапке, цена по радиусу" },
+  { value: "plan", label: "Светлый", old: "План", accent: "#ffc400", about: "светлый фон, крупные буквы, свободное время клетками" },
+  { value: "taxi", label: "Чёрно-белый", old: "Такси", accent: "#1f9d55", about: "белый фон, чёрные блоки, ближайшее свободное время" },
 ];
 
 export const isThemeKey = (v: unknown): v is ThemeKey => typeof v === "string" && (THEME_KEYS as readonly string[]).includes(v);

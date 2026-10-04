@@ -108,7 +108,7 @@ export default async function SitePage({ params, searchParams }: Props) {
   const servicesBlock = (title: string) => (
     <section className="block svc-block" aria-labelledby="svc-h">
       <h2 className="h4" id="svc-h">{title}</h2>
-      <p className="note-sm">Цены «от»: точную стоимость назовёт мастер</p>
+      <p className="note-sm">Цены «от»: точную стоимость назовёт мастер. Нажмите на услугу, чтобы выбрать время</p>
       <ServicesList services={services} />
     </section>
   );
@@ -249,7 +249,7 @@ export default async function SitePage({ params, searchParams }: Props) {
   if (theme === "tire") {
     const bands = radiusBands(services);
     const radii = radiusList(bands);
-    const ring = [biz.name.replace(/[«»"]/g, ""), biz.city, ...facts.map((f) => f.value)].join("   ").toUpperCase();
+    const ring = [biz.name.replace(/[«»"]/g, ""), biz.city].join(" • ").toUpperCase();
     content = (
       <>
         <header className="hero">
@@ -345,15 +345,15 @@ export default async function SitePage({ params, searchParams }: Props) {
                 <h2>{season.title}</h2>
                 <p>{season.text}</p>
               </div>
-              <a className="btn alt" href="#book">
-                Выбрать время
-              </a>
             </section>
           )}
           <div className="card">{servicesBlock("Услуги и цены")}</div>
-          {aboutBlock && <div className="card">{aboutBlock}</div>}
-          {reviewsBlock && <div className="card">{reviewsBlock}</div>}
-          <div className="card where-card">{contactsBlock}</div>
+          {/* Правая колонка на компьютере: блоки идут друг за другом, без дыр рядом с длинным списком услуг */}
+          <div className="side-col">
+            {aboutBlock && <div className="card">{aboutBlock}</div>}
+            {reviewsBlock && <div className="card">{reviewsBlock}</div>}
+            <div className="card where-card">{contactsBlock}</div>
+          </div>
         </div>
       </>
     );

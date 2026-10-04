@@ -100,8 +100,21 @@
 .svc .m { font-size: 14px; color: var(--s-muted); line-height: 1.4; }
 .svc .p { font-weight: 700; font-size: 16px; text-align: right; white-space: nowrap; grid-row: 1 / span 2; grid-column: 2; }
 .svc .p small { display: block; font-weight: 400; font-size: 12.5px; color: var(--s-muted); }
-.svc .go { all: unset; cursor: pointer; grid-column: 1 / -1; justify-self: start; margin-top: 6px; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
-.svc .go:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; }
+/* Строка услуги — кнопка: нажатие открывает запись с этой услугой */
+button.svc { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; align-items: start; width: calc(100% + 16px); padding: 15px 8px; margin: 0 -8px; border-radius: 12px; border-bottom: 1px solid var(--s-line); cursor: pointer; font: inherit; color: inherit; }
+button.svc:hover { background: color-mix(in srgb, var(--s-fg) 5%, transparent); }
+button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; }
+
+/* Выбор услуги и дня кнопками (витрины «План» и «Такси») */
+.svc-chips, .day-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.svc-chips::-webkit-scrollbar, .day-chips::-webkit-scrollbar { display: none; }
+.svc-chips button, .day-chips button { all: unset; box-sizing: border-box; flex: none; cursor: pointer; padding: 9px 14px; border-radius: 999px; font: 500 14px var(--s-body); white-space: nowrap; border: 1.5px solid var(--s-line); background: var(--s-card); color: var(--s-fg); }
+.svc-chips button[aria-pressed="true"], .day-chips button[aria-pressed="true"] { background: var(--s-fg); color: var(--s-bg); border-color: var(--s-fg); }
+.svc-chips button:focus-visible, .day-chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.day-chips button:disabled { opacity: .4; cursor: default; text-decoration: line-through; }
+/* Ряд кнопок прокручивается внутри своей колонки и не раздвигает страницу */
+.hero > *, .aside, .yard, .today { min-width: 0; }
+@media (min-width: 960px) { .svc-chips, .day-chips { flex-wrap: wrap; overflow: visible; } }
 
 .about { display: grid; gap: 8px; }
 .about > :only-child { grid-column: 1 / -1; }
@@ -278,8 +291,7 @@
 .t-plan .legend .b::before { content: ""; width: 14px; height: 10px; border-radius: 3px; background: #9aa1a6; }
 .t-plan .legend .o::before { content: ""; width: 14px; height: 10px; border-radius: 3px; border: 1.5px solid #b9bfc4; }
 .t-plan .bay.off .go { position: relative; font-size: 11.5px; color: #8b9196; }
-.t-plan .yard-svc { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; color: var(--s-muted); }
-.t-plan .yard-svc select { flex: 1; min-width: 0; font: 600 15px var(--s-body); color: var(--s-fg); background: var(--s-card); border: 1.5px solid var(--s-line); border-radius: 10px; padding: 10px 12px; }
+.t-plan .yard .svc-chips { margin-bottom: 10px; }
 .t-plan .yard-days { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 12px; padding: 0 16px; }
 .t-plan .yday { appearance: none; flex: none; border: 1.5px solid var(--s-line); background: var(--s-card); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: 14.5px; cursor: pointer; }
 .t-plan .yday small { font-weight: 400; color: var(--s-muted); margin-left: 5px; }
@@ -341,30 +353,19 @@
 .t-taxi .today .next small { display: block; font-size: 14px; color: #a8a8a8; }
 .t-taxi .today .next strong { font: 800 44px/1 var(--s-head); letter-spacing: -.03em; }
 .t-taxi .today .next span { font-size: 15px; color: #d6d6d6; margin-left: 8px; }
-.t-taxi .tl { display: grid; gap: 8px; }
-.t-taxi .tl .lane { position: relative; height: 48px; border-radius: 12px; background: #1d1d1f; overflow: hidden; }
-.t-taxi .blk { position: absolute; top: 3px; bottom: 3px; border-radius: 8px; }
-.t-taxi .blk.busy { background: #3a3a3c; }
-.t-taxi .blk.gap { background: transparent; border: 1.5px dashed #3a3a3c; }
-.t-taxi .blk.past { top: 0; bottom: 0; border-radius: 0; background: repeating-linear-gradient(135deg, #2a2a2c 0 4px, #1d1d1f 4px 8px); }
-.t-taxi .blk.free { appearance: none; border: 0; background: #fff; color: #0e0e0f; font: 600 14px var(--s-body); cursor: pointer; padding: 0; white-space: nowrap; overflow: hidden; }
-.t-taxi .blk.free[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
-.t-taxi .tl .now { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; pointer-events: none; }
-.t-taxi .tl .axis { position: relative; height: 16px; font-size: 11.5px; color: #8c8c8c; }
-.t-taxi .tl .axis i { position: absolute; transform: translateX(-50%); font-style: normal; }
-.t-taxi .tl .axis i:first-child { transform: none; }
-.t-taxi .tl .axis i:last-child { transform: translateX(-100%); }
-.t-taxi .tl-empty { color: #d6d6d6; margin: 0; }
+.t-taxi .today .svc-chips, .t-taxi .today .day-chips { margin-top: 12px; }
+.t-taxi .today .svc-chips button, .t-taxi .today .day-chips button { background: #1d1d1f; border-color: #3a3a3c; color: #fff; }
+.t-taxi .today .svc-chips button[aria-pressed="true"], .t-taxi .today .day-chips button[aria-pressed="true"] { background: #fff; color: #0e0e0f; border-color: #fff; }
+.t-taxi .times { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 14px; }
+.t-taxi .times button { all: unset; box-sizing: border-box; cursor: pointer; text-align: center; padding: 12px 0; border-radius: 12px; background: #fff; color: #0e0e0f; font: 700 16px var(--s-body); font-variant-numeric: tabular-nums; }
+.t-taxi .times button:hover { background: #e9e9e9; }
+.t-taxi .times button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.t-taxi .times button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.t-taxi .times .ph { height: 45px; border-radius: 12px; background: #1d1d1f; }
+.t-taxi .tl-empty { color: #d6d6d6; margin: 14px 0 0; }
 .t-taxi .tl-empty a { color: #fff; }
-.t-taxi .aside { display: contents; }
-.t-taxi .side-where { display: none; }
-.t-taxi .tl-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; margin-top: 12px; }
-.t-taxi .legend { display: flex; gap: 14px; font-size: 12.5px; color: #a8a8a8; }
-.t-taxi .legend span::before { content: ""; display: inline-block; width: 12px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
-.t-taxi .legend .lf::before { background: #fff; }
-.t-taxi .legend .lb::before { background: #3a3a3c; }
-.t-taxi .tl-svc { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #a8a8a8; min-width: 0; }
-.t-taxi .tl-svc select { max-width: 210px; font: 500 13px var(--s-body); color: #fff; background: #1d1d1f; border: 1px solid #3a3a3c; border-radius: 999px; padding: 6px 10px; }
+.t-taxi .tl-svc { margin: 6px 0 0; font-size: 14px; color: #a8a8a8; }
+.t-taxi .tl-more { margin: 10px 0 0; font-size: 13px; color: #a8a8a8; }
 .t-taxi .sheet { position: relative; z-index: 2; margin-top: -20px; background: #fff; border-radius: 18px 18px 0 0; padding: 10px 16px 6px; box-shadow: 0 -6px 18px rgb(0 0 0 / .08); }
 .t-taxi .grab { width: 40px; height: 5px; border-radius: 3px; background: #e8e8e8; margin: 0 auto 14px; }
 .t-taxi .sheet-name { font: 700 24px/1.15 var(--s-head); letter-spacing: -.02em; margin: 0; }
@@ -390,7 +391,7 @@
 .t-taxi .promo { background: #0e0e0f; color: #fff; border-radius: 16px; padding: 22px 20px; display: grid; gap: 14px; }
 .t-taxi .promo h2 { font: 700 23px/1.2 var(--s-head); margin: 0; }
 .t-taxi .promo p { margin: 6px 0 0; color: #bdbdbd; font-size: 15px; }
-.t-taxi .promo .btn { justify-self: start; background: #fff; color: #0e0e0f; min-height: 46px; }
+.t-taxi .side-col { display: grid; gap: 12px; align-content: start; }
 .t-taxi .card { background: #f3f3f3; border-radius: 16px; }
 .t-taxi .card .block { padding: 22px 18px 22px; }
 .t-taxi .card .fact, .t-taxi .card .tabs button[aria-pressed="false"] { background: #fff; }
@@ -445,7 +446,6 @@
   .t-plan .side { padding-bottom: 6px; }
   .t-plan .yard { padding: 0 var(--gutter); margin-top: 48px; }
   .t-plan .yard-head h2 { font-size: 40px; }
-  .t-plan .yard-svc { max-width: 520px; }
   .t-plan .yard-days { margin: 0 0 12px; padding: 0; }
   .t-plan .floor { padding: 14px; }
   .t-plan .plan { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); row-gap: 20px; }
@@ -466,7 +466,7 @@
   .t-taxi .below .where-card { display: none; }
   .t-taxi .logo.long { font-size: 22px; }
   .t-taxi .today .next strong { font-size: 64px; }
-  .t-taxi .tl .lane { height: 64px; }
+  .t-taxi .times { grid-template-columns: repeat(6, 1fr); }
   .t-taxi .sheet { grid-column: 1; grid-row: 2; margin: 0; border-radius: 16px; box-shadow: 0 4px 24px rgb(0 0 0 / .12); padding: 22px 20px 16px; }
   .t-taxi .grab { display: none; }
   .t-taxi .btn.wide { position: static; box-shadow: none; }
@@ -474,6 +474,5 @@
   .t-taxi .promo { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; padding: 34px 40px; }
   .t-taxi .promo h2 { font-size: 30px; }
   .t-taxi .card .block { padding: 28px 28px 30px; }
-  .t-taxi .card:first-of-type { grid-row: span 2; }
   .t-taxi .card .about { grid-template-columns: 1fr; }
 }
