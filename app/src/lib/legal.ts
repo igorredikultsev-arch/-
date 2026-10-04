@@ -8,7 +8,7 @@ export const OFFER_TITLE = "Договор-оферта на доступ к с�
 export const OWN_PRIVACY_TITLE = "Политика обработки персональных данных сервиса «Автослот»";
 export const OFFER_EDITION = "4 октября 2026 года";
 /** Версия оферты, которую владелец принимает галочкой в кабинете. Меняется вместе с текстом. */
-export const OFFER_VERSION = "2026-10-04";
+export const OFFER_VERSION = "2026-10-04-2";
 
 export type LegalParty = { name: string; inn: string | null; address: string; phone: string };
 export type Processor = { name: string; inn: string; email: string };
