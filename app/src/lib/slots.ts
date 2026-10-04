@@ -12,11 +12,18 @@ export type DayWindow = { openMin: number; closeMin: number; breakFrom?: number;
 /** Часы работы на конкретную дату с учётом особых дней. null — выходной. */
 export function resolveDayWindow(date: string, hours: HoursRow[], exceptions: ExceptionRow[]): DayWindow | null {
   const ex = exceptions.find((e) => e.date === date);
-  if (ex) {
-    if (ex.closed || ex.openMin == null || ex.closeMin == null) return null;
-    return ex.closeMin > ex.openMin ? { openMin: ex.openMin, closeMin: ex.closeMin } : null;
-  }
   const row = hours.find((h) => h.weekday === weekdayOf(date));
+  if (ex) {
+    if (ex.closed || ex.openMin == null || ex.closeMin == null || ex.closeMin <= ex.openMin) return null;
+    // Сокращённый день: обед этого дня недели остаётся, если целиком попадает в новые часы (31 декабря 9–16, обед 13–14)
+    const win: DayWindow = { openMin: ex.openMin, closeMin: ex.closeMin };
+    const from = row && !row.closed ? row.breakFromMin : null, to = row && !row.closed ? row.breakToMin : null;
+    if (from != null && to != null && from >= ex.openMin && to <= ex.closeMin && to > from) {
+      win.breakFrom = from;
+      win.breakTo = to;
+    }
+    return win;
+  }
   if (!row || row.closed || row.closeMin <= row.openMin) return null;
   const win: DayWindow = { openMin: row.openMin, closeMin: row.closeMin };
   const from = row.breakFromMin, to = row.breakToMin;

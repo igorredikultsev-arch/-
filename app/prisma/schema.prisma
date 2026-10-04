@@ -96,6 +96,10 @@ model Business {
   // Принятие оферты владельцем в кабинете (галочка при первом входе): когда и какая редакция
   offerAcceptedAt DateTime?
   offerVersion    String?
+  // Утренняя сводка владельцу (push в 8:00 по времени сервиса): можно выключить в кабинете.
+  // digestSentOn — местная дата последней сводки, чтобы при повторном запуске расписания не прислать вторую
+  digestEnabled Boolean @default(true)
+  digestSentOn  String?
 
   status         BusinessStatus @default(demo)
   demoExpiresAt  DateTime?

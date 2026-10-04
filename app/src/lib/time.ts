@@ -72,6 +72,8 @@ export function isDateString(s: string): boolean {
 }
 
 export function hhmm(minutes: number): string {
+  // Конец дня — «24:00», а не «00:00»: иначе закрытие в полночь читается как начало дня и не сохраняется обратно
+  if (minutes === 1440) return "24:00";
   const h = Math.floor(minutes / 60) % 24;
   const m = minutes % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;

@@ -5,16 +5,18 @@ import { addPayment, saveInfo, saveLead, saveRkn, startTrial } from "../../actio
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
 import { keepValues } from "@/lib/keep-form";
+import { ZONES } from "@/lib/timezone";
 
 type Info = {
   name: string; city: string; address: string; phone: string; yandexMapsUrl: string; twoGisUrl: string; rating: string;
   reviewsYandex: string; reviews2gis: string; theme: string; accent: string; operatorName: string; operatorInn: string; customDomain: string;
+  timezone: string; knownCity: boolean;
 };
 
 export function InfoForm({ id, info }: { id: string; info: Info }) {
   const [state, action, pending] = useActionState(saveInfo.bind(null, id), null);
   const [accent, setAccent] = useState(info.accent);
-  const field = (k: keyof Info, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}, hint?: string) => (
+  const field = (k: Exclude<keyof Info, "knownCity">, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}, hint?: string) => (
     <F label={label} id={`i-${k}`} hint={hint}><input id={`i-${k}`} name={k} defaultValue={info[k]} className={inp} {...extra} /></F>
   );
   return (
@@ -23,6 +25,11 @@ export function InfoForm({ id, info }: { id: string; info: Info }) {
         {field("name", "Название", { required: true })}
         {field("phone", "Телефон", { required: true, type: "tel" })}
         {field("city", "Город", { required: true })}
+        <F label="Часовой пояс" id="i-timezone" hint={info.knownCity ? "По городу. Время записей на сайте считается по нему" : "Города нет в списке: проверьте пояс, иначе время записей на сайте сдвинется"}>
+          <select id="i-timezone" name="timezone" defaultValue={info.timezone} className={inp}>
+            {ZONES.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}
+          </select>
+        </F>
         {field("address", "Адрес", { required: true })}
         {field("yandexMapsUrl", "Яндекс Карты", { type: "url" })}
         {field("twoGisUrl", "2ГИС", { type: "url" })}

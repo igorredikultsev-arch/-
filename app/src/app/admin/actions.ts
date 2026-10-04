@@ -6,13 +6,14 @@ import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
 import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin, requireOwner, setAdminView } from "@/lib/auth";
 import { isDateString } from "@/lib/time";
-import { timezoneForCity } from "@/lib/timezone";
+import { isKnownCity, timezoneForCity, ZONES } from "@/lib/timezone";
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
 import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
 import { outreach, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
+import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
 import { publicSiteUrl } from "@/lib/site-url";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
@@ -30,7 +31,7 @@ const optRating = z.union([z.literal(""), z.preprocess((v) => String(v).replace(
 
 // Названия полей для сообщений об ошибках: «Рейтинг: число от 1 до 5»
 const LABELS: Record<string, string> = {
-  name: "Название", city: "Город", address: "Адрес", phone: "Телефон", yandexMapsUrl: "Яндекс Карты", twoGisUrl: "2ГИС",
+  name: "Название", city: "Город", timezone: "Часовой пояс", address: "Адрес", phone: "Телефон", yandexMapsUrl: "Яндекс Карты", twoGisUrl: "2ГИС",
   rating: "Рейтинг", reviewsYandex: "Отзывов в Яндексе", reviews2gis: "Отзывов в 2ГИС", template: "Набор услуг", theme: "Тема",
   accent: "Цвет", posts: "Постов", headline: "Заголовок", channel: "Канал", contact: "Контакт",
   operatorName: "Оператор ПДн", operatorInn: "ИНН оператора", customDomain: "Свой домен", status: "Этап", notes: "Заметки",
@@ -194,6 +195,7 @@ const Info = z.object({
   operatorName: z.string().max(120),
   operatorInn: z.union([z.literal(""), z.string().regex(/^\d{10}(\d{2})?$/, "ИНН: 10 или 12 цифр")]),
   customDomain: z.union([z.literal(""), z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "Домен вида avtoservis-ivanov.ru")]),
+  timezone: z.string().refine((v) => ZONES.some((zn) => zn.value === v), "Выберите часовой пояс из списка"),
 });
 
 export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
@@ -203,7 +205,7 @@ export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Pro
   const d = p.data;
   const phone = normalizePhone(d.phone);
   if (!phone) return { error: "Телефон: 10 цифр после +7" };
-  const before = await db.business.findUniqueOrThrow({ where: { id }, select: { city: true, status: true } });
+  const before = await db.business.findUniqueOrThrow({ where: { id }, select: { city: true, status: true, timezone: true } });
   if (["trial", "active", "suspended"].includes(before.status) && (!d.operatorName.trim() || !d.operatorInn)) {
     return { error: "У подключённого сервиса нельзя стереть «Оператор ПДн» и «ИНН оператора»: без них сайт перестанет принимать записи" };
   }
@@ -213,8 +215,8 @@ export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Pro
       data: {
         ...d,
         phone,
-        // Сменили город — сменился и часовой пояс расписания
-        ...(before.city !== d.city ? { timezone: timezoneForCity(d.city) } : {}),
+        // Сменили город, а пояс руками не трогали — пояс по новому городу. Выбранный вручную пояс главнее
+        timezone: before.city !== d.city && d.timezone === before.timezone && isKnownCity(d.city) ? timezoneForCity(d.city) : d.timezone,
         yandexMapsUrl: d.yandexMapsUrl || null,
         twoGisUrl: d.twoGisUrl || null,
         rating: d.rating === "" ? null : d.rating,
@@ -268,7 +270,7 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   // Живой сайт собирает персональные данные: в согласии оператором должен значиться ИП или ООО с ИНН
   const fromDemo = biz.status === "demo" || biz.status === "archived";
   if (!biz.operatorName || !biz.operatorInn) {
-    return { error: "Сначала заполните «Оператор ПДн» и «ИНН оператора» в «Данных сервиса» ниже: они попадают в согласие клиента" };
+    return { error: "Сначала заполните «Оператор ПДн» и «ИНН оператора» на вкладке «Данные»: они попадают в согласие клиента" };
   }
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing && existing.businessId !== id) return { error: "Этот телефон уже привязан к другому сервису" };
@@ -284,7 +286,8 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
       data: {
         status: fromDemo ? "active" : biz.status,
         demoExpiresAt: null,
-        ...(fromDemo && !biz.paidUntil ? { paidUntil: new Date() } : {}),
+        // Срок «до сегодня» и для вернувшегося архивного клиента: со старым сроком ночная проверка сразу приостановила бы сайт
+        ...(fromDemo && (!biz.paidUntil || biz.paidUntil < new Date()) ? { paidUntil: new Date() } : {}),
         // Демо, созданные до исправления, могли получить адрес с дефисом на конце: поддомен с ним не откроется
         ...(fixedSlug ? { slug: fixedSlug } : {}),
       },
@@ -301,7 +304,7 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   return {
     ok: true,
     message: fromDemo
-      ? "Сервис подключён. Пароль показан один раз: перешлите его владельцу. Запишите оплату подключения в блоке «Оплаты», без неё через 7 дней сайт приостановится"
+      ? `Сервис подключён. Пароль показан один раз: перешлите его владельцу. Запишите оплату подключения на вкладке «Оплаты», без неё через ${UNPAID_GRACE_DAYS} дней сайт приостановится`
       : "Новый пароль создан. Он показан один раз: перешлите его владельцу",
     password,
   };
@@ -319,7 +322,8 @@ export async function addPayment(id: string, _prev: AdminResult, f: FormData): P
     db.payment.create({
       data: { businessId: id, amount, purpose: str(f, "purpose") || "Абонплата", periodFrom: to ? from : null, periodTo: to, receiptSent: f.get("receiptSent") === "on" },
     }),
-    db.business.update({ where: { id }, data: { status: "active", ...(to ? { paidUntil: to } : {}) } }),
+    // Оплата без месяцев (например, разовая услуга) у приостановленного сайта: срок хотя бы с сегодняшнего дня, иначе ночью снова приостановка
+    db.business.update({ where: { id }, data: { status: "active", ...(to ? { paidUntil: to } : biz.paidUntil && biz.paidUntil > new Date() ? {} : { paidUntil: new Date() }) } }),
     db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "paid" }, update: { status: "paid" } }),
   ]);
   await audit("admin.payment", { userId: admin.id, businessId: id, details: { amount } });
@@ -336,10 +340,16 @@ export async function setReceiptSent(paymentId: string, bizId: string) {
 
 export async function setStatus(id: string, status: "demo" | "trial" | "active" | "suspended" | "archived") {
   const admin = await requireAdmin();
+  const biz = await db.business.findUniqueOrThrow({ where: { id }, select: { paidUntil: true } });
+  // «Активировать» без новой оплаты: срок не раньше сегодняшнего, иначе ночная проверка тут же снова приостановит сайт
+  const now = new Date();
+  const paidFix = status === "active" && (!biz.paidUntil || biz.paidUntil < now) ? { paidUntil: now } : {};
   await db.business.update({
     where: { id },
-    data: { status, ...(status === "demo" ? { demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000) } : {}) },
+    data: { status, ...paidFix, ...(status === "demo" ? { demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000) } : {}) },
   });
+  // В архив — входы владельца завершаются сразу, а не когда истечёт cookie
+  if (status === "archived") await db.session.deleteMany({ where: { user: { businessId: id } } });
   await audit("admin.status", { userId: admin.id, businessId: id, details: { status } });
   revalidatePath(`/admin/b/${id}`);
   revalidatePath("/admin");

@@ -1,3 +1,4 @@
+import { isKnownCity } from "@/lib/timezone";
 import Link from "next/link";
 import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import { notFound } from "next/navigation";
@@ -213,6 +214,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                   name: b.name, city: b.city, address: b.address, phone: formatPhone(b.phone), yandexMapsUrl: b.yandexMapsUrl ?? "", twoGisUrl: b.twoGisUrl ?? "",
                   rating: b.rating ? String(b.rating) : "", reviewsYandex: b.reviewsYandex?.toString() ?? "", reviews2gis: b.reviews2gis?.toString() ?? "",
                   theme: b.theme, accent: b.accent, operatorName: b.operatorName ?? "", operatorInn: b.operatorInn ?? "", customDomain: b.customDomain ?? "",
+                  timezone: b.timezone, knownCity: isKnownCity(b.city),
                 }}
               />
             </Card>

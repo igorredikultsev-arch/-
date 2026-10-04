@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import "@/lib/zod-ru";
-import { audit, endOtherSessions, hashPassword, requireOwner, verifyPassword } from "@/lib/auth";
+import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
+import { hit } from "@/lib/ratelimit";
 import { bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
@@ -41,6 +42,9 @@ export async function setBookingStatus(
   force = false,
 ): Promise<{ warning?: string } | void> {
   const { user, business, booking } = await ownBooking(id);
+  // «Приехал» и «Не приехал» — только для начавшейся и не отменённой записи (кнопки в кабинете так и показаны,
+  // проверка на случай старой открытой страницы): отменённую сначала возвращают, чтобы проверить свободные посты
+  if ((status === "done" || status === "no_show") && (booking.status === "cancelled" || booking.startAt.getTime() > Date.now())) return;
   if (status === "active" && booking.status !== "active") {
     // Пока запись была отменена, её время могли занять: без подтверждения двух клиентов на одно место не ставим
     const r = await restoreBooking(id, business.id, force);
@@ -355,7 +359,8 @@ export async function changePassword(_prev: ActionResult, f: FormData): Promise<
   if (asAdmin) return { error: "Это кабинет клиента: новый пароль владельцу выдаётся в админке" };
   const current = String(f.get("current") ?? "");
   const next = String(f.get("next") ?? "");
-  if (next.length < 8) return { error: "Новый пароль: не меньше 8 символов" };
+  const weak = passwordProblem(next, user.phone);
+  if (weak) return { error: weak };
   if (!(await verifyPassword(user.passwordHash, current))) return { error: "Текущий пароль неверный" };
   await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(next) } });
   // Остальные входы (например, на потерянном телефоне) завершаем, текущий оставляем
@@ -379,8 +384,20 @@ export async function acceptOffer(_prev: ActionResult, f: FormData): Promise<Act
 
 /* ---------- уведомления ---------- */
 
+// Адреса подписки выдают только службы уведомлений браузеров. Любой другой адрес не принимаем:
+// иначе сервер по команде из кабинета слал бы запросы куда угодно
+const PUSH_HOSTS = [/(^|\.)googleapis\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /(^|\.)yandex\.(ru|net)$/];
+const pushHostOk = (u: string) => {
+  try {
+    const url = new URL(u);
+    return url.protocol === "https:" && PUSH_HOSTS.some((r) => r.test(url.hostname));
+  } catch {
+    return false;
+  }
+};
+
 const PushSub = z.object({
-  endpoint: z.string().max(1000).refine((u) => u.startsWith("https://")),
+  endpoint: z.string().max(1000).refine(pushHostOk),
   keys: z.object({ p256dh: z.string().min(10).max(200), auth: z.string().min(8).max(100) }),
 });
 
@@ -414,7 +431,21 @@ export async function removePushSubscription(endpoint: string): Promise<ActionRe
 /** Проверочное уведомление на все телефоны владельца (и при подключении из админки). */
 export async function testPush(): Promise<ActionResult> {
   const { business } = await requireOwner();
+  if (!(await hit(`push:test:${business.id}`, 10, 3600))) return { error: "Проверка уже была много раз за этот час. Попробуйте позже" };
   const r = await notifyBusiness(business.id, { title: "Уведомления работают", body: "Так будут приходить новые записи и отмены", url: "/cabinet", tag: "test" });
   if (!r.sent) return { error: "Нет телефонов с включёнными уведомлениями" };
-  return { ok: true, message: r.sent === 1 ? "Отправлено. Уведомление придёт через несколько секунд" : `Отправлено на ${r.sent} устройства` };
+  return {
+    ok: true,
+    message: r.sent === 1
+      ? "Отправлено. Обычно уведомление приходит за несколько секунд, иногда до пары минут"
+      : `Отправлено на ${r.sent} ${r.sent % 10 >= 2 && r.sent % 10 <= 4 && (r.sent % 100 < 10 || r.sent % 100 >= 20) ? "устройства" : "устройств"}`,
+  };
+}
+
+/** Утренняя сводка в 8:00: включить или выключить. */
+export async function setDigest(on: boolean): Promise<ActionResult> {
+  const { business } = await requireOwner();
+  await db.business.update({ where: { id: business.id }, data: { digestEnabled: on } });
+  revalidatePath("/cabinet/more/push");
+  return { ok: true };
 }

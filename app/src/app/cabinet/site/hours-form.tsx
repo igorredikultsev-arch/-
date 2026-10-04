@@ -72,7 +72,7 @@ function DayEditor({ day, title, onChange }: { day: DayHours; title: string; onC
             <span>с</span>
             <TimeSelect value={day.open} onChange={(v) => onChange({ open: v })} label={`${title}: открытие`} />
             <span>до</span>
-            <TimeSelect value={day.close} onChange={(v) => onChange({ close: v })} label={`${title}: закрытие`} />
+            <TimeSelect value={day.close} onChange={(v) => onChange({ close: v })} label={`${title}: закрытие`} end />
           </div>
           {hasBreak ? (
             <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-2 text-[15px] text-zinc-600">

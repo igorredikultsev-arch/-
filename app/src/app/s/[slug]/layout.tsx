@@ -3,7 +3,7 @@ import "@fontsource-variable/sofia-sans-extra-condensed";
 import "@fontsource-variable/unbounded";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getSiteBusiness, isPublic } from "@/lib/business";
+import { getSiteBusiness, decodeKey } from "@/lib/business";
 import { onAccent } from "@/lib/color";
 import { formatPhone } from "@/lib/phone";
 import { isThemeKey, THEME_HEADER, themeAccent } from "@/lib/themes";
@@ -13,7 +13,7 @@ import "../site.css";
 // Лежат в проекте (fontsource), имена — в переменных --font-* в site.css
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ slug: string }> }) {
-  const biz = await getSiteBusiness(decodeURIComponent((await params).slug));
+  const biz = await getSiteBusiness(decodeKey((await params).slug));
   if (!biz) notFound();
   // Закончившееся демо (в том числе уже убранное очисткой в архив) — понятная страница вместо ошибки 404
   const expiredDemo =
@@ -44,7 +44,9 @@ export default async function SiteLayout({ children, params }: { children: React
       style={{ "--accent": accent, "--on-accent": onAccent(accent) } as React.CSSProperties}
     >
       <div className="page">
-        {isPublic(biz.status) ? children : <p className="closed-note">Сайт временно недоступен. Позвоните в сервис: {formatPhone(biz.phone)}</p>}
+        {/* Приостановленный сайт: главная показывает заглушку (в page.tsx), а страница уже сделанной записи остаётся,
+            чтобы водитель мог посмотреть время и отменить визит */}
+        {children}
       </div>
     </div>
   );

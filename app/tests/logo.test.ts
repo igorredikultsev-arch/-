@@ -21,8 +21,8 @@ describe("часы работы одной строкой", () => {
   it("одинаковые дни подряд склеиваются", () => {
     const h = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, closed: false, openMin: 540, closeMin: 1200 }));
     expect(hoursLines([...h, { weekday: 6, closed: false, openMin: 600, closeMin: 1080 }, { weekday: 7, closed: true, openMin: 0, closeMin: 0 }])).toEqual([
-      "Пн-Пт 9:00-20:00",
-      "Сб 10:00-18:00",
+      "Пн–Пт 9:00–20:00",
+      "Сб 10:00–18:00",
       "Вс выходной",
     ]);
   });

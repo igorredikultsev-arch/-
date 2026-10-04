@@ -1,3 +1,4 @@
+import { SupportLink } from "../support";
 import { ArrowSquareOut, CalendarX, ChatText, Clock, ImageSquare, ListBullets, QrCode, SlidersHorizontal } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -60,7 +61,7 @@ export default async function SitePage() {
           <MenuRow href="/cabinet/site/rules" icon={<SlidersHorizontal size={22} />} title="Правила записи" value={`${b.posts} ${plural(b.posts, "пост", "поста", "постов")}, запись ${step}`} />
         </Group>
 
-        <p className="px-1 text-[13px] leading-snug text-zinc-500">Цвет и оформление сайта меняет администратор: напишите ему, если хотите другое.</p>
+        <p className="px-1 text-[13px] leading-snug text-zinc-500">Цвет и оформление сайта меняем мы: <SupportLink>напишите</SupportLink>, если хотите другое.</p>
       </div>
     </>
   );

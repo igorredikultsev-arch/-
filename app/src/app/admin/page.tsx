@@ -13,7 +13,8 @@ const suspendOn = (d: Date) => formatDate(d.getTime() + UNPAID_GRACE_DAYS * 8640
 export default async function AdminHome({ searchParams }: { searchParams: Promise<{ lead?: string; q?: string }> }) {
   await requireAdmin();
   const sp = await searchParams;
-  const lead = sp.lead;
+  // Неизвестный этап в адресе (опечатка, старая ссылка) — показываем всё, а не ошибку
+  const lead = sp.lead && sp.lead in LEAD_LABEL ? sp.lead : undefined;
   const q = sp.q?.trim().slice(0, 60) ?? "";
   const [all, counts] = await Promise.all([
     db.business.findMany({

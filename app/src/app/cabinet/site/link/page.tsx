@@ -1,3 +1,4 @@
+import { SupportLink } from "../../support";
 import QRCode from "qrcode";
 import { DownloadSimple } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
@@ -55,7 +56,7 @@ export default async function LinkPage() {
           </details>
           <p className="px-4 py-4 text-[14px] leading-snug text-zinc-600">
             Ещё места для ссылки: группа ВКонтакте, канал в MAX или Telegram, автоответ в мессенджерах. Названия пунктов в Яндексе и 2ГИС иногда меняются:
-            если не нашли, напишите администратору.
+            если не нашли, <SupportLink>напишите нам</SupportLink>, поможем.
           </p>
         </Group>
       </div>

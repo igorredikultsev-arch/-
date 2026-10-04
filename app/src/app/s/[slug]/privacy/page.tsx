@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSiteBusiness } from "@/lib/business";
+import { getSiteBusiness, decodeKey } from "@/lib/business";
 import { PRIVACY_TITLE, privacyText, processor } from "@/lib/legal";
 import { formatPhone } from "@/lib/phone";
 import { siteBase } from "@/lib/site-url";
@@ -9,7 +9,7 @@ import { Doc } from "../doc";
 export const metadata: Metadata = { title: PRIVACY_TITLE, robots: { index: false, follow: false } };
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
-  const key = decodeURIComponent((await params).slug);
+  const key = decodeKey((await params).slug);
   const biz = (await getSiteBusiness(key))!;
   const op = {
     name: biz.operatorName || biz.name,

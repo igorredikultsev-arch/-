@@ -55,6 +55,14 @@ describe("resolveDayWindow", () => {
   it("праздник закрывает рабочий день", () => {
     expect(resolveDayWindow(DATE, hours, [{ date: DATE, closed: true, openMin: null, closeMin: null }])).toBeNull();
   });
+  it("сокращённый день сохраняет обед, если он внутри новых часов", () => {
+    const withBreak = [{ weekday: 6, closed: false, openMin: h(9), closeMin: h(18), breakFromMin: h(13), breakToMin: h(14) }];
+    expect(resolveDayWindow(DATE, withBreak, [{ date: DATE, closed: false, openMin: h(9), closeMin: h(16) }])).toEqual({
+      openMin: h(9), closeMin: h(16), breakFrom: h(13), breakTo: h(14),
+    });
+    // Обед после конца сокращённого дня — не нужен
+    expect(resolveDayWindow(DATE, withBreak, [{ date: DATE, closed: false, openMin: h(9), closeMin: h(12) }])).toEqual({ openMin: h(9), closeMin: h(12) });
+  });
   it("особый день меняет часы", () => {
     expect(resolveDayWindow(DATE, hours, [{ date: DATE, closed: false, openMin: h(12), closeMin: h(14) }])).toEqual({
       openMin: h(12),

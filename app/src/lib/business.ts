@@ -27,3 +27,12 @@ export function readFacts(v: unknown): Fact[] {
   if (!Array.isArray(v)) return [];
   return v.filter((f): f is Fact => typeof f?.value === "string" && typeof f?.label === "string").slice(0, 3);
 }
+
+/** Ключ сайта из адреса. Битый адрес («%» без кода) — пустая строка, то есть «не найдено», а не ошибка сервера. */
+export function decodeKey(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return "";
+  }
+}

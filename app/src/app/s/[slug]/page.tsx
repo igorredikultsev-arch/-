@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
-import { getSiteBusiness, readFacts, type SiteBusiness } from "@/lib/business";
+import { getSiteBusiness, isPublic, readFacts, type SiteBusiness, decodeKey } from "@/lib/business";
 import { captchaClientKey } from "@/lib/captcha";
 import { formatPhone } from "@/lib/phone";
 import { seasonNotice } from "@/lib/season";
@@ -23,7 +23,7 @@ import { TireArt } from "./tire-art";
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ theme?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const key = decodeURIComponent((await params).slug);
+  const key = decodeKey((await params).slug);
   const biz = await getSiteBusiness(key);
   if (!biz) return {};
   const logo = logoSrc(await siteBase(key), biz.logoAt);
@@ -50,8 +50,9 @@ const plural = (n: number, one: string, few: string, many: string) =>
   n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
 
 export default async function SitePage({ params, searchParams }: Props) {
-  const key = decodeURIComponent((await params).slug);
+  const key = decodeKey((await params).slug);
   const biz = (await getSiteBusiness(key))!;
+  if (!isPublic(biz.status)) return <p className="closed-note">Сайт временно недоступен. Позвоните в сервис: {formatPhone(biz.phone)}</p>;
   const base = await siteBase(key);
   const apiBase = `/api/s/${encodeURIComponent(key)}`;
   const season = seasonNotice(Date.now(), biz.timezone);

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Расписание: ночью по Перми копия базы и очистка (просроченные демо в архив, обезличивание старых записей),
-# раз в 5 минут — отметка в мониторинге, если задан HEALTHCHECK_URL.
+# каждый час — утренние сводки владельцам (уходят тем, у кого сейчас 8–10 утра), раз в 5 минут — отметка
+# в мониторинге, если задан HEALTHCHECK_URL.
 # Время — ночь по Перми, в какой бы зоне ни были часы сервера. Строки с пометкой «# avtoslot» в crontab
 # переписываются целиком, поэтому скрипт можно запускать сколько угодно раз (его зовут setup.sh и update.sh).
 set -euo pipefail
@@ -18,6 +19,8 @@ chmod +x deploy/backup.sh
   echo "$(at 02:15) * * * cd $dir && ./deploy/backup.sh >> deploy/backup.log 2>&1 # avtoslot"
   # Очистка прямо в базе, через образ миграций: не зависит от домена и сертификата, ошибка видна в журнале
   echo "$(at 02:45) * * * cd $dir && { date -Is; docker compose run --rm -T migrate npx tsx scripts/cleanup-demos.ts; } >> deploy/cleanup.log 2>&1 # avtoslot"
+  # Утренние сводки: запрос изнутри контейнера сайта, мимо домена и сертификата; секрет берётся из окружения контейнера
+  echo "3 * * * * cd $dir && docker compose exec -T app node -e 'fetch(\"http://127.0.0.1:3000/api/cron/digest\",{method:\"POST\",headers:{authorization:\"Bearer \"+process.env.CRON_SECRET}}).then(async r=>{console.log(new Date().toISOString(),r.status,await r.text());process.exit(r.ok?0:1)})' >> deploy/digest.log 2>&1 # avtoslot"
   # Мониторинг: раз в 5 минут этот сервер проверяет себя (HTTPS, сайт, база) и отмечается в Healthchecks.
   # Отметки перестали приходить (упал сайт, база, сертификат или пропала сеть) — Healthchecks пишет вам
   if [[ -n $hc && -n $root ]]; then

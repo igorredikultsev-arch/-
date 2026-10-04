@@ -38,19 +38,26 @@ declare global {
 const freeWord = (n: number) =>
   n % 10 === 1 && n % 100 !== 11 ? "свободное окно" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "свободных окна" : "свободных окон";
 
-/** +7 (342) 254-18-73 по мере ввода */
-function maskPhone(v: string) {
-  let d = v.replace(/\D/g, "");
-  if (d.startsWith("8") || d.startsWith("7")) d = d.slice(1);
+/**
+ * +7 (342) 254-18-73 по мере ввода. Поле уже начинается с «+7», поэтому эти символы отрезаются как текст, а не как цифра.
+ * Многие по привычке начинают с 8 или 7: ведущая 8 — всегда код страны (номеров с кодом 8xx у водителей нет),
+ * ведущая 7 — только когда набрано 11 цифр.
+ */
+export function maskPhone(v: string) {
+  const raw = v.startsWith("+7") ? v.slice(2) : v;
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("8") || (d.length === 11 && d.startsWith("7"))) d = d.slice(1);
   d = d.slice(0, 10);
   let out = "+7";
   if (d.length) out += ` (${d.slice(0, 3)}`;
-  if (d.length >= 3) out += ")";
-  if (d.length > 3) out += ` ${d.slice(3, 6)}`;
+  // Скобка — только когда пошли следующие цифры, иначе Backspace по ней сразу возвращает её обратно
+  if (d.length > 3) out += `) ${d.slice(3, 6)}`;
   if (d.length > 6) out += `-${d.slice(6, 8)}`;
   if (d.length > 8) out += `-${d.slice(8, 10)}`;
   return out;
 }
+
+const dur = (m: number) => (m < 60 ? `${m} мин` : m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч`);
 
 export function BookingWidget(p: Props) {
   const [serviceId, setServiceId] = useState<string | null>(null);
@@ -69,32 +76,57 @@ export function BookingWidget(p: Props) {
   const [captcha, setCaptcha] = useState("");
   const [fieldErr, setFieldErr] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
+  // Не загрузилось (нет сети, сервер не ответил): вместо вечной загрузки — сообщение и кнопка «Повторить»
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Номер последнего запроса: ответ на старый запрос (клиент успел выбрать другой день) не должен затереть новый
+  const seq = useRef(0);
   const hpRef = useRef<HTMLInputElement>(null);
   const captchaRef = useRef<HTMLDivElement>(null);
   const captchaId = useRef<number | null>(null);
 
   const service = p.services.find((s) => s.id === serviceId) ?? null;
 
-  const loadSlots = useCallback(
-    async (sid: string, d: string) => {
-      setSlots(null);
-      const r = await fetch(`${p.apiBase}/slots?service=${sid}&date=${d}`);
-      const data = await r.json();
-      setSlots(r.ok ? data.slots : []);
+  const getJson = useCallback(
+    async (path: string) => {
+      const r = await fetch(`${p.apiBase}${path}`);
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
     },
     [p.apiBase],
   );
 
+  const loadSlots = useCallback(
+    async (sid: string, d: string) => {
+      const id = ++seq.current;
+      setSlots(null);
+      setLoadFailed(false);
+      try {
+        const data = await getJson(`/slots?service=${sid}&date=${d}`);
+        if (id === seq.current) setSlots(data.slots);
+      } catch {
+        if (id === seq.current) setLoadFailed(true);
+      }
+    },
+    [getJson],
+  );
+
   const chooseService = useCallback(
     async (sid: string) => {
+      const id = ++seq.current;
       setServiceId(sid);
       setTime(null);
       setStep(2);
       setDays(null);
       setSlots(null);
-      const r = await fetch(`${p.apiBase}/days?service=${sid}`);
-      const data = await r.json();
-      const list: Day[] = r.ok ? data.days : [];
+      setLoadFailed(false);
+      let list: Day[];
+      try {
+        list = (await getJson(`/days?service=${sid}`)).days;
+      } catch {
+        if (id === seq.current) setLoadFailed(true);
+        return;
+      }
+      if (id !== seq.current) return;
       setDays(list);
       const first = list.find((x) => x.free > 0) ?? list.find((x) => !x.closed);
       if (first) {
@@ -102,8 +134,14 @@ export function BookingWidget(p: Props) {
         loadSlots(sid, first.date);
       } else setSlots([]);
     },
-    [p.apiBase, loadSlots],
+    [getJson, loadSlots],
   );
+
+  const retry = () => {
+    if (!serviceId) return;
+    if (days === null) chooseService(serviceId);
+    else if (date) loadSlots(serviceId, date);
+  };
 
   useEffect(() => {
     const on = (e: Event) => chooseService((e as CustomEvent<string>).detail);
@@ -121,12 +159,12 @@ export function BookingWidget(p: Props) {
       setNotice(null);
       setStep(3);
       loadSlots(sid, d);
-      const r = await fetch(`${p.apiBase}/days?service=${sid}`);
-      setDays(r.ok ? (await r.json()).days : []);
+      // Список дней нужен только для возврата к выбору времени: не загрузился — покажется «Повторить» на шаге времени
+      setDays(await getJson(`/days?service=${sid}`).then((x) => x.days as Day[]).catch(() => (setLoadFailed(true), null)));
     };
     window.addEventListener(SLOT_EVENT, on);
     return () => window.removeEventListener(SLOT_EVENT, on);
-  }, [p.apiBase, loadSlots]);
+  }, [getJson, loadSlots]);
 
   // Сообщаем витрине (план, шкала), какая услуга и время выбраны
   useEffect(() => {
@@ -152,8 +190,9 @@ export function BookingWidget(p: Props) {
     s.src = "https://smartcaptcha.yandexcloud.net/captcha.js";
     s.defer = true;
     s.onload = render;
+    s.onerror = () => setNotice(`Не загрузилась проверка «я не робот». Обновите страницу или позвоните: ${p.phoneLabel}`);
     document.head.appendChild(s);
-  }, [step, p.captchaKey]);
+  }, [step, p.captchaKey, p.phoneLabel]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -244,7 +283,7 @@ export function BookingWidget(p: Props) {
       {step >= 2 && service && (
         <div className="picked">
           <span>
-            {service.name}, {service.durationMin} мин
+            {service.name}, {dur(service.durationMin)}
           </span>
           <button type="button" onClick={() => { setStep(1); setNotice(null); }}>
             Изменить
@@ -254,8 +293,14 @@ export function BookingWidget(p: Props) {
 
       {step === 2 && service && (
         <>
+          {loadFailed && (
+            <div className="slots-empty" role="alert">
+              Не получилось загрузить свободное время. Проверьте интернет.{" "}
+              <button type="button" className="link-btn" onClick={retry}>Повторить</button>
+            </div>
+          )}
           <div className="days" role="group" aria-label="День">
-            {days === null && <div className="skeleton" style={{ height: 62, width: "100%" }} />}
+            {days === null && !loadFailed && <div className="skeleton" style={{ height: 62, width: "100%" }} />}
             {days?.map((d, i) => {
               const f = formatDayShort(d.date);
               return (
@@ -282,7 +327,7 @@ export function BookingWidget(p: Props) {
             </div>
           )}
           <div className="slots" role="group" aria-label="Время">
-            {slots === null && <div className="skeleton" />}
+            {slots === null && !loadFailed && <div className="skeleton" />}
             {noneAtAll && slots !== null && (
               <div className="slots-empty">
                 В ближайшие {days!.length} дней свободного времени нет. Позвоните, договоримся: <a href={`tel:${p.phone}`}>{p.phoneLabel}</a>

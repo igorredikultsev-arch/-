@@ -27,7 +27,7 @@ export function ExceptionForm({ today }: { today: string }) {
           <span>с</span>
           <TimeSelect name="open" value={open} onChange={setOpen} label="Открытие" />
           <span>до</span>
-          <TimeSelect name="close" value={close} onChange={setClose} label="Закрытие" />
+          <TimeSelect name="close" value={close} onChange={setClose} label="Закрытие" end />
         </div>
       )}
       <Result state={state} />

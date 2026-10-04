@@ -26,7 +26,7 @@ export function BlockForm({ today, date: initial, posts }: { today: string; date
           <span>с</span>
           <TimeSelect name="from" value={from} onChange={setFrom} label="Закрыть с" />
           <span>до</span>
-          <TimeSelect name="to" value={to} onChange={setTo} label="Закрыть до" />
+          <TimeSelect name="to" value={to} onChange={setTo} label="Закрыть до" end />
         </div>
       )}
       {posts > 1 && (

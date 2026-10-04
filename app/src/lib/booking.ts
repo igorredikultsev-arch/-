@@ -167,6 +167,18 @@ export async function createSiteBooking(input: SiteBookingInput) {
     const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId, active: true } });
     if (!biz || !service) throw new BookingError("not_found", "Сервис или услуга не найдены");
     const pd = !input.withoutPersonalData;
+    // Повтор той же записи (ответ сервера потерялся в плохой сети, клиент нажал «Записаться» ещё раз):
+    // отдаём уже созданную запись, а не ошибку «на этот номер уже есть запись»
+    if (pd) {
+      const [hh, mm] = input.time.split(":").map(Number);
+      const same = await tx.booking.findFirst({
+        where: {
+          businessId: input.businessId, serviceId: service.id, clientPhone: input.clientPhone, status: "active",
+          startAt: new Date(localToUtc(input.date, hh * 60 + mm, biz.timezone)), createdAt: { gt: new Date(Date.now() - 15 * 60000) }, // createdAt ставит база по настоящим часам
+        },
+      });
+      if (same) return { ...same, repeated: true };
+    }
     if (pd && input.maxActivePerPhone) {
       const active = await tx.booking.count({
         where: { businessId: input.businessId, clientPhone: input.clientPhone, status: "active", startAt: { gt: new Date(nowMs) } },
@@ -185,7 +197,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
     // Чаще всего время просто прошло (или ушло за «запас до записи»), пока клиент заполнял форму
     if (!slot) throw new BookingError("bad_slot", "Это время уже недоступно. Выберите другое");
     if (!slot.free) throw new BookingError("slot_taken", "Это время только что заняли. Выберите другое");
-    return tx.booking.create({
+    const created = await tx.booking.create({
       data: {
         businessId: input.businessId,
         serviceId: service.id,
@@ -204,6 +216,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
         consentIp: pd ? (input.consentIp ?? null) : null,
       },
     });
+    return { ...created, repeated: false };
   }, TX_OPTIONS);
 }
 

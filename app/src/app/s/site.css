@@ -174,6 +174,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .slot[aria-pressed="true"] { background: var(--slot-sel); color: var(--slot-sel-fg); border-color: var(--slot-sel); }
 .demo-note { font-size: 13px; color: var(--s-muted); margin: 0 0 10px; }
 .slots-empty a, .yard-empty a { color: inherit; font-weight: 600; white-space: nowrap; }
+.link-btn { background: none; border: 0; padding: 6px 4px; font: inherit; font-weight: 700; color: inherit; text-decoration: underline; cursor: pointer; }
 .slots-empty { grid-column: 1 / -1; font-size: 14px; color: var(--s-muted); padding: 14px; text-align: center; border: 1.5px dashed var(--s-line); border-radius: 12px; }
 .hint { font-size: 12.5px; color: var(--s-muted); text-align: center; margin-top: 10px; }
 .field { display: grid; gap: 7px; margin-bottom: 14px; }

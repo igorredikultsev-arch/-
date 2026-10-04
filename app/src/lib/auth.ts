@@ -13,6 +13,18 @@ const SESSION_DAYS = 30;
 const VIEW_COOKIE = "as_view";
 
 export const hashPassword = (p: string) => hash(p);
+
+const COMMON = ["12345678", "123456789", "1234567890", "qwertyui", "qwerty123", "password", "11111111", "00000000", "87654321", "йцукенгш", "пароль123"];
+
+/** Почему новый пароль не подходит, или null. Простые и состоящие из номера телефона подбираются за минуты. */
+export function passwordProblem(p: string, phone: string): string | null {
+  if (p.length < 8) return "Новый пароль: не меньше 8 символов";
+  const low = p.toLowerCase();
+  if (COMMON.some((c) => low.includes(c)) || /^(.)\1+$/.test(p)) return "Слишком простой пароль: такие подбирают первыми. Добавьте буквы и цифры вразброс";
+  const digits = phone.replace(/\D/g, "").slice(-10);
+  if (digits && p.replace(/\D/g, "").includes(digits.slice(-7))) return "Пароль не должен содержать номер телефона";
+  return null;
+}
 export const verifyPassword = (h: string, p: string) => verify(h, p).catch(() => false);
 
 /** Пароль для нового владельца: легко продиктовать, трудно подобрать. */
@@ -80,6 +92,8 @@ export const requireOwner = cache(async () => {
   if (!user.businessId) redirect("/login");
   const business = await db.business.findUnique({ where: { id: user.businessId } });
   if (!business) redirect("/login");
+  // Договор закончился, сервис в архиве: кабинет с данными клиентов владельцу больше не доступен (оферта, п. 7.7)
+  if (business.status === "archived") redirect("/login?closed=1");
   return { user, business, asAdmin: false };
 });
 

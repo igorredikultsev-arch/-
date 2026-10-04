@@ -2,26 +2,30 @@ import type { Metadata, Viewport } from "next";
 import { closeCabinet } from "@/app/admin/actions";
 import { requireOwner } from "@/lib/auth";
 import { OFFER_EDITION, OFFER_VERSION } from "@/lib/legal";
-import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
+import { db } from "@/lib/db";
+import { rub, SETUP_PRICE, UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { formatDate } from "@/lib/time";
 import { OfferGate } from "./offer-gate";
 import { publicSiteUrl } from "@/lib/site-url";
+import { SupportLink } from "./support";
 import { Sidebar, Tabbar } from "./tabbar";
 
 const DAY = 86400000;
 
 /** Напоминание об оплате: за 5 дней до конца срока, после него — когда сайт приостановится, и сама приостановка. */
-function billingNotice(b: { status: string; paidUntil: Date | null; timezone: string }): { tone: "warn" | "error"; text: string } | null {
+function billingNotice(b: { status: string; paidUntil: Date | null; timezone: string }, paidBefore: boolean): { tone: "warn" | "error"; text: string } | null {
   if (b.status === "suspended") {
-    return { tone: "error", text: "Сайт приостановлен: клиенты не могут записаться онлайн. Чтобы включить его, оплатите абонентскую плату и напишите администратору." };
+    return { tone: "error", text: "Сайт приостановлен: клиенты не могут записаться онлайн. Чтобы включить его, оплатите абонентскую плату и напишите нам." };
   }
   if (b.status !== "active" || !b.paidUntil) return null;
   const left = b.paidUntil.getTime() - Date.now();
   if (left > 5 * DAY) return null;
   const off = formatDate(b.paidUntil.getTime() + UNPAID_GRACE_DAYS * DAY, b.timezone);
+  // Только что подключили, оплаты ещё не записаны: это не просрочка, а ожидание оплаты подключения
+  if (!paidBefore) return { tone: "warn", text: `Ждём оплату подключения, ${rub(SETUP_PRICE)}: в неё входит первый месяц. Без оплаты сайт будет принимать записи до ${off}.` };
   return left > 0
     ? { tone: "warn", text: `Оплачено до ${formatDate(b.paidUntil.getTime(), b.timezone)}. Оплатите следующий месяц, чтобы сайт работал без перерыва.` }
-    : { tone: "warn", text: `Оплата не поступила. Сайт продолжит принимать записи до ${off}, потом приостановится. Напишите администратору, если уже оплатили.` };
+    : { tone: "warn", text: `Оплата не поступила. Сайт продолжит принимать записи до ${off}, потом приостановится. Если уже оплатили, напишите нам.` };
 }
 
 export const metadata: Metadata = {
@@ -36,7 +40,8 @@ export const viewport: Viewport = { themeColor: "#eef0f3" };
 
 export default async function CabinetLayout({ children }: { children: React.ReactNode }) {
   const { asAdmin, business } = await requireOwner();
-  const billing = billingNotice(business);
+  const paidBefore = (await db.payment.count({ where: { businessId: business.id } })) > 0;
+  const billing = billingNotice(business, paidBefore);
   // Подключённый сервис: владелец принимает действующую редакцию оферты до работы в кабинете. Администратор за него не принимает
   const needOffer = !asAdmin && business.status !== "demo" && business.offerVersion !== OFFER_VERSION;
   return (
@@ -54,7 +59,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
       {billing && (
         <div className="mx-auto max-w-md px-3.5 pt-3 lg:max-w-4xl lg:px-10">
           <p role={billing.tone === "error" ? "alert" : undefined} className={`rounded-xl px-3.5 py-3 text-[13.5px] leading-snug ${billing.tone === "error" ? "bg-red-50 text-red-800" : "bg-orange-50 text-orange-900"}`}>
-            {billing.text}
+            {billing.text} <SupportLink />
           </p>
         </div>
       )}

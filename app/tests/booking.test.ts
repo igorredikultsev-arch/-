@@ -145,3 +145,18 @@ describe("runCleanup", () => {
     expect((await db.lead.findUniqueOrThrow({ where: { businessId: old.id } })).notes).toBe("ответит после праздников");
   });
 });
+
+describe("повтор записи после потерянного ответа", () => {
+  it("та же запись в течение 15 минут возвращается, а не отклоняется", async () => {
+    const { createSiteBooking } = await import("@/lib/booking");
+    const { makeBusiness, resetDb } = await import("./helpers");
+    await resetDb();
+    const biz = await makeBusiness();
+    const input = { businessId: biz.id, serviceId: biz.services[0].id, date: "2026-10-10", time: "10:00", clientName: "Иван", clientPhone: "+79990001111", car: "Kia", maxActivePerPhone: 1, nowMs: Date.parse("2026-10-05T05:00:00Z") };
+    const first = await createSiteBooking(input);
+    const again = await createSiteBooking({ ...input, nowMs: input.nowMs + 60000 });
+    expect(again.id).toBe(first.id);
+    expect(again.repeated).toBe(true);
+    await expect(createSiteBooking({ ...input, time: "11:00", nowMs: input.nowMs + 60000 })).rejects.toMatchObject({ code: "too_many" });
+  });
+});

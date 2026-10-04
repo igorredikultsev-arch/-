@@ -1,20 +1,39 @@
-import { Bell, DeviceMobile, Key, LockSimple, SignOut, Wallet } from "@phosphor-icons/react/dist/ssr";
+import { Bell, ChartBar, ChatCircleText, DeviceMobile, FileText, Key, LockSimple, SignOut, Wallet } from "@phosphor-icons/react/dist/ssr";
 import { logoutAction } from "@/app/login/actions";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/phone";
 import { MONTHLY_PRICE, rub } from "@/lib/pricing";
-import { formatDate } from "@/lib/time";
+import { plural } from "@/lib/digest";
+import { dayBounds } from "@/lib/slots";
+import { addDays, formatDate, toLocal } from "@/lib/time";
+import { supportHref } from "../support";
 import { Group, MenuRow, PageHead } from "../ui";
 
 export default async function MorePage() {
   const { user, business, asAdmin } = await requireOwner();
   const devices = await db.pushSubscription.count({ where: { businessId: business.id } });
-  const paid = business.status === "active" && business.paidUntil ? formatDate(business.paidUntil.getTime(), business.timezone) : null;
+  // Для строки «Статистика»: записи с сайта за 30 дней, как на самом экране статистики
+  const today = toLocal(Date.now(), business.timezone).date;
+  const fromSite = await db.booking.count({
+    where: {
+      businessId: business.id, source: "site", status: { not: "cancelled" },
+      startAt: { gte: new Date(dayBounds(addDays(today, -29), business.timezone).start), lt: new Date(dayBounds(today, business.timezone).end) },
+    },
+  });
+  // «Оплачено до» — только когда оплата уже была: сразу после подключения срок стоит «до сегодня», это ещё не оплата
+  const payments = await db.payment.count({ where: { businessId: business.id } });
+  const paid = business.status === "active" && business.paidUntil && payments ? formatDate(business.paidUntil.getTime(), business.timezone) : null;
+  const support = supportHref();
   return (
     <>
       <PageHead title="Ещё" kicker={business.name} />
       <div className="grid gap-5 px-3.5 lg:px-0">
+        <Group>
+          <MenuRow href="/cabinet/stats" icon={<ChartBar size={22} />} title="Статистика"
+            value={fromSite ? `За 30 дней ${fromSite} ${plural(fromSite, "запись", "записи", "записей")} с сайта` : "Сколько записей приносит сайт"} />
+        </Group>
+
         <Group>
           <MenuRow href="/cabinet/more/push" icon={<Bell size={22} />} title="Уведомления о записях"
             value={devices ? `Включены на ${devices} ${devices === 1 ? "устройстве" : "устройствах"}` : "Выключены"} tone={devices ? undefined : "warn"} />
@@ -31,6 +50,11 @@ export default async function MorePage() {
             </span>
           </div>
         )}
+
+        <Group>
+          {support && <MenuRow href={support} icon={<ChatCircleText size={22} />} title="Вопросы и помощь" value="Ответим, поможем настроить или поменять сайт" />}
+          <MenuRow href="/offer" icon={<FileText size={22} />} title="Договор-оферта" value="Условия работы и оплаты" />
+        </Group>
 
         {/* Администратор в кабинете клиента не меняет пароль и не выходит отсюда: для этого админка */}
         {!asAdmin && (

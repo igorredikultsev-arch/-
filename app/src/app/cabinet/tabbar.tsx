@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowSquareOut, CalendarDots, Clock, List, PencilSimple, Plus } from "@phosphor-icons/react";
+import { ArrowSquareOut, CalendarDots, ChartBar, Clock, List, PencilSimple, Plus } from "@phosphor-icons/react";
 
 const tabs = [
   { href: "/cabinet", label: "Сегодня", icon: Clock },
@@ -14,7 +14,7 @@ const tabs = [
 
 const isOn = (href: string, path: string) =>
   href === "/cabinet" ? path === "/cabinet" || path.startsWith("/cabinet/b/")
-  : href === "/cabinet/more" ? path.startsWith("/cabinet/more") || path.startsWith("/cabinet/block")
+  : href === "/cabinet/more" ? path.startsWith("/cabinet/more") || path.startsWith("/cabinet/block") || path.startsWith("/cabinet/stats")
   : path.startsWith(href);
 
 export function Tabbar() {
@@ -48,6 +48,8 @@ export function Tabbar() {
   );
 }
 
+const sideTabs = [...tabs.filter((t) => !t.fab && t.href !== "/cabinet/more"), { href: "/cabinet/stats", label: "Статистика", icon: ChartBar }, tabs[tabs.length - 1]];
+
 /** Боковое меню на компьютере вместо нижней панели. */
 export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
   const path = usePathname();
@@ -64,8 +66,9 @@ export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
         <Plus size={20} weight="bold" /> Новая запись
       </Link>
       <nav aria-label="Разделы кабинета" className="mt-4 grid gap-1">
-        {tabs.filter((t) => !t.fab).map((t) => {
-          const on = isOn(t.href, path);
+        {sideTabs.map((t) => {
+          // На компьютере у статистики свой пункт, поэтому «Ещё» на ней не подсвечивается
+          const on = isOn(t.href, path) && !(t.href === "/cabinet/more" && path.startsWith("/cabinet/stats"));
           const Icon = t.icon;
           return (
             <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined}

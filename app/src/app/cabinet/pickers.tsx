@@ -8,9 +8,11 @@ import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 const TIMES = Array.from({ length: 96 }, (_, i) => `${String(Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`);
 
 /** Время по 15 минут, всегда в 24-часовом виде. На телефоне открывается привычным колесом выбора. */
-export function TimeSelect({ value, onChange, label, name }: { value: string; onChange?: (v: string) => void; label: string; name?: string }) {
+export function TimeSelect({ value, onChange, label, name, end }: { value: string; onChange?: (v: string) => void; label: string; name?: string; end?: boolean }) {
+  // Конец промежутка (закрытие, «закрыть до») может быть в полночь: 24:00
+  const base = end ? [...TIMES, "24:00"] : TIMES;
   // Время, сохранённое не по сетке 15 минут (например, 09:10), остаётся в списке, чтобы не потерялось
-  const list = value && !TIMES.includes(value) ? [...TIMES, value].sort() : TIMES;
+  const list = value && !base.includes(value) ? [...base, value].sort() : base;
   return (
     <select
       name={name}

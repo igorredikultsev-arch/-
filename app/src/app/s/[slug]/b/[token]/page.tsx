@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CalendarPlus, Check, NavigationArrow, X } from "@phosphor-icons/react/dist/ssr";
 import { canClientCancel } from "@/lib/booking";
-import { getSiteBusiness } from "@/lib/business";
+import { getSiteBusiness, decodeKey } from "@/lib/business";
 import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/phone";
 import { routeUrl, siteBase } from "@/lib/site-url";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Ваша запись", robots: { in
 
 export default async function BookingPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
   const { slug, token } = await params;
-  const key = decodeURIComponent(slug);
+  const key = decodeKey(slug);
   const biz = await getSiteBusiness(key);
   const b = await db.booking.findUnique({ where: { cancelToken: token } });
   if (!biz || !b || b.businessId !== biz.id) notFound();
