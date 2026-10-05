@@ -3,12 +3,14 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { BookingError, businessForSlotsSelect, createSiteBooking, getDayLoad, getHorizonSummary } from "@/lib/booking";
 import { shortName } from "@/lib/business";
+import { runCleanup } from "@/lib/cleanup";
 import { cronAllowed } from "@/lib/cron";
 import { db } from "@/lib/db";
 import { parseDemoRows } from "@/lib/demo-import";
 import { matchForImport } from "@/lib/import-match";
 import { phoneQuery } from "@/lib/phone";
 import { pushHostOk } from "@/lib/push";
+import { connectFirst, statusChange, terminationDue } from "@/lib/readiness";
 import { readCsv } from "@/lib/sheet";
 import { localToUtc } from "@/lib/time";
 import { isAllowedZone, timezoneForCity, ZONES } from "@/lib/timezone";
@@ -192,5 +194,50 @@ describe("служебные адреса", () => {
     expect(pushHostOk("https://user@fcm.googleapis.com/x")).toBe(false);
     expect(pushHostOk("http://fcm.googleapis.com/x")).toBe(false);
     expect(pushHostOk("https://evil.com/fcm.googleapis.com")).toBe(false);
+  });
+});
+
+describe("решения после аудита: оплата после подключения, 60 дней приостановки", () => {
+  it("оплату и «Активировать» нельзя, пока сервису не создан вход", () => {
+    expect(connectFirst({ status: "demo", owners: 0 })).toContain("Создать вход");
+    // Бывший клиент, возвращённый как демо: владелец есть, оплату можно записать сразу
+    expect(connectFirst({ status: "demo", owners: 1 })).toBeNull();
+    expect(connectFirst({ status: "archived", owners: 0 })).toContain("Создать вход");
+    expect(connectFirst({ status: "active", owners: 1 })).toBeNull();
+    expect(connectFirst({ status: "suspended", owners: 1 })).toBeNull();
+  });
+
+  it("напоминание об удалении данных — с 60-го дня приостановки, срок ещё 30 дней", () => {
+    const at = Date.UTC(2026, 9, 1);
+    const day = 86400000;
+    expect(terminationDue({ status: "suspended", suspendedAt: new Date(at) }, at + 59 * day)).toBeNull();
+    const due = terminationDue({ status: "suspended", suspendedAt: new Date(at) }, at + 60 * day);
+    expect(due?.terminatedAt.getTime()).toBe(at + 60 * day);
+    expect(due?.deleteBy.getTime()).toBe(at + 90 * day);
+    // В архиве после приостановки — напоминание остаётся, пока данные не удалены
+    expect(terminationDue({ status: "archived", suspendedAt: new Date(at) }, at + 70 * day)).not.toBeNull();
+    // Возобновлён (дата стёрта) или просто демо в архиве — не о чем напоминать
+    expect(terminationDue({ status: "active", suspendedAt: null }, at + 70 * day)).toBeNull();
+    expect(terminationDue({ status: "archived", suspendedAt: null }, at + 70 * day)).toBeNull();
+  });
+
+  it("дата приостановки ставится и стирается в одном месте", () => {
+    const now = new Date("2026-10-06T00:00:00Z");
+    expect(statusChange("suspended", now)).toEqual({ status: "suspended", suspendedAt: now });
+    expect(statusChange("active", now)).toEqual({ status: "active", suspendedAt: null });
+    expect(statusChange("trial", now)).toEqual({ status: "trial", suspendedAt: null });
+    // В архиве и при возврате как демо дата остаётся: обязанность удалить данные не пропадает
+    expect(statusChange("archived", now)).toEqual({ status: "archived" });
+    expect(statusChange("demo", now)).toEqual({ status: "demo" });
+  });
+
+  it("ночная приостановка за неоплату запоминает дату", async () => {
+    const biz = await makeBusiness();
+    const now = new Date("2026-10-20T00:00:00Z");
+    await db.business.update({ where: { id: biz.id }, data: { status: "active", paidUntil: new Date("2026-10-01T00:00:00Z") } });
+    await runCleanup(now);
+    const after = await db.business.findUniqueOrThrow({ where: { id: biz.id } });
+    expect(after.status).toBe("suspended");
+    expect(after.suspendedAt?.getTime()).toBe(now.getTime());
   });
 });

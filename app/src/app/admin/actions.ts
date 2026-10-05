@@ -8,6 +8,7 @@ import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin, re
 import { isDateString } from "@/lib/time";
 import { isAllowedZone, isKnownCity, timezoneForCity } from "@/lib/timezone";
 import { matchForImport } from "@/lib/import-match";
+import { connectFirst, statusChange } from "@/lib/readiness";
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
@@ -296,7 +297,7 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
     db.business.update({
       where: { id },
       data: {
-        status: fromDemo ? "active" : biz.status,
+        ...statusChange(fromDemo ? "active" : biz.status),
         demoExpiresAt: null,
         // Срок «до сегодня» и для вернувшегося архивного клиента: со старым сроком ночная проверка сразу приостановила бы сайт
         ...(fromDemo && (!biz.paidUntil || biz.paidUntil < new Date()) ? { paidUntil: new Date() } : {}),
@@ -327,7 +328,9 @@ export async function addPayment(id: string, _prev: AdminResult, f: FormData): P
   const amount = Number(str(f, "amount"));
   const months = Number(str(f, "months") || "0");
   if (!Number.isInteger(amount) || amount <= 0) return { error: "Укажите сумму в рублях" };
-  const biz = await db.business.findUniqueOrThrow({ where: { id } });
+  const biz = await db.business.findUniqueOrThrow({ where: { id }, include: { _count: { select: { users: { where: { role: "owner" } } } } } });
+  const blocked = connectFirst({ status: biz.status, owners: biz._count.users });
+  if (blocked) return { error: blocked };
   const from = biz.paidUntil && biz.paidUntil > new Date() ? biz.paidUntil : new Date();
   const to = months > 0 ? addMonths(from, months) : null;
   await db.$transaction([
@@ -335,7 +338,7 @@ export async function addPayment(id: string, _prev: AdminResult, f: FormData): P
       data: { businessId: id, amount, purpose: str(f, "purpose") || "Абонплата", periodFrom: to ? from : null, periodTo: to, receiptSent: f.get("receiptSent") === "on" },
     }),
     // Оплата без месяцев (например, разовая услуга) у приостановленного сайта: срок хотя бы с сегодняшнего дня, иначе ночью снова приостановка
-    db.business.update({ where: { id }, data: { status: "active", ...(to ? { paidUntil: to } : biz.paidUntil && biz.paidUntil > new Date() ? {} : { paidUntil: new Date() }) } }),
+    db.business.update({ where: { id }, data: { ...statusChange("active"), ...(to ? { paidUntil: to } : biz.paidUntil && biz.paidUntil > new Date() ? {} : { paidUntil: new Date() }) } }),
     db.lead.upsert({ where: { businessId: id }, create: { businessId: id, status: "paid" }, update: { status: "paid" } }),
   ]);
   await audit("admin.payment", { userId: admin.id, businessId: id, details: { amount } });
@@ -352,13 +355,21 @@ export async function setReceiptSent(paymentId: string, bizId: string) {
 
 export async function setStatus(id: string, status: "demo" | "trial" | "active" | "suspended" | "archived") {
   const admin = await requireAdmin();
-  const biz = await db.business.findUniqueOrThrow({ where: { id }, select: { paidUntil: true } });
+  const biz = await db.business.findUniqueOrThrow({ where: { id }, select: { paidUntil: true, status: true, _count: { select: { users: { where: { role: "owner" } } } } } });
+  // Сайт без владельца (демо или архивное демо) живым не делаем: подключение только через «Создать вход»
+  if ((status === "active" || status === "trial") && connectFirst({ status: biz.status, owners: biz._count.users })) {
+    throw new Error("Сначала «Создать вход» на вкладке «Подключение»: без владельца сайт не включается");
+  }
   // «Активировать» без новой оплаты: срок не раньше сегодняшнего, иначе ночная проверка тут же снова приостановит сайт
   const now = new Date();
   const paidFix = status === "active" && (!biz.paidUntil || biz.paidUntil < now) ? { paidUntil: now } : {};
   await db.business.update({
     where: { id },
-    data: { status, ...paidFix, ...(status === "demo" ? { demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000) } : {}) },
+    data: {
+      ...statusChange(status, now),
+      ...paidFix,
+      ...(status === "demo" ? { demoExpiresAt: new Date(Date.now() + DEMO_DAYS * 86400000) } : {}),
+    },
   });
   // В архив — входы владельца завершаются сразу, а не когда истечёт cookie
   if (status === "archived") await db.session.deleteMany({ where: { user: { businessId: id } } });

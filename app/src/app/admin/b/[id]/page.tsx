@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { outreach, question } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
-import { operatorMissing } from "@/lib/readiness";
+import { connectFirst, operatorMissing, TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
 import { processor } from "@/lib/legal";
 import { rknDraft } from "@/lib/rkn";
 import { publicSiteUrl } from "@/lib/site-url";
@@ -49,6 +49,14 @@ const day = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: 
 /** Что сделать с сервисом дальше: одна подсказка и вкладка, где это делается. */
 function nextStep(b: Biz): { text: string; tab: Tab; tone: "do" | "wait" | "ok" | "bad" } {
   const lead = b.lead?.status ?? "new";
+  const due = terminationDue(b);
+  if (due) {
+    return {
+      text: `Сайт приостановлен больше ${TERMINATE_AFTER_DAYS} дней: по оферте договор расторгнут (п. 4.2). До ${day(due.deleteBy)} удалите данные сайта и клиентов: «В архив», затем «Удалить совсем». Владельцу отправьте акт об уничтожении (п. 7.7).`,
+      tab: "manage",
+      tone: "bad",
+    };
+  }
   if (b.status === "archived") return { text: "Сервис в архиве. Вернуть его можно во вкладке «Управление».", tab: "manage", tone: "wait" };
   if (b.status === "suspended") return { text: "Сайт приостановлен. Когда владелец оплатит, запишите оплату — сайт включится.", tab: "pay", tone: "bad" };
   if (b.status === "demo") {
@@ -89,6 +97,8 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   if (!TABS.some((t) => t.key === sp.tab)) redirect(`/admin/b/${id}?tab=${step.tab}${created ? "&created=1" : ""}`);
   const tab = sp.tab as Tab;
   const siteUrl = publicSiteUrl(b.slug, b.customDomain, b.status);
+  // Демо или архивное демо без владельца: оплату и «Активировать» не показываем, сначала «Создать вход»
+  const payBlocked = connectFirst({ status: b.status, owners: b.users.filter((u) => u.role === "owner").length });
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
   const siteBookings = await db.booking.count({ where: { businessId: id, source: "site" } });
   const facts: [string, React.ReactNode][] = [
@@ -219,7 +229,14 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
               ) : (
                 <p className="text-[14px] text-zinc-500">Оплат пока нет.</p>
               )}
-              <PaymentForm id={b.id} />
+              {payBlocked ? (
+                <p className="rounded-xl bg-amber-50 px-3.5 py-3 text-[14px] text-amber-900">
+                  {payBlocked}.{" "}
+                  <Link href={`/admin/b/${b.id}?tab=connect`} className="font-semibold underline">Открыть «Подключение»</Link>
+                </p>
+              ) : (
+                <PaymentForm id={b.id} />
+              )}
             </Card>
           )}
 
@@ -242,7 +259,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
             <Card title="Статус сайта">
               <div className="flex flex-wrap gap-2">
                 {b.status === "demo" && <form action={extendDemo.bind(null, b.id)}><button className={btn2}>Продлить демо на 14 дней</button></form>}
-                {b.status !== "active" && b.status !== "demo" && <form action={setStatus.bind(null, b.id, "active")}><button className={btn2}>Активировать</button></form>}
+                {b.status !== "active" && b.status !== "demo" && !payBlocked && <form action={setStatus.bind(null, b.id, "active")}><button className={btn2}>Активировать</button></form>}
                 {(b.status === "active" || b.status === "trial") && <form action={setStatus.bind(null, b.id, "suspended")}><button className={btn2}>Приостановить сайт</button></form>}
                 {b.status !== "archived" && <form action={setStatus.bind(null, b.id, "archived")}><button className={btn2}>В архив</button></form>}
                 {b.status === "archived" && <form action={setStatus.bind(null, b.id, "demo")}><button className={btn2}>Вернуть как демо</button></form>}

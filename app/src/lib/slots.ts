@@ -9,29 +9,30 @@ export type ExceptionRow = { date: string; closed: boolean; openMin: number | nu
 /** Часы дня; breakFrom/breakTo — обед (внутри часов работы), в это время сервис закрыт целиком. */
 export type DayWindow = { openMin: number; closeMin: number; breakFrom?: number; breakTo?: number };
 
+/**
+ * Обед внутри часов дня: часть, что выходит за часы, отрезается. Сокращённый день 9:00–13:30 при обеде 13–14 —
+ * обед 13:00–13:30, а не «обеда нет» (иначе водитель записался бы на время, когда мастера обедают).
+ */
+function withBreak(win: DayWindow, from: number | null | undefined, to: number | null | undefined): DayWindow {
+  if (from == null || to == null) return win;
+  const a = Math.max(from, win.openMin), b = Math.min(to, win.closeMin);
+  // Особые часы целиком внутри обеда (13:00–14:00) — владелец сам решил работать в это время, обед не действует
+  if (a <= win.openMin && b >= win.closeMin) return win;
+  return b > a ? { ...win, breakFrom: a, breakTo: b } : win;
+}
+
 /** Часы работы на конкретную дату с учётом особых дней. null — выходной. */
 export function resolveDayWindow(date: string, hours: HoursRow[], exceptions: ExceptionRow[]): DayWindow | null {
   const ex = exceptions.find((e) => e.date === date);
   const row = hours.find((h) => h.weekday === weekdayOf(date));
   if (ex) {
     if (ex.closed || ex.openMin == null || ex.closeMin == null || ex.closeMin <= ex.openMin) return null;
-    // Сокращённый день: обед этого дня недели остаётся, если целиком попадает в новые часы (31 декабря 9–16, обед 13–14)
-    const win: DayWindow = { openMin: ex.openMin, closeMin: ex.closeMin };
-    const from = row && !row.closed ? row.breakFromMin : null, to = row && !row.closed ? row.breakToMin : null;
-    if (from != null && to != null && from >= ex.openMin && to <= ex.closeMin && to > from) {
-      win.breakFrom = from;
-      win.breakTo = to;
-    }
-    return win;
+    // Сокращённый или изменённый день: обед этого дня недели остаётся в пределах новых часов (31 декабря 9–16, обед 13–14)
+    const open = row && !row.closed;
+    return withBreak({ openMin: ex.openMin, closeMin: ex.closeMin }, open ? row.breakFromMin : null, open ? row.breakToMin : null);
   }
   if (!row || row.closed || row.closeMin <= row.openMin) return null;
-  const win: DayWindow = { openMin: row.openMin, closeMin: row.closeMin };
-  const from = row.breakFromMin, to = row.breakToMin;
-  if (from != null && to != null && from >= row.openMin && to <= row.closeMin && to > from) {
-    win.breakFrom = from;
-    win.breakTo = to;
-  }
-  return win;
+  return withBreak({ openMin: row.openMin, closeMin: row.closeMin }, row.breakFromMin, row.breakToMin);
 }
 
 /** Обед дня как интервал UTC, чтобы считать его закрытым временем всего сервиса. */

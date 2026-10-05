@@ -1,6 +1,7 @@
 import { RETENTION_YEARS } from "./legal";
 import { UNPAID_GRACE_DAYS } from "./pricing";
 import { db } from "./db";
+import { statusChange } from "./readiness";
 
 /** Сколько хранится архивное демо (карточка лида с контактами), считая от конца демо (политика /privacy, п. 4). */
 export const DEMO_KEEP_DAYS = 30;
@@ -43,7 +44,7 @@ export async function runCleanup(now = new Date()) {
   const graceAgo = new Date(now.getTime() - UNPAID_GRACE_DAYS * 86400000);
   const unpaid = await db.business.updateMany({
     where: { OR: [{ status: "active", paidUntil: { lt: graceAgo } }, { status: "trial", trialEndsAt: { lt: graceAgo }, paidUntil: null }] },
-    data: { status: "suspended" },
+    data: statusChange("suspended", now),
   });
   const cutoff = new Date(now);
   cutoff.setFullYear(cutoff.getFullYear() - RETENTION_YEARS);

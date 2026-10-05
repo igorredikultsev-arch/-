@@ -387,7 +387,11 @@ export default async function SitePage({ params, searchParams }: Props) {
       <br />
       <a href={`${base}/consent`}>Согласие на обработку персональных данных</a>
       <br />
-      Сайт работает на сервисе «Автослот»
+      {/* Ссылка на главную Автослота: соседние сервисы, увидев сайт, могут подключиться сами. Новая вкладка — запись не теряется */}
+      Сайт работает на сервисе{" "}
+      <a href={process.env.ROOT_DOMAIN ? `https://${process.env.ROOT_DOMAIN}` : process.env.APP_URL || "https://avtoslot.ru"} target="_blank" rel="noopener">
+        «Автослот»
+      </a>
     </footer>
   );
 

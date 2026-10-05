@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { phoneQuery } from "@/lib/phone";
+import { TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
 import { formatDate } from "@/lib/time";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
@@ -35,9 +36,11 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         OR: [
           { status: "trial", trialEndsAt: { lt: new Date(Date.now() + 3 * 86400000) } },
           { status: "active", OR: [{ paidUntil: { lt: new Date(Date.now() + 3 * 86400000) } }, { rknFiledAt: null }] },
+          // Приостановлен 60 дней и больше: договор расторгнут, данные пора удалять
+          { status: { in: ["suspended", "archived"] }, suspendedAt: { lte: new Date(Date.now() - TERMINATE_AFTER_DAYS * 86400000) } },
         ],
       },
-      select: { id: true, name: true, status: true, trialEndsAt: true, paidUntil: true, rknFiledAt: true },
+      select: { id: true, name: true, status: true, trialEndsAt: true, paidUntil: true, rknFiledAt: true, suspendedAt: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -47,6 +50,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const expiring = live.filter((b) => b.status === "trial" && b.trialEndsAt && b.trialEndsAt.getTime() - Date.now() < 3 * 86400000);
   const unpaid = live.filter((b) => b.status === "active" && b.paidUntil && b.paidUntil.getTime() < Date.now() + 3 * 86400000);
   const noRkn = live.filter((b) => b.status === "active" && !b.rknFiledAt);
+  const toDestroy = live.flatMap((b) => { const due = terminationDue(b); return due ? [{ ...b, due }] : []; });
 
   return (
     <div className="grid gap-6">
@@ -68,7 +72,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
         </p>
       </section>
 
-      {(expiring.length > 0 || unpaid.length > 0 || noRkn.length > 0) && (
+      {(expiring.length > 0 || unpaid.length > 0 || noRkn.length > 0 || toDestroy.length > 0) && (
         <section className="grid gap-2 rounded-2xl bg-orange-50 p-4 text-[14px] text-orange-950">
           <h2 className="font-bold">Нужно внимание</h2>
           {expiring.map((b) => (
@@ -79,6 +83,11 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           {unpaid.map((b) => (
             <Link key={b.id} href={`/admin/b/${b.id}`} className="underline">
               {b.name}: {ended(b.paidUntil!) ? `не оплачено, без оплаты сайт приостановится ${suspendOn(b.paidUntil!)}` : "скоро конец оплаченного периода"}
+            </Link>
+          ))}
+          {toDestroy.map((b) => (
+            <Link key={b.id} href={`/admin/b/${b.id}?tab=manage`} className="font-semibold text-red-800 underline">
+              {b.name}: приостановлен больше {TERMINATE_AFTER_DAYS} дней, договор расторгнут. Удалите данные сайта и клиентов до {formatDate(b.due.deleteBy.getTime(), "Asia/Yekaterinburg")} («В архив», затем «Удалить совсем») и отправьте акт об уничтожении
             </Link>
           ))}
           {noRkn.map((b) => (

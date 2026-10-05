@@ -61,3 +61,42 @@ export async function backupProblem(now = Date.now()): Promise<string | null> {
   if (s3 === false && process.env.S3_BUCKET?.trim()) return "Последняя копия базы не ушла в хранилище: посмотрите ошибку на сервере, tail deploy/backup.log";
   return null;
 }
+
+/**
+ * Оплату записывают только подключённому сервису: сначала «Создать вход» (вход владельцу, реквизиты, тестовые записи
+ * демо убираются), потом оплата. Иначе запись оплаты сделала бы демо живым сайтом без владельца и реквизитов.
+ */
+export function connectFirst(b: { status: string; owners: number }): string | null {
+  // Владелец есть (например, бывший клиент, возвращённый как демо): оплату можно записать сразу, его записи не трогаем
+  if (b.owners === 0) return "Оплату записывают после подключения: сначала «Создать вход» на вкладке «Подключение», потом оплата";
+  return null;
+}
+
+type Status = "demo" | "trial" | "active" | "suspended" | "archived";
+
+/**
+ * Смена статуса сервиса вместе с датой приостановки — единственное место, где она ставится и стирается.
+ * Приостановили — дата сегодня; клиент снова работает (подключили, оплатил, активировали) — дата стёрта;
+ * в архиве и при возврате как демо дата остаётся: обязанность удалить данные бывшего клиента не пропадает.
+ */
+export function statusChange(status: Status, now = new Date()): { status: Status; suspendedAt?: Date | null } {
+  if (status === "suspended") return { status, suspendedAt: now };
+  if (status === "active" || status === "trial") return { status, suspendedAt: null };
+  return { status };
+}
+
+/** Оферта, п. 4.2: через столько дней приостановки договор считается расторгнутым. */
+export const TERMINATE_AFTER_DAYS = 60;
+/** Оферта, п. 7.7: после расторжения данные уничтожаются в течение стольких дней, владельцу — акт об уничтожении. */
+export const DESTROY_WITHIN_DAYS = 30;
+
+/**
+ * Пора удалять данные бывшего клиента: сайт приостановлен (или уже в архиве после приостановки) 60 дней и больше.
+ * deleteBy — последний день, до которого данные нужно уничтожить. null — напоминать рано или не о чем.
+ */
+export function terminationDue(b: { status: string; suspendedAt: Date | null }, now = Date.now()): { deleteBy: Date; terminatedAt: Date } | null {
+  if (!b.suspendedAt || (b.status !== "suspended" && b.status !== "archived")) return null;
+  const terminatedAt = b.suspendedAt.getTime() + TERMINATE_AFTER_DAYS * 86400000;
+  if (now < terminatedAt) return null;
+  return { terminatedAt: new Date(terminatedAt), deleteBy: new Date(terminatedAt + DESTROY_WITHIN_DAYS * 86400000) };
+}

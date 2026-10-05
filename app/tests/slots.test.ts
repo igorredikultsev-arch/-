@@ -63,6 +63,19 @@ describe("resolveDayWindow", () => {
     // Обед после конца сокращённого дня — не нужен
     expect(resolveDayWindow(DATE, withBreak, [{ date: DATE, closed: false, openMin: h(9), closeMin: h(12) }])).toEqual({ openMin: h(9), closeMin: h(12) });
   });
+  it("сокращённый день, который задевает обед, обрезает обед по новым часам, а не убирает его", () => {
+    const withBreak = [{ weekday: 6, closed: false, openMin: h(9), closeMin: h(18), breakFromMin: h(13), breakToMin: h(14) }];
+    // До 13:30: мастера обедают с 13:00 до конца дня
+    expect(resolveDayWindow(DATE, withBreak, [{ date: DATE, closed: false, openMin: h(9), closeMin: h(13) + 30 }])).toEqual({
+      openMin: h(9), closeMin: h(13) + 30, breakFrom: h(13), breakTo: h(13) + 30,
+    });
+    // С 13:30: первые полчаса — ещё обед
+    expect(resolveDayWindow(DATE, withBreak, [{ date: DATE, closed: false, openMin: h(13) + 30, closeMin: h(20) }])).toEqual({
+      openMin: h(13) + 30, closeMin: h(20), breakFrom: h(13) + 30, breakTo: h(14),
+    });
+    // Особые часы целиком внутри обеда: владелец сам решил работать в это время, обед не действует
+    expect(resolveDayWindow(DATE, withBreak, [{ date: DATE, closed: false, openMin: h(13), closeMin: h(14) }])).toEqual({ openMin: h(13), closeMin: h(14) });
+  });
   it("особый день меняет часы", () => {
     expect(resolveDayWindow(DATE, hours, [{ date: DATE, closed: false, openMin: h(12), closeMin: h(14) }])).toEqual({
       openMin: h(12),

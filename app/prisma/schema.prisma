@@ -106,6 +106,9 @@ model Business {
   demoExpiresAt  DateTime?
   trialEndsAt    DateTime?
   paidUntil      DateTime?
+  // Когда сайт приостановили (нет оплаты или вручную). Через 60 дней приостановки договор расторгнут (оферта, п. 4.2),
+  // и в админке появляется напоминание удалить данные (п. 7.7). При возобновлении стирается
+  suspendedAt    DateTime?
   customDomain   String?        @unique
   addonTelegram  Boolean        @default(false)
   addonSms       Boolean        @default(false)
