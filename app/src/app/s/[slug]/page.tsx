@@ -127,7 +127,8 @@ export default async function SitePage({ params, searchParams }: Props) {
     </div>
   );
 
-  const aboutBlock = (facts.length > 0 || demo) && (
+  // Пустой блок «О сервисе» (в демо без фактов и пояснения к адресу) не показываем
+  const aboutBlock = (facts.length > 0 || !!biz.addressNote) && (
     <section className="block" aria-labelledby="about-h">
       <h2 className="h4" id="about-h">О сервисе</h2>
       {biz.addressNote && <p className="note-sm">{biz.addressNote}</p>}

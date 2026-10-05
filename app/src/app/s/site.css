@@ -118,9 +118,9 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 
 .about { display: grid; gap: 8px; }
 .about > :only-child { grid-column: 1 / -1; }
-.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .fact { border-radius: var(--r); background: var(--s-card); padding: 14px 16px; display: grid; gap: 2px; }
-.fact b { font: 700 20px/1.15 var(--s-head); }
+.fact b { font: 700 20px/1.15 var(--s-head); overflow-wrap: anywhere; }
 .fact span { font-size: 13.5px; color: var(--s-muted); }
 
 .reviews { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; }
@@ -137,7 +137,9 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .contacts div:first-child { border-top: 1px solid var(--s-line); }
 .contacts dt { color: var(--s-muted); }
 .contacts dd { margin: 0; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+/* minmax(0, 1fr): на узком телефоне (320 px) кнопки сжимаются, а не вылезают за край */
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.two .btn { min-width: 0; padding-inline: 10px; }
 .foot { margin-top: 44px; padding: 20px 18px 34px; font-size: 12px; line-height: 1.7; color: var(--s-muted); border-top: 1px solid var(--s-line); }
 .foot a { color: inherit; display: inline-block; padding: 9px 0; }
 
@@ -336,7 +338,8 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .t-plan .svc .p { font: 800 24px var(--s-head); }
 .t-plan .fact { background: var(--s-card); border: 1px solid var(--s-line); }
 .t-plan .fact b { font: 800 32px/1 var(--s-head); text-transform: uppercase; }
-.t-plan .score b { font: 900 76px/.85 var(--s-head); }
+.t-plan .score b { font: 900 76px/.95 var(--s-head); }
+.t-plan .reviews { margin-top: 14px; }
 .t-plan .contacts div:first-child { border-top: 2.5px solid var(--s-fg); }
 
 /* =================  «ТАКСИ»: отличия  ================= */
@@ -370,6 +373,8 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .t-taxi .tl-empty a { color: #fff; }
 .t-taxi .tl-svc { margin: 6px 0 0; font-size: 14px; color: #a8a8a8; }
 .t-taxi .tl-more { margin: 10px 0 0; font-size: 13px; color: #a8a8a8; }
+/* «Как добраться» сбоку — только на компьютере; на телефоне этот блок есть ниже, а карточка записи наезжает на тёмную панель времени */
+.t-taxi .side-where { display: none; }
 .t-taxi .sheet { position: relative; z-index: 2; margin-top: -20px; background: #fff; border-radius: 18px 18px 0 0; padding: 10px 16px 6px; box-shadow: 0 -6px 18px rgb(0 0 0 / .08); }
 .t-taxi .grab { width: 40px; height: 5px; border-radius: 3px; background: #e8e8e8; margin: 0 auto 14px; }
 .t-taxi .sheet-name { font: 700 24px/1.15 var(--s-head); letter-spacing: -.02em; margin: 0; }
