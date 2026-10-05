@@ -47,7 +47,8 @@ export function NewBookingForm({ services, today, initialDate }: { services: Svc
     if (!serviceId || !date) return;
     let alive = true;
     setSlots(null);
-    ownerDaySlots(date, serviceId).then((s) => alive && setSlots(s));
+    // Не загрузилось (нет сети) — пустой список: время можно ввести вручную, а не ждать вечную загрузку
+    ownerDaySlots(date, serviceId).then((s) => alive && setSlots(s)).catch(() => alive && setSlots([]));
     return () => { alive = false; };
   }, [serviceId, date]);
 
@@ -59,7 +60,8 @@ export function NewBookingForm({ services, today, initialDate }: { services: Svc
   function submit(force = false) {
     setError(null);
     start(async () => {
-      const r = await ownerCreateBooking({ serviceId, date, time, name, phone, comment, force });
+      // Сбой сети или сервера: введённое остаётся в форме, можно нажать ещё раз
+      const r = await ownerCreateBooking({ serviceId, date, time, name, phone, comment, force }).catch(() => ({ error: "Не получилось сохранить. Проверьте интернет и нажмите ещё раз", warning: undefined, id: undefined }));
       if (r.error) setError(r.error);
       else if (r.warning) setWarning(r.warning);
       else router.push(`/cabinet?date=${date}`);
@@ -155,7 +157,7 @@ export function NewBookingForm({ services, today, initialDate }: { services: Svc
             <span className="flex gap-2"><WarningCircle size={20} className="shrink-0" />{warning}</span>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" className="rounded-xl bg-white py-3 font-semibold" onClick={() => setWarning(null)}>Другое время</button>
-              <button type="button" disabled={pending} className="rounded-xl bg-orange-600 py-3 font-semibold text-white" onClick={() => submit(true)}>Записать</button>
+              <button type="button" disabled={pending} className="rounded-xl bg-orange-700 py-3 font-semibold text-white" onClick={() => submit(true)}>Записать</button>
             </div>
           </div>
         ) : (

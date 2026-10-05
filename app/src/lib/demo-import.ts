@@ -81,12 +81,15 @@ export function findTable(sheets: Sheet[]) {
   return null;
 }
 
-export function parseDemoRows(sheets: Sheet[], maxRows = 300): { sheet: string; rows: ParsedRow[] } | { error: string } {
+/** cut — сколько строк с названием не вошло из-за лимита maxRows: их загружают вторым файлом. */
+export function parseDemoRows(sheets: Sheet[], maxRows = 300): { sheet: string; rows: ParsedRow[]; cut: number } | { error: string } {
   const t = findTable(sheets);
   if (!t) return { error: "Не нашёл заголовки. Нужны хотя бы колонки «Название», «Адрес» и «Телефон» в первой строке" };
   const body = t.rows.slice(t.headerAt + 1);
   const rows: ParsedRow[] = [];
-  for (let i = 0; i < body.length && rows.length < maxRows; i++) {
+  const nameAt = t.fields.indexOf("name");
+  let i = 0;
+  for (; i < body.length && rows.length < maxRows; i++) {
     const cells = body[i];
     const get = (f: Field) => {
       const at = t.fields.indexOf(f);
@@ -140,5 +143,6 @@ export function parseDemoRows(sheets: Sheet[], maxRows = 300): { sheet: string; 
       },
     });
   }
-  return { sheet: t.sheet, rows };
+  const cut = body.slice(i).filter((cells) => String(cells[nameAt] ?? "").trim()).length;
+  return { sheet: t.sheet, rows, cut };
 }

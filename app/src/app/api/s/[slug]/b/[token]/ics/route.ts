@@ -1,7 +1,7 @@
 import { getSiteBusiness, decodeKey } from "@/lib/business";
 import { db } from "@/lib/db";
 
-const esc = (s: string) => s.replace(/[\\,;]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
+const esc = (s: string) => s.replace(/[\\,;]/g, (c) => `\\${c}`).replace(/\r?\n|\r/g, "\\n");
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 
 /** Файл для календаря телефона: «Добавить в календарь» на экране записи. */

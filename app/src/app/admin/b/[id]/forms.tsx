@@ -28,6 +28,8 @@ export function InfoForm({ id, info }: { id: string; info: Info }) {
         {field("city", "Город", { required: true })}
         <F label="Часовой пояс" id="i-timezone" hint={info.knownCity ? "По городу. Время записей на сайте считается по нему" : "Города нет в списке: проверьте пояс, иначе время записей на сайте сдвинется"}>
           <select id="i-timezone" name="timezone" defaultValue={info.timezone} className={inp}>
+            {/* Старый пояс, которого нет в списке (Саратов, Барнаул…): показываем его как есть, иначе браузер выберет первый пункт */}
+            {!ZONES.some((z) => z.value === info.timezone) && <option value={info.timezone}>{info.timezone}</option>}
             {ZONES.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}
           </select>
         </F>
@@ -68,7 +70,7 @@ export function LeadForm({ id, lead }: { id: string; lead: { status: string; cha
   const [state, action, pending] = useActionState(saveLead.bind(null, id), null);
   return (
     <form onSubmit={keepValues(action)} className="grid gap-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr_1fr]">
         <F label="Этап" id="l-status">
           <select id="l-status" name="status" defaultValue={lead.status} className={inp}>
             {Object.entries(LEAD_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}

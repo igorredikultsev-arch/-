@@ -5,7 +5,7 @@ import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
 export function PageHead({ kicker, title, children }: { kicker?: string; title: string; children?: React.ReactNode }) {
   return (
     <header className="px-[18px] pb-4 pt-6 lg:px-0 lg:pt-8">
-      {kicker && <div className="text-[13.5px] text-zinc-500">{kicker}</div>}
+      {kicker && <div className="text-[13.5px] text-zinc-600">{kicker}</div>}
       <h1 className="mt-0.5 text-[30px] font-bold leading-tight tracking-tight">{title}</h1>
       {children}
     </header>
@@ -81,14 +81,14 @@ export function Group({ children, className = "" }: { children: React.ReactNode;
   return <div className={`divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white ${className}`}>{children}</div>;
 }
 
-/** Строка меню: значок, название, текущее значение одной строкой и стрелка. */
+/** Строка меню: значок, название, текущее значение (до двух строк, на узком телефоне не обрезается) и стрелка. */
 export function MenuRow({ href, icon, title, value, tone }: { href: string; icon?: React.ReactNode; title: string; value?: React.ReactNode; tone?: "warn" }) {
   return (
     <Link href={href} className="flex min-h-16 items-center gap-3.5 px-4 py-3 hover:bg-zinc-50 active:bg-zinc-100">
       {icon && <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-paper text-ink">{icon}</span>}
       <span className="min-w-0 flex-1">
         <span className="block text-[16px] font-semibold leading-tight">{title}</span>
-        {value && <span className={`mt-0.5 block truncate text-[13.5px] ${tone === "warn" ? "font-semibold text-orange-700" : "text-zinc-500"}`}>{value}</span>}
+        {value && <span className={`mt-0.5 line-clamp-2 text-[13.5px] ${tone === "warn" ? "font-semibold text-orange-700" : "text-zinc-500"}`}>{value}</span>}
       </span>
       <CaretRight size={18} className="shrink-0 text-zinc-400" />
     </Link>

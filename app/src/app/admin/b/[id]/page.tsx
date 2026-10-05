@@ -1,7 +1,7 @@
 import { isKnownCity } from "@/lib/timezone";
 import Link from "next/link";
 import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { outreach, question } from "@/lib/outreach";
@@ -84,7 +84,10 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   if (!b) notFound();
   const step = nextStep(b);
   const lead = b.lead?.status ?? "new";
-  const tab: Tab = TABS.some((t) => t.key === sp.tab) ? (sp.tab as Tab) : step.tab;
+  // Вкладка всегда в адресе: иначе после сохранения формы «что сделать дальше» пересчитывается, страница
+  // перепрыгивает на другую вкладку, и пропадают «Сохранено» и одноразовый пароль владельца
+  if (!TABS.some((t) => t.key === sp.tab)) redirect(`/admin/b/${id}?tab=${step.tab}${created ? "&created=1" : ""}`);
+  const tab = sp.tab as Tab;
   const siteUrl = publicSiteUrl(b.slug, b.customDomain, b.status);
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
   const siteBookings = await db.booking.count({ where: { businessId: id, source: "site" } });
@@ -115,7 +118,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
       {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте и проверьте его, потом спросите владельца, можно ли прислать ссылку.</p>}
 
       <Link href={`/admin/b/${b.id}?tab=${step.tab}`} className={`grid gap-1 rounded-2xl px-5 py-4 ${TONE[step.tone]}`}>
-        <span className={`text-[13px] font-semibold ${step.tone === "do" ? "text-white/75" : "text-zinc-500"}`}>Что сделать дальше</span>
+        <span className={`text-[13px] font-semibold ${step.tone === "do" ? "text-white" : "text-zinc-500"}`}>Что сделать дальше</span>
         <span className="text-[16px] font-semibold leading-snug">{step.text}</span>
       </Link>
 
@@ -151,8 +154,9 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                 </Card>
               )}
               <Card title="Этап и заметки">
-                {/* key: после подключения или оплаты этап меняется на сервере, форма должна показать новый, а не затереть его старым */}
-                <LeadForm key={`${b.lead?.status}-${b.lead?.updatedAt?.getTime()}`} id={b.id} lead={{ status: b.lead?.status ?? "new", channel: b.lead?.channel ?? "", contact: b.lead?.contact ?? "", notes: b.lead?.notes ?? "" }} />
+                {/* key: после подключения или оплаты этап меняется на сервере, а при отказе стирается контакт: форма должна показать новое,
+                    а не затереть старым. Простое сохранение заметок форму не пересоздаёт, и «Сохранено» остаётся видно */}
+                <LeadForm key={`${b.id}-${b.lead?.status}-${b.lead?.contact ?? ""}`} id={b.id} lead={{ status: b.lead?.status ?? "new", channel: b.lead?.channel ?? "", contact: b.lead?.contact ?? "", notes: b.lead?.notes ?? "" }} />
               </Card>
             </>
           )}
@@ -188,7 +192,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                     Перешлите владельцу черновик: в нём готовые ответы на поля формы. Это черновик, его стоит показать юристу.
                   </p>
                   <CopyBox label="Черновик для владельца" rows={10} text={rknDraft(b, processor(), date(b.payments.reduce<Date>((min, p) => (p.createdAt < min ? p.createdAt : min), new Date())))} />
-                  <RknForm key={b.rknFiledAt?.getTime() ?? 0} id={b.id} filedAt={b.rknFiledAt ? b.rknFiledAt.toISOString().slice(0, 10) : ""} number={b.rknNumber ?? ""} />
+                  <RknForm key={b.id} id={b.id} filedAt={b.rknFiledAt ? b.rknFiledAt.toISOString().slice(0, 10) : ""} number={b.rknNumber ?? ""} />
                 </Card>
               )}
             </>

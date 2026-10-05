@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { audit } from "@/lib/auth";
+import { isExampleSlug } from "@/lib/business";
 import { db } from "@/lib/db";
 import { hit } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/request";
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const biz = await publicBusiness((await ctx.params).slug);
   if (!biz) return notFound();
   if (biz.status !== "demo") return json({ error: "Стиль меняет администратор" }, 403);
+  // Пример с главной avtoslot.ru смотрят все подряд: его стиль посетители не меняют
+  if (isExampleSlug(biz.slug)) return json({ error: "Это пример сайта, стиль у него не меняется" }, 403);
   const ip = await clientIp();
   if (!(await hit(`theme:${biz.id}:${ip ?? "?"}`, 20, 3600))) return json({ error: "Слишком часто. Попробуйте позже" }, 429);
   const body = await req.json().catch(() => null);

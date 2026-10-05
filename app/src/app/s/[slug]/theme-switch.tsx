@@ -4,7 +4,8 @@ import { useState } from "react";
 import { THEMES, type ThemeKey } from "@/lib/themes";
 
 /** Только в демо: владелец смотрит сайт в трёх стилях и выбирает свой. Выбор сохраняется, его видно в админке. */
-export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath }: { shown: ThemeKey; saved: ThemeKey; chosen: boolean; apiBase: string; pagePath: string }) {
+/** example — пример с главной avtoslot.ru: стили смотреть можно, выбирать нельзя (его открывают все посетители). */
+export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath, example = false }: { shown: ThemeKey; saved: ThemeKey; chosen: boolean; apiBase: string; pagePath: string; example?: boolean }) {
   const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const isChosen = chosen && shown === saved;
 
@@ -19,7 +20,7 @@ export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath }: { shown
 
   return (
     <div className="switch" role="region" aria-label="Выбор стиля сайта">
-      <p className="switch-note">Пример сайта от Автослота, не официальный сайт сервиса. Посмотрите три стиля и выберите свой</p>
+      <p className="switch-note">Пример сайта от Автослота, не официальный сайт сервиса. Посмотрите три стиля {example ? "оформления" : "и выберите свой"}</p>
       <div className="switch-row">
         <nav className="switch-tabs" aria-label="Стиль сайта">
           {THEMES.map((t) => (
@@ -28,7 +29,7 @@ export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath }: { shown
             </a>
           ))}
         </nav>
-        {isChosen ? (
+        {example ? null : isChosen ? (
           <span className="switch-ok">Этот стиль выбран</span>
         ) : (
           <button type="button" className="switch-go" onClick={choose} disabled={state === "saving" || state === "done"}>

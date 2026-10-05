@@ -39,11 +39,13 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
   const to = new Date(dayBounds(lastDate, tz).end + 86400000);
   const [bookings, blocks] = await Promise.all([
     tx.booking.findMany({
-      where: { businessId, status: { in: [...OCCUPYING] }, startAt: { lt: to }, endAt: { gt: from } },
+      // Нижняя граница по началу: без неё запрос перебирал бы всю историю записей сервиса. Запись не длиннее 10 часов,
+      // закрытие — не длиннее суток, а from уже взят с запасом в сутки, поэтому ничего пересекающееся не теряется
+      where: { businessId, status: { in: [...OCCUPYING] }, startAt: { gte: from, lt: to }, endAt: { gt: from } },
       select: { startAt: true, endAt: true },
     }),
     tx.block.findMany({
-      where: { businessId, startAt: { lt: to }, endAt: { gt: from } },
+      where: { businessId, startAt: { gte: from, lt: to }, endAt: { gt: from } },
       select: { startAt: true, endAt: true, scope: true },
     }),
   ]);
@@ -101,7 +103,7 @@ export async function getDaySlots(
   });
 }
 
-export type DayLoad = { date: string; open: number; close: number; now: number | null; busy: LaneSpan[] } | null;
+export type DayLoad = { date: string; open: number; close: number; now: number | null; busy: LaneSpan[]; lunch: LaneSpan | null } | null;
 
 /** Когда сервис занят целиком (все посты), для витрины сайта («План», «Такси»). null — выходной или вне горизонта. */
 export async function getDayLoad(biz: BusinessForSlots, date: string, nowMs = Date.now()): Promise<DayLoad> {
@@ -111,10 +113,12 @@ export async function getDayLoad(biz: BusinessForSlots, date: string, nowMs = Da
   const occ = await loadDay(db, biz.id, date, biz.timezone);
   const local = toLocal(nowMs, biz.timezone);
   const day = dayLanes({ date, tz: biz.timezone, window, posts: biz.posts, ...occ });
-  return { date, open: day.open, close: day.close, busy: fullBusy(day.lanes), now: local.date === date ? local.minutes : null };
+  const lunch = window.breakFrom != null && window.breakTo != null ? { from: window.breakFrom, to: window.breakTo } : null;
+  return { date, open: day.open, close: day.close, busy: fullBusy(day.lanes), now: local.date === date ? local.minutes : null, lunch };
 }
 
-export type DaySummary = { date: string; closed: boolean; free: number };
+/** ended — день рабочий, но окон нет совсем (сегодня время уже вышло): это «поздно», а не «занято». */
+export type DaySummary = { date: string; closed: boolean; free: number; ended?: true };
 
 /** Сводка по дням горизонта для полоски дат: выходной или сколько свободных окон. Один запрос к базе. */
 export async function getHorizonSummary(biz: BusinessForSlots, durationMin: number, nowMs = Date.now()): Promise<DaySummary[]> {
@@ -127,7 +131,12 @@ export async function getHorizonSummary(biz: BusinessForSlots, durationMin: numb
       date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts,
       ...occ, nowMs, minLeadMin: biz.minLeadMin,
     });
-    return { date, closed: false, free: slots.filter((s) => s.free).length };
+    // «Поздно» — только сегодня и только когда окна были, но время уже вышло (а не услуга длиннее рабочего дня)
+    const ended = slots.length === 0 && date === dates[0] && daySlots({
+      date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts,
+      bookings: [], blocksAll: [], blocksOnePost: [], nowMs: 0, minLeadMin: 0,
+    }).length > 0;
+    return { date, closed: false, free: slots.filter((s) => s.free).length, ...(ended ? { ended: true as const } : {}) };
   });
 }
 
@@ -168,12 +177,13 @@ export async function createSiteBooking(input: SiteBookingInput) {
     if (!biz || !service) throw new BookingError("not_found", "Сервис или услуга не найдены");
     const pd = !input.withoutPersonalData;
     // Повтор той же записи (ответ сервера потерялся в плохой сети, клиент нажал «Записаться» ещё раз):
-    // отдаём уже созданную запись, а не ошибку «на этот номер уже есть запись»
+    // отдаём уже созданную запись, а не ошибку «на этот номер уже есть запись». Сверяем и имя с машиной:
+    // знающий только телефон и время не получит чужую ссылку на отмену
     if (pd) {
       const [hh, mm] = input.time.split(":").map(Number);
       const same = await tx.booking.findFirst({
         where: {
-          businessId: input.businessId, serviceId: service.id, clientPhone: input.clientPhone, status: "active",
+          businessId: input.businessId, serviceId: service.id, clientPhone: input.clientPhone, clientName: input.clientName, car: input.car, status: "active",
           startAt: new Date(localToUtc(input.date, hh * 60 + mm, biz.timezone)), createdAt: { gt: new Date(Date.now() - 15 * 60000) }, // createdAt ставит база по настоящим часам
         },
       });
@@ -311,7 +321,7 @@ export async function restoreBooking(id: string, businessId: string, force = fal
 /** Активные записи, которые попадают в интервал: для предупреждения при закрытии времени и праздниках. */
 export async function bookingsInRange(businessId: string, start: number, end: number) {
   return db.booking.findMany({
-    where: { businessId, status: "active", startAt: { lt: new Date(end) }, endAt: { gt: new Date(start) } },
+    where: { businessId, status: "active", startAt: { gte: new Date(start - 86400000), lt: new Date(end) }, endAt: { gt: new Date(start) } },
     orderBy: { startAt: "asc" },
     select: { id: true, startAt: true, clientName: true, clientPhone: true, serviceName: true },
   });

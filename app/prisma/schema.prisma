@@ -213,6 +213,8 @@ model Booking {
 
   @@index([businessId, startAt])
   @@index([businessId, status, startAt])
+  // Удаление услуги обнуляет serviceId у её записей: без индекса это просмотр всех записей всех сервисов
+  @@index([serviceId])
 }
 
 model Block {
@@ -297,6 +299,8 @@ model Payment {
   periodTo    DateTime?
   receiptSent Boolean   @default(false)
   createdAt   DateTime  @default(now())
+
+  @@index([businessId])
 }
 
 /// Ограничение частоты: запись, вход. key — например «booking:ip:1.2.3.4»

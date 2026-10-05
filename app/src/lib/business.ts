@@ -42,3 +42,14 @@ export function isExampleSlug(slug: string) {
   const ex = (process.env.EXAMPLE_SLUG || "").trim();
   return !!ex && slug === ex;
 }
+
+/**
+ * Короткое имя для шапки «Такси»: «Шиномонтаж «Колесо»» → «Колесо». Название в кавычках главнее;
+ * без кавычек убирается вид работ в начале, только если дальше идёт имя с заглавной («Шиномонтаж и мойка» остаётся как есть).
+ */
+export function shortName(name: string): string {
+  const quoted = name.match(/«([^»]+)»/)?.[1] ?? name.match(/"([^"]+)"/)?.[1];
+  const rest = name.replace(/^(?:шиномонтаж|автосервис|автотехцентр)\s+/i, "");
+  const s = (quoted ?? (/^[A-ZА-ЯЁ0-9]/.test(rest) ? rest : name)).replace(/[«»"]/g, "").trim();
+  return s || name;
+}

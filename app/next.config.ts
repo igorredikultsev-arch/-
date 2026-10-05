@@ -15,6 +15,9 @@ const config: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
   serverExternalPackages: ["@node-rs/argon2"],
+  // next/image в проекте не используется: адрес /_next/image (сжатие картинок по запросу) выключен, чтобы через него
+  // нельзя было нагружать сервер пережатием загруженных логотипов
+  images: { unoptimized: true },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

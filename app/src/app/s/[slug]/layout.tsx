@@ -22,7 +22,7 @@ export default async function SiteLayout({ children, params }: { children: React
   if (expiredDemo || biz.status === "archived") {
     return (
       <div className="site t-taxi">
-        <div className="page">
+        <main className="page">
           <div className="closed-note">
             <h1 className="h4">{expiredDemo ? "Демо-версия сайта закончилась" : "Сайт больше не работает"}</h1>
             <p>
@@ -31,7 +31,7 @@ export default async function SiteLayout({ children, params }: { children: React
                 : `Позвоните в сервис: ${formatPhone(biz.phone)}`}
             </p>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -44,11 +44,11 @@ export default async function SiteLayout({ children, params }: { children: React
       className={`site t-${theme}`}
       style={{ "--accent": accent, "--on-accent": onAccent(accent) } as React.CSSProperties}
     >
-      <div className="page">
+      <main className="page">
         {/* Приостановленный сайт: главная показывает заглушку (в page.tsx), а страница уже сделанной записи остаётся,
             чтобы водитель мог посмотреть время и отменить визит */}
         {children}
-      </div>
+      </main>
     </div>
   );
 }

@@ -6,13 +6,14 @@ import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
 import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
 import { hit } from "@/lib/ratelimit";
-import { bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
+import { Prisma } from "@prisma/client";
+import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { OFFER_VERSION } from "@/lib/legal";
 import { imageMime, LOGO_MAX_BYTES } from "@/lib/logo";
-import { notifyBusiness } from "@/lib/push";
+import { notifyBusiness, pushHostOk } from "@/lib/push";
 import { normalizePhone } from "@/lib/phone";
 import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
@@ -122,16 +123,26 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
     phone = normalizePhone(p.data.phone);
     if (!phone) return { error: "Телефон должен быть из 10 цифр после +7 или пустым" };
   }
-  const res = await createOwnerBooking({
-    businessId: business.id,
-    serviceId: p.data.serviceId,
-    date: p.data.date,
-    startMin: parseHhmm(p.data.time)!,
-    clientName: p.data.name?.trim(),
-    clientPhone: phone ?? undefined,
-    comment: p.data.comment?.trim(),
-    force: p.data.force,
-  });
+  let res: Awaited<ReturnType<typeof createOwnerBooking>>;
+  try {
+    res = await createOwnerBooking({
+      businessId: business.id,
+      serviceId: p.data.serviceId,
+      date: p.data.date,
+      startMin: parseHhmm(p.data.time)!,
+      clientName: p.data.name?.trim(),
+      clientPhone: phone ?? undefined,
+      comment: p.data.comment?.trim(),
+      force: p.data.force,
+    });
+  } catch (e) {
+    // Понятное сообщение вместо страницы ошибки: имя и телефон клиента остаются в форме
+    if (e instanceof BookingError) return { error: e.message };
+    if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2028" || e.code === "P2034")) {
+      return { error: "Сейчас много записей одновременно. Нажмите «Записать» ещё раз" };
+    }
+    throw e;
+  }
   if (!res.booking) return { warning: warningText(res.warning!) };
   await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: res.booking.id } });
   revalidatePath("/cabinet", "layout");
@@ -368,6 +379,8 @@ export async function changePassword(_prev: ActionResult, f: FormData): Promise<
   const next = String(f.get("next") ?? "");
   const weak = passwordProblem(next, user.phone);
   if (weak) return { error: weak };
+  // Подбор текущего пароля с чужого (украденного) входа: не больше 10 попыток в час
+  if (!(await hit(`pwchange:${user.id}`, 10, 3600))) return { error: "Слишком много попыток. Попробуйте через час" };
   if (!(await verifyPassword(user.passwordHash, current))) return { error: "Текущий пароль неверный" };
   await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(next) } });
   // Остальные входы (например, на потерянном телефоне) завершаем, текущий оставляем
@@ -390,18 +403,6 @@ export async function acceptOffer(_prev: ActionResult, f: FormData): Promise<Act
 }
 
 /* ---------- уведомления ---------- */
-
-// Адреса подписки выдают только службы уведомлений браузеров. Любой другой адрес не принимаем:
-// иначе сервер по команде из кабинета слал бы запросы куда угодно
-const PUSH_HOSTS = [/(^|\.)googleapis\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /(^|\.)yandex\.(ru|net)$/];
-const pushHostOk = (u: string) => {
-  try {
-    const url = new URL(u);
-    return url.protocol === "https:" && PUSH_HOSTS.some((r) => r.test(url.hostname));
-  } catch {
-    return false;
-  }
-};
 
 const PushSub = z.object({
   endpoint: z.string().max(1000).refine(pushHostOk),

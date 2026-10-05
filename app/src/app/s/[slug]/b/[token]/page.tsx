@@ -22,7 +22,9 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
   const base = await siteBase(key);
   const start = toLocal(b.startAt.getTime(), biz.timezone);
   const cancelled = b.status === "cancelled";
-  const closed = b.status === "done" || b.status === "no_show"; // запись уже прошла, сервис её закрыл
+  // Запись уже прошла: сервис её закрыл или визит закончился, а отметки ещё нет («Ждём вас» тогда неправда).
+  // Пока визит не закончился (водитель опаздывает, ищет дорогу), маршрут и телефон остаются
+  const closed = b.status === "done" || b.status === "no_show" || (b.status === "active" && b.endAt.getTime() <= Date.now());
   const canCancel = b.status === "active" && canClientCancel(b.startAt, biz.cancelHours);
   // «до 10:00 4 октября»: без дня недели, чтобы не склонять его
   const dl = toLocal(b.startAt.getTime() - biz.cancelHours * 3600000, biz.timezone);

@@ -21,7 +21,9 @@ const Body = z.object({
   car: z.string().trim().min(2, "Укажите марку и модель").max(60),
   comment: z.string().trim().max(500).optional().default(""),
   consent: z.literal(true, { error: "Без согласия на обработку данных записаться нельзя" }),
-  captcha: z.string().optional(),
+  // Ответ SmartCaptcha — несколько сотен символов. Длинную строку не пересылаем Яндексу: на ошибку его сервиса
+  // запись пропускается без капчи (captcha «unavailable»), и так её можно было бы обойти
+  captcha: z.string().max(4096).optional(),
   website: z.string().optional(), // ловушка для ботов: люди это поле не видят
 });
 

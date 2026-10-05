@@ -24,7 +24,7 @@ export function BookingActions({ id, status, hasPd, started }: { id: string; sta
         <span>Пока запись была отменена, это время могли занять. Если вернуть, в одно время окажется больше машин, чем постов.</span>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className={btnSecondary} onClick={() => setWarning(null)}>Не возвращать</button>
-          <button type="button" disabled={pending} className={`${btnSecondary} !bg-orange-600 !text-white`} onClick={() => restore(true)}>
+          <button type="button" disabled={pending} className={`${btnSecondary} !bg-orange-700 !text-white`} onClick={() => restore(true)}>
             {pending ? "…" : "Вернуть"}
           </button>
         </div>
@@ -43,7 +43,7 @@ export function BookingActions({ id, status, hasPd, started }: { id: string; sta
         </span>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className={btnSecondary} onClick={() => setConfirm(null)}>Нет</button>
-          <button type="button" disabled={pending} className={`${btnSecondary} !bg-orange-600 !text-white`}
+          <button type="button" disabled={pending} className={`${btnSecondary} !bg-orange-700 !text-white`}
             onClick={() => run(() => (confirm === "cancel" ? setBookingStatus(id, "cancelled") : erasePersonalData(id)))}>
             {pending ? "…" : confirm === "cancel" ? "Отменить" : "Удалить"}
           </button>

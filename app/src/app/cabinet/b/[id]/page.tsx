@@ -38,7 +38,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
         </h1>
       </div>
       {b.clientPhone && (
-        <a href={`tel:${b.clientPhone}`} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-base font-semibold text-white">
+        <a href={`tel:${b.clientPhone}`} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3.5 text-base font-semibold text-white">
           <Phone size={20} /> Позвонить {formatPhone(b.clientPhone)}
         </a>
       )}

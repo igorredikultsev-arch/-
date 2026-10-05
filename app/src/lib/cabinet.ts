@@ -44,7 +44,7 @@ export async function loadDayForOwner(business: Business, date: string) {
       orderBy: { startAt: "asc" },
     }),
     db.block.findMany({
-      where: { businessId: business.id, startAt: { lt: new Date(bounds.end) }, endAt: { gt: new Date(bounds.start) } },
+      where: { businessId: business.id, startAt: { gte: new Date(bounds.start - 86400000), lt: new Date(bounds.end) }, endAt: { gt: new Date(bounds.start) } },
       orderBy: { startAt: "asc" },
     }),
   ]);

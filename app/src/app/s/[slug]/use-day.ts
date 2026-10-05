@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import type { LaneSpan } from "@/lib/slots";
 import { STATE_EVENT, type BookState } from "./events";
 
-export type Day = { date: string; closed: boolean; free: number };
+export type Day = { date: string; closed: boolean; free: number; ended?: true };
 export type SlotRow = { time: string; free: boolean };
-export type Load = { date: string; open: number; close: number; now: number | null; busy: LaneSpan[] } | null;
+export type Load = { date: string; open: number; close: number; now: number | null; busy: LaneSpan[]; lunch?: LaneSpan | null } | null;
 
 /**
  * Данные дня для витрины («План», «Такси»): дни горизонта, когда сервис занят и окна выбранной услуги.

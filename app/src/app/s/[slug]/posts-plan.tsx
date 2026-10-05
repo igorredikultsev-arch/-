@@ -57,7 +57,7 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
           return (
             <button key={x.date} type="button" className="yday" disabled={x.closed} aria-pressed={x.date === d.date} onClick={() => d.setDate(x.date)}>
               {i === 0 ? "Сегодня" : `${f.weekday[0].toUpperCase()}${f.weekday.slice(1)} ${f.day}`}
-              {x.closed ? <small>выходной</small> : x.free === 0 ? <small>занято</small> : null}
+              {x.closed ? <small>выходной</small> : x.ended ? <small>уже поздно</small> : x.free === 0 ? <small>занято</small> : null}
             </button>
           );
         })}
@@ -76,7 +76,18 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
           <div className="plan" role="group" aria-label="Время записи">
             {cells.map((t) => {
               const time = hhmm(t);
-              if (busyAt(d.load!.busy, t, t + step)) {
+              const lunch = d.load!.lunch;
+              // Свободное окно услуги главнее «занято» на шкале: короткая услуга помещается до чужой записи внутри места
+              const isFree = freeTimes.has(time);
+              if (!isFree && lunch && t < lunch.to && lunch.from < t + step) {
+                return (
+                  <div key={t} className="bay off lunch" aria-label={`${time}, обед`}>
+                    <span className="tm">{time}</span>
+                    <span className="go">обед</span>
+                  </div>
+                );
+              }
+              if (!isFree && busyAt(d.load!.busy, t, t + step)) {
                 const k = n++;
                 return (
                   <div key={t} className="bay busy" aria-label={`${time}, занято`}>
@@ -89,7 +100,7 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
                   </div>
                 );
               }
-              if (freeTimes.has(time)) {
+              if (isFree) {
                 const on = d.picked?.date === d.date && d.picked?.time === time;
                 return (
                   <button
@@ -106,7 +117,7 @@ export function PostsPlan(p: { services: WidgetService[]; defaultServiceId: stri
                 );
               }
               return (
-                <div key={t} className="bay off" aria-label={`${time}, услуга не успевает до следующей записи или закрытия`}>
+                <div key={t} className="bay off" aria-label={`${time}, на это время записаться нельзя`}>
                   <span className="tm">{time}</span>
                   <span className="go">не успеть</span>
                 </div>

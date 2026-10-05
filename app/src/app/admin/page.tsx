@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
+import { phoneQuery } from "@/lib/phone";
 import { formatDate } from "@/lib/time";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
@@ -16,25 +17,36 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   // Неизвестный этап в адресе (опечатка, старая ссылка) — показываем всё, а не ошибку
   const lead = sp.lead && sp.lead in LEAD_LABEL ? sp.lead : undefined;
   const q = sp.q?.trim().slice(0, 60) ?? "";
-  const [all, counts] = await Promise.all([
+  // «Нужно внимание» — отдельным запросом: список ниже ограничен 300 строками и фильтром, а сигналы терять нельзя
+  const [all, counts, live] = await Promise.all([
     db.business.findMany({
       where: {
         ...(lead ? { lead: { status: lead as never } } : q ? {} : { status: { not: "archived" } }),
         // Поиск по названию, адресу и телефону: нужен, когда демо станет много
-        ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { address: { contains: q, mode: "insensitive" as const } }, { phone: { contains: q.replace(/\D/g, "") || q } }] } : {}),
+        ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { address: { contains: q, mode: "insensitive" as const } }, { phone: { contains: phoneQuery(q) } }] } : {}),
       },
       include: { lead: true, _count: { select: { bookings: { where: { source: "site" } } } } },
       orderBy: { updatedAt: "desc" },
       take: 300,
     }),
     db.lead.groupBy({ by: ["status"], _count: true }),
+    db.business.findMany({
+      where: {
+        OR: [
+          { status: "trial", trialEndsAt: { lt: new Date(Date.now() + 3 * 86400000) } },
+          { status: "active", OR: [{ paidUntil: { lt: new Date(Date.now() + 3 * 86400000) } }, { rknFiledAt: null }] },
+        ],
+      },
+      select: { id: true, name: true, status: true, trialEndsAt: true, paidUntil: true, rknFiledAt: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
   const n = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
   // Воронка накопительная: кто дошёл до этапа или дальше
   const reached = FUNNEL.map((s, i) => ({ s, count: FUNNEL.slice(i).reduce((sum, x) => sum + n(x), 0) }));
-  const expiring = all.filter((b) => b.status === "trial" && b.trialEndsAt && b.trialEndsAt.getTime() - Date.now() < 3 * 86400000);
-  const unpaid = all.filter((b) => b.status === "active" && b.paidUntil && b.paidUntil.getTime() < Date.now() + 3 * 86400000);
-  const noRkn = all.filter((b) => b.status === "active" && !b.rknFiledAt);
+  const expiring = live.filter((b) => b.status === "trial" && b.trialEndsAt && b.trialEndsAt.getTime() - Date.now() < 3 * 86400000);
+  const unpaid = live.filter((b) => b.status === "active" && b.paidUntil && b.paidUntil.getTime() < Date.now() + 3 * 86400000);
+  const noRkn = live.filter((b) => b.status === "active" && !b.rknFiledAt);
 
   return (
     <div className="grid gap-6">
@@ -46,7 +58,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
               <div className="text-[28px] font-bold leading-none">{r.count}</div>
               <div className="mt-1 text-[13px] text-zinc-600">{LEAD_LABEL[r.s]}</div>
               {i > 0 && reached[i - 1].count > 0 && (
-                <div className="mt-1 text-[12px] text-zinc-400">{Math.round((r.count / reached[i - 1].count) * 100)}% от прошлого этапа</div>
+                <div className="mt-1 text-[12px] text-zinc-500">{Math.round((r.count / reached[i - 1].count) * 100)}% от прошлого этапа</div>
               )}
             </Link>
           ))}

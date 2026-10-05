@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </header>
       {problems.length > 0 && (
-        <div className="border-b border-red-200 bg-red-50">
+        <div role="region" aria-label="Что поправить на сервере" className="border-b border-red-200 bg-red-50">
           <div className="mx-auto max-w-5xl px-4 py-3 text-[14px] text-red-800">
             <p className="font-semibold">Что поправить на сервере:</p>
             <ul className="mt-1 grid list-disc gap-1 pl-5">

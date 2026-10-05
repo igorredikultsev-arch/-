@@ -8,9 +8,14 @@ import "./landing.css";
 // Контакты и реквизиты берутся из .env на сервере, поэтому страница собирается при каждом запросе
 export const dynamic = "force-dynamic";
 
+const TITLE = "Автослот — онлайн-запись для шиномонтажа и автосервиса";
+const DESCRIPTION = "Сайт, на котором клиенты сами записываются на свободное время, а записи приходят владельцу в телефон. Подключение за один день.";
+
 export const metadata: Metadata = {
-  title: "Автослот — онлайн-запись для шиномонтажа и автосервиса",
-  description: "Сайт, на котором клиенты сами записываются на свободное время, а записи приходят владельцу в телефон. Подключение за один день.",
+  title: TITLE,
+  description: DESCRIPTION,
+  // Превью ссылки в Telegram и ВК: продажи идут через сообщения, это первое, что видит владелец
+  openGraph: { title: TITLE, description: DESCRIPTION, siteName: "Автослот", type: "website", locale: "ru_RU" },
 };
 
 const OPEN = 600; // 10:00
@@ -74,7 +79,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-3">
               {contactHref && (
-                <a href={contactHref} className="rounded-2xl bg-accent px-6 py-4 text-[16px] font-semibold text-white shadow-[0_8px_24px_-10px_#ff6a1f] hover:brightness-105">
+                <a href={contactHref} className="rounded-2xl bg-accent px-6 py-4 text-[16px] font-semibold text-white shadow-[0_8px_24px_-10px_var(--color-accent)] hover:brightness-105">
                   {contactLabel}
                 </a>
               )}

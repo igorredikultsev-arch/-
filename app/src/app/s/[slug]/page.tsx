@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
-import { getSiteBusiness, isPublic, readFacts, type SiteBusiness, decodeKey } from "@/lib/business";
+import { getSiteBusiness, isExampleSlug, isPublic, readFacts, shortName, type SiteBusiness, decodeKey } from "@/lib/business";
 import { captchaClientKey } from "@/lib/captcha";
 import { formatPhone } from "@/lib/phone";
 import { seasonNotice } from "@/lib/season";
@@ -33,6 +33,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ...(logo ? { icons: { icon: logo, apple: logo } } : {}),
     title: `${biz.name}: онлайн-запись`,
     description: `${biz.name}, ${biz.city}, ${biz.address}. Запись на свободное время без звонка.`,
+    // Превью ссылки в мессенджерах (демо владельцу присылают сообщением, клиентам — ссылкой из карточки на картах)
+    openGraph: {
+      title: `${biz.name}: онлайн-запись`,
+      description: `${biz.city}, ${biz.address}. Выберите услугу и свободное время, запись за минуту.`,
+      siteName: biz.name,
+      type: "website",
+      locale: "ru_RU",
+    },
     // Демо не индексируется (раздел 6.7 плана)
     robots: biz.status === "demo" || biz.status === "archived" ? { index: false, follow: false } : undefined,
   };
@@ -91,7 +99,8 @@ export default async function SitePage({ params, searchParams }: Props) {
   const brandLogo = logoUrl && <img className="brand-logo" src={logoUrl} alt={biz.name} />;
 
   // Подключённый сервис без реквизитов оператора: согласие клиента было бы недействительным, запись только по телефону
-  const widget = operatorMissing(biz) ? (
+  const noOnline = operatorMissing(biz);
+  const widget = noOnline ? (
     <p className="closed-note">
       Онлайн-запись временно недоступна. Позвоните в сервис: <a href={`tel:${biz.phone}`}>{phone}</a>
     </p>
@@ -154,7 +163,7 @@ export default async function SitePage({ params, searchParams }: Props) {
         {rating && (
           <div className="score">
             <b>{rating}</b>
-            <div className="stars" aria-label={`Рейтинг ${rating} из 5`}>
+            <div className="stars" role="img" aria-label={`Рейтинг ${rating} из 5`}>
               {Array.from({ length: 5 }, (_, i) => (
                 <span className="ic" key={i}>
                   <Star weight={i < Math.round(Number(biz.rating)) ? "fill" : "regular"} />
@@ -306,7 +315,7 @@ export default async function SitePage({ params, searchParams }: Props) {
             {seasonBlock}
           </div>
         </section>
-        {defaultServiceId && (
+        {defaultServiceId && !noOnline && (
           <PostsPlan services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} stepMin={biz.slotStepMin} phone={biz.phone} phoneLabel={phone} />
         )}
         <div className="layout">
@@ -319,18 +328,18 @@ export default async function SitePage({ params, searchParams }: Props) {
       </>
     );
   } else {
-    const logo = biz.name.replace(/^(Шиномонтаж|Автосервис|Автотехцентр)\s+/i, "").replace(/[«»"]/g, "") || biz.name;
+    const logo = shortName(biz.name);
     content = (
       <>
         <header className="nav">
           {brandLogo}
-          <span className={`logo${logo.length > 18 ? " long" : ""}`} title={logo}>{logo}</span>
+          <span className={`logo${logo.length > 12 ? " long" : ""}`} title={logo}>{logo}</span>
           {callBtn}
         </header>
         <div className="hero">
           <h1 className="hello">{headline}</h1>
           <div className="aside">
-            {defaultServiceId && <DayLoad services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} phone={biz.phone} phoneLabel={phone} />}
+            {defaultServiceId && !noOnline && <DayLoad services={services} defaultServiceId={defaultServiceId} apiBase={apiBase} phone={biz.phone} phoneLabel={phone} />}
             <div className="side-where">{contacts("-side")}</div>
           </div>
           <div className="sheet">
@@ -385,7 +394,7 @@ export default async function SitePage({ params, searchParams }: Props) {
   return (
     <>
       {demo ? (
-        <ThemeSwitch shown={theme} saved={biz.theme as ThemeKey} chosen={!!biz.themeChosenAt} apiBase={apiBase} pagePath={pagePath} />
+        <ThemeSwitch shown={theme} saved={biz.theme as ThemeKey} chosen={!!biz.themeChosenAt} apiBase={apiBase} pagePath={pagePath} example={isExampleSlug(biz.slug)} />
       ) : null}
       {content}
       {footer}

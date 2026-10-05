@@ -71,3 +71,17 @@ export function newBookingMessage(b: { id: string; startAt: Date; serviceName: s
 export function cancelledMessage(b: { id: string; startAt: Date; serviceName: string }, tz: string): PushMessage {
   return { title: `Клиент отменил запись: ${when(b.startAt, tz)}`, body: `${b.serviceName}. Время снова свободно`, url: `/cabinet/b/${b.id}`, tag: `b-${b.id}` };
 }
+
+// Адреса подписки выдают только службы уведомлений браузеров. Любой другой адрес не принимаем:
+// иначе сервер по команде из кабинета слал бы запросы куда угодно
+const PUSH_HOSTS = [/(^|\.)googleapis\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /(^|\.)yandex\.(ru|net)$/];
+export const pushHostOk = (u: string) => {
+  try {
+    const url = new URL(u);
+    // Только обычное имя хоста без порта и логина: библиотека отправки разбирает адрес по-своему,
+    // и «https://чужой.сайт;.fcm.googleapis.com» иначе прошёл бы проверку, а запрос ушёл бы на чужой сайт
+    return url.protocol === "https:" && /^[a-z0-9.-]+$/.test(url.hostname) && !url.port && !url.username && !url.password && PUSH_HOSTS.some((r) => r.test(url.hostname));
+  } catch {
+    return false;
+  }
+};

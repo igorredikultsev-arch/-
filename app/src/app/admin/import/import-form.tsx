@@ -83,6 +83,11 @@ export function ImportForm() {
               </button>
             )}
           </div>
+          {!!state.cut && (
+            <p role="alert" className="rounded-xl bg-amber-50 px-3 py-2.5 text-[14px] text-amber-900">
+              За раз обрабатываются первые 300 строк. Ещё {state.cut} не вошли: удалите из таблицы уже загруженные и загрузите файл ещё раз.
+            </p>
+          )}
           <p className="text-[13px] text-zinc-500">Откройте демо и проверьте. Первым сообщением отправьте только вопрос, можно ли прислать пример, и поставьте этап «Спросили, ждём ответа». Сообщение с демо — в карточке сервиса, отправляйте его после ответа «да».</p>
           <ul className="grid gap-2">
             {rows.map((r) => (
@@ -102,6 +107,9 @@ export function ImportForm() {
                     {r.question && <Copy text={r.question} label="Скопировать вопрос" />}
                     <Link href={`/admin/b/${r.id}`} className={btn2}>Карточка</Link>
                   </div>
+                )}
+                {!r.url && r.id && (
+                  <Link href={`/admin/b/${r.id}`} className={`${btn2} justify-self-start`}>Карточка</Link>
                 )}
               </li>
             ))}

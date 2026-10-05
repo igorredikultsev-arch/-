@@ -6,7 +6,8 @@ import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
 import { audit, endAllSessions, generatePassword, hashPassword, requireAdmin, requireOwner, setAdminView } from "@/lib/auth";
 import { isDateString } from "@/lib/time";
-import { isKnownCity, timezoneForCity, ZONES } from "@/lib/timezone";
+import { isAllowedZone, isKnownCity, timezoneForCity } from "@/lib/timezone";
+import { matchForImport } from "@/lib/import-match";
 import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
@@ -22,7 +23,8 @@ import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
 export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
-const optUrl = z.union([z.literal(""), z.string().url("ссылка должна начинаться с https://")], { error: "ссылка должна начинаться с https://" });
+const URL_MSG = "нужна ссылка вида https://…";
+const optUrl = z.union([z.literal(""), z.string().url(URL_MSG).refine((v) => /^https?:\/\//i.test(v), URL_MSG)], { error: URL_MSG });
 const optInt = z.union([z.literal(""), z.coerce.number().int().min(0)], { error: "целое число, например 98" });
 // Рейтинг пишут и «4.8», и «4,8»
 const optRating = z.union([z.literal(""), z.preprocess((v) => String(v).replace(",", "."), z.coerce.number().min(1).max(5))], {
@@ -134,7 +136,7 @@ export async function createDemo(_prev: AdminResult, f: FormData): Promise<Admin
 }
 
 export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; question?: string; message?: string; channel?: string | null; contact?: string | null };
-export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[] } | null;
+export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[]; cut?: number } | null;
 
 // Запрос к серверному действию ограничен 1 МБ (настройка Next.js по умолчанию), таблица на сотню строк весит десятки КБ
 const MAX_FILE = 900 * 1024;
@@ -164,10 +166,12 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
       rows.push({ line: r.line, name: r.name, status: "skipped", reason: r.error });
       continue;
     }
-    const existing = await db.business.findFirst({
-      where: { OR: [...(d.twoGisUrl ? [{ twoGisUrl: d.twoGisUrl }] : []), { name: d.name, address: d.address }], status: { not: "archived" } },
-      include: { lead: true },
-    });
+    const match = await matchForImport(d);
+    if (match.kind === "skip") {
+      rows.push({ line: r.line, name: match.biz.name, status: "skipped", reason: match.reason, id: match.biz.id });
+      continue;
+    }
+    const existing = match.kind === "exists" ? match.biz : null;
     const biz = existing ?? (await insertDemo({ ...d, firstMessage: null }));
     const url = publicSiteUrl(biz.slug, biz.customDomain, biz.status);
     const message = existing?.lead?.firstMessage ?? (d.message ? withLink(d.message, url) : outreach(biz, url));
@@ -178,7 +182,7 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
     rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, question: question(biz), message, channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
   }
   revalidatePath("/admin");
-  return { sheet: parsed.sheet, rows };
+  return { sheet: parsed.sheet, rows, cut: parsed.cut };
 }
 
 const Info = z.object({
@@ -196,7 +200,7 @@ const Info = z.object({
   operatorName: z.string().max(120),
   operatorInn: z.union([z.literal(""), z.string().regex(/^\d{10}(\d{2})?$/, "ИНН: 10 или 12 цифр")]),
   customDomain: z.union([z.literal(""), z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "Домен вида avtoservis-ivanov.ru")]),
-  timezone: z.string().refine((v) => ZONES.some((zn) => zn.value === v), "Выберите часовой пояс из списка"),
+  timezone: z.string().refine(isAllowedZone, "Выберите часовой пояс из списка"),
 });
 
 export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
