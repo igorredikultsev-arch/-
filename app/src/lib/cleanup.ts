@@ -2,14 +2,17 @@ import { RETENTION_YEARS } from "./legal";
 import { UNPAID_GRACE_DAYS } from "./pricing";
 import { db } from "./db";
 
-/** Сколько хранится архивное демо (карточка лида с контактами), считая от конца демо. */
-export const DEMO_KEEP_DAYS = 365;
+/** Сколько хранится архивное демо (карточка лида с контактами), считая от конца демо (политика /privacy, п. 4). */
+export const DEMO_KEEP_DAYS = 30;
+/** Карточка отказа (название, общий телефон, отметка «отказ») — стоп-лист, чтобы не написать повторно (политика /privacy, п. 3.3). */
+export const REFUSED_KEEP_DAYS = 365;
 
 /**
  * Регулярная очистка:
  * 1) демо, которые не подключили за 14 дней (раздел 2.3, п. 5): в архив, а не удаление,
  *    чтобы в воронке осталась карточка лида (этап, контакт, заметки). Пробные записи демо удаляются.
- *    Через 12 месяцев архивные демо, так и не ставшие клиентами, удаляются вместе с контактами (политика /privacy, п. 4);
+ *    Через 30 дней архивные демо, так и не ставшие клиентами, удаляются вместе с контактами (политика /privacy, п. 4),
+ *    карточки отказов (контакт в них уже стёрт) — через 12 месяцев;
  * 2) не оплатили через UNPAID_GRACE_DAYS дней после конца оплаченного срока — сайт приостанавливается (оферта, п. 4.1);
  *    возобновляет его оплата в админке;
  * 3) персональные данные клиентов старше срока хранения (раздел 6.3, п. 5);
@@ -27,9 +30,15 @@ export async function runCleanup(now = new Date()) {
     await db.booking.deleteMany({ where: { businessId: { in: ids } } });
     await db.business.updateMany({ where: { id: { in: ids } }, data: { status: "archived" } });
   }
-  const yearAgo = new Date(now.getTime() - DEMO_KEEP_DAYS * 86400000);
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000);
+  const never = { status: "archived" as const, users: { none: {} }, payments: { none: {} } };
   const old = await db.business.deleteMany({
-    where: { status: "archived", demoExpiresAt: { lt: yearAgo }, users: { none: {} }, payments: { none: {} } },
+    where: {
+      OR: [
+        { ...never, demoExpiresAt: { lt: daysAgo(DEMO_KEEP_DAYS) }, NOT: { lead: { status: "refused" } } },
+        { ...never, demoExpiresAt: { lt: daysAgo(REFUSED_KEEP_DAYS) }, lead: { status: "refused" } },
+      ],
+    },
   });
   const graceAgo = new Date(now.getTime() - UNPAID_GRACE_DAYS * 86400000);
   const unpaid = await db.business.updateMany({

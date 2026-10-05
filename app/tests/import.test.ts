@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDemoRows } from "@/lib/demo-import";
-import { withLink } from "@/lib/outreach";
+import { outreach, question, withLink } from "@/lib/outreach";
 import { readCsv, readTable } from "@/lib/sheet";
 
 describe("импорт демо из таблицы", () => {
@@ -43,5 +43,16 @@ describe("импорт демо из таблицы", () => {
     const m = withLink("Здравствуйте!\n\nПример: [ссылка на демо]\nТам ваши услуги.\n\nИгорь", "https://avtoslot.ru/s/koleso");
     expect(m).toBe("Здравствуйте!\n\nПример: https://avtoslot.ru/s/koleso\nТам ваши услуги.\nВверху можно переключить три варианта оформления и выбрать тот, что больше нравится.\n\nИгорь");
     expect(withLink("Привет, вот стиль сайта", "https://x")).toBe("Привет, вот стиль сайта\n\nhttps://x");
+  });
+
+  it("первое сообщение — только вопрос: без ссылки и цен; ссылка и цены — во втором", () => {
+    const b = { name: "Ось", rating: 4.8, yandexMapsUrl: "https://yandex.ru/maps/org/1", status: "demo" };
+    const q = question(b);
+    expect(q).toContain("у вас 4,8");
+    expect(q).toContain("Можно прислать ссылку и условия?");
+    expect(q).not.toMatch(/https?:\/\/|₽/);
+    const m = outreach(b, "https://avtoslot.ru/s/os");
+    expect(m).toContain("https://avtoslot.ru/s/os");
+    expect(m).toMatch(/3\s500\s₽/);
   });
 });

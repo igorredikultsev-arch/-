@@ -7,5 +7,5 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: OFFER_TITLE };
 
 export default function OfferPage() {
-  return <LegalPage title={OFFER_TITLE} sections={offerText(processor(), { setup: rub(SETUP_PRICE), monthly: rub(MONTHLY_PRICE), guaranteeDays: GUARANTEE_DAYS, graceDays: UNPAID_GRACE_DAYS })} />;
+  return <LegalPage title={OFFER_TITLE} sections={offerText(processor(), { setup: rub(SETUP_PRICE), setupService: rub(SETUP_PRICE - MONTHLY_PRICE), monthly: rub(MONTHLY_PRICE), guaranteeDays: GUARANTEE_DAYS, graceDays: UNPAID_GRACE_DAYS })} />;
 }

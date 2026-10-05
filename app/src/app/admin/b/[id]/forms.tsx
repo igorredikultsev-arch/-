@@ -75,7 +75,7 @@ export function LeadForm({ id, lead }: { id: string; lead: { status: string; cha
           </select>
         </F>
         <F label="Канал" id="l-channel"><input id="l-channel" name="channel" defaultValue={lead.channel} className={inp} /></F>
-        <F label="Контакт" id="l-contact"><input id="l-contact" name="contact" defaultValue={lead.contact} className={inp} /></F>
+        <F label="Контакт" id="l-contact"><input id="l-contact" name="contact" defaultValue={lead.contact} placeholder="Номер или группа сервиса" className={inp} /></F>
       </div>
       <F label="Заметки" id="l-notes"><textarea id="l-notes" name="notes" rows={3} defaultValue={lead.notes} className="w-full rounded-xl border border-zinc-300 p-3 text-[14px]" /></F>
       <Result state={state} />

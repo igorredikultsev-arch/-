@@ -7,7 +7,7 @@ import { localToUtc, toLocal } from "./time";
 
 type Tx = Prisma.TransactionClient | PrismaClient;
 
-export const CONSENT_VERSION = "2026-10-v2"; // v2: обработчик назван без склонения ФИО (5 октября)
+export const CONSENT_VERSION = "2026-10-v3"; // v3: состав данных, напоминания, история для претензий, «уничтожаются» (юр. проверка 5 октября)
 
 /** Записи, которые занимают пост: активные и уже выполненные (отмена и «не приехал» время освобождают). */
 export const OCCUPYING = ["active", "done"] as const;

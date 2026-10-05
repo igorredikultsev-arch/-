@@ -4,7 +4,7 @@ import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { outreach } from "@/lib/outreach";
+import { outreach, question } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
 import { operatorMissing } from "@/lib/readiness";
 import { processor } from "@/lib/legal";
@@ -52,7 +52,8 @@ function nextStep(b: Biz): { text: string; tab: Tab; tone: "do" | "wait" | "ok" 
   if (b.status === "archived") return { text: "Сервис в архиве. Вернуть его можно во вкладке «Управление».", tab: "manage", tone: "wait" };
   if (b.status === "suspended") return { text: "Сайт приостановлен. Когда владелец оплатит, запишите оплату — сайт включится.", tab: "pay", tone: "bad" };
   if (b.status === "demo") {
-    if (lead === "new") return { text: "Отправьте владельцу первое сообщение со ссылкой на демо и поставьте этап «Демо отправлено».", tab: "work", tone: "do" };
+    if (lead === "new") return { text: "Спросите, можно ли прислать пример сайта, и поставьте этап «Спросили, ждём ответа».", tab: "work", tone: "do" };
+    if (lead === "asked") return { text: "Ждём ответа на вопрос. Ответили «да» — отправьте демо, «нет» — поставьте «Отказ».", tab: "work", tone: "wait" };
     if (lead === "refused") return { text: "Владелец отказался. Можно отправить в архив.", tab: "manage", tone: "wait" };
     if (operatorMissing({ ...b, status: "active" })) return { text: "Ждём ответа. Чтобы подключить, понадобятся ФИО или название ИП и ИНН владельца.", tab: "info", tone: "wait" };
     return { text: "Владелец согласен? Создайте ему вход и подключите сервис.", tab: "connect", tone: "do" };
@@ -82,6 +83,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   const b = await load(id);
   if (!b) notFound();
   const step = nextStep(b);
+  const lead = b.lead?.status ?? "new";
   const tab: Tab = TABS.some((t) => t.key === sp.tab) ? (sp.tab as Tab) : step.tab;
   const siteUrl = publicSiteUrl(b.slug, b.customDomain, b.status);
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
@@ -110,7 +112,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
         <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="justify-self-start text-[14.5px] font-semibold text-accent hover:underline">{siteUrl.replace(/^https?:\/\//, "")}</a>
       </div>
 
-      {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте его, проверьте и отправьте владельцу.</p>}
+      {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте и проверьте его, потом спросите владельца, можно ли прислать ссылку.</p>}
 
       <Link href={`/admin/b/${b.id}?tab=${step.tab}`} className={`grid gap-1 rounded-2xl px-5 py-4 ${TONE[step.tone]}`}>
         <span className={`text-[13px] font-semibold ${step.tone === "do" ? "text-white/75" : "text-zinc-500"}`}>Что сделать дальше</span>
@@ -130,10 +132,22 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
 
           {tab === "work" && (
             <>
-              {(b.status === "demo" || b.lead?.status === "new") && (
-                <Card title="Первое сообщение">
+              {lead === "new" && (
+                <Card title="Первое сообщение: вопрос">
+                  <CopyBox label="Без ссылки и цен: сначала спрашиваем, можно ли прислать" rows={6} text={question(b)} />
+                  <p className="text-[13px] text-zinc-500">
+                    Пишите на официальный номер или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Спросили, ждём ответа».
+                  </p>
+                </Card>
+              )}
+              {(lead === "asked" || (lead !== "new" && b.status === "demo")) && (
+                <Card title={lead === "asked" ? "Ответили «да»? Отправьте демо" : "Сообщение с демо"}>
                   <CopyBox label="Поправьте под сервис перед отправкой" rows={8} text={b.lead?.firstMessage ?? outreach(b, siteUrl)} />
-                  <p className="text-[13px] text-zinc-500">После отправки поставьте этап «Демо отправлено» ниже: так считается воронка.</p>
+                  <p className="text-[13px] text-zinc-500">
+                    {lead === "asked"
+                      ? "Только после ответа «да»: сохраните скриншот ответа, это согласие на сообщение. Потом поставьте этап «Демо отправлено». Ответили «нет» — поставьте «Отказ», контакт удалится."
+                      : "Отправляйте только тем, кто ответил «да» на вопрос."}
+                  </p>
                 </Card>
               )}
               <Card title="Этап и заметки">

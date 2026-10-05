@@ -5,7 +5,7 @@ import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { formatDate } from "@/lib/time";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
 
-const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
+const FUNNEL = ["asked", "demo_sent", "replied", "interested", "trial", "paid"] as const;
 const ended = (d: Date) => d.getTime() < Date.now();
 // Когда очистка приостановит сайт без оплаты (оферта, п. 4.1)
 const suspendOn = (d: Date) => formatDate(d.getTime() + UNPAID_GRACE_DAYS * 86400000, "Asia/Yekaterinburg");
@@ -40,7 +40,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
     <div className="grid gap-6">
       <section className="grid gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Воронка</h1>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {reached.map((r, i) => (
             <Link key={r.s} href={`/admin?lead=${r.s}`} className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200 hover:ring-accent">
               <div className="text-[28px] font-bold leading-none">{r.count}</div>
@@ -52,7 +52,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           ))}
         </div>
         <p className="text-[13px] text-zinc-500">
-          Отказов: {n("refused")}. Не отправлено: {n("new")}. Если мало «Ответил», меняйте текст первого сообщения; если отвечают, но не платят, меняйте предложение.
+          Отказов: {n("refused")}. Ещё не писали: {n("new")}. Если на вопрос мало кто отвечает «да», меняйте его текст; если демо смотрят, но не платят, меняйте предложение.
         </p>
       </section>
 

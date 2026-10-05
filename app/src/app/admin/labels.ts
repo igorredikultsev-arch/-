@@ -1,5 +1,6 @@
 export const LEAD_LABEL = {
   new: "Новый",
+  asked: "Спросили, ждём ответа",
   demo_sent: "Демо отправлено",
   replied: "Ответил",
   interested: "Интересно",

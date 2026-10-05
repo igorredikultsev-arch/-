@@ -101,7 +101,7 @@ describe("готовность к приёму записей", () => {
   });
 
   it("админка предупреждает о незаполненных настройках сервера", () => {
-    const full = { SMARTCAPTCHA_CLIENT_KEY: "ysc1_c", SMARTCAPTCHA_SERVER_KEY: "ysc2_s", PROCESSOR_NAME: "Иванов И. И.", PROCESSOR_INN: "590000000000", PROCESSOR_EMAIL: "a@ya.ru", DB_LOCATION: "Россия, Москва", CRON_SECRET: "x", S3_BUCKET: "b", HEALTHCHECK_URL: "https://hc", CONTACT_TELEGRAM: "igor" };
+    const full = { SMARTCAPTCHA_CLIENT_KEY: "ysc1_c", SMARTCAPTCHA_SERVER_KEY: "ysc2_s", PROCESSOR_NAME: "Иванов И. И.", PROCESSOR_INN: "590000000000", PROCESSOR_EMAIL: "a@ya.ru", DB_LOCATION: "Россия, Москва", HOSTING_PROVIDER: "ООО «Хостинг», ИНН 7700000000", CRON_SECRET: "x", S3_BUCKET: "b", HEALTHCHECK_URL: "https://hc", CONTACT_TELEGRAM: "igor" };
     expect(configProblems(full)).toEqual([]);
     expect(configProblems({ ...full, SMARTCAPTCHA_SERVER_KEY: "" })[0]).toMatch(/только один ключ/);
     expect(configProblems({ ...full, SMARTCAPTCHA_CLIENT_KEY: "", SMARTCAPTCHA_SERVER_KEY: "" })[0]).toMatch(/Капча выключена/);
@@ -109,11 +109,14 @@ describe("готовность к приёму записей", () => {
     expect(configProblems({ ...full, PROCESSOR_INN: "" }).join()).toMatch(/ИНН/);
     expect(configProblems({ ...full, CRON_SECRET: "change-me" }).join()).toMatch(/CRON_SECRET/);
     expect(configProblems({ ...full, S3_BUCKET: "" }).join()).toMatch(/только на этом же сервере/);
+    expect(configProblems({ ...full, PROCESSOR_EMAIL: "igor@gmail.com" }).join()).toMatch(/зарубежном/);
+    expect(configProblems({ ...full, PROCESSOR_EMAIL: "igor@yandex.ru" })).toEqual([]);
+    expect(configProblems({ ...full, HOSTING_PROVIDER: "" }).join()).toMatch(/HOSTING_PROVIDER/);
   });
 });
 
 describe("очистка", () => {
-  it("архивное демо старше года удаляется вместе с карточкой лида, бывший клиент с оплатами остаётся", async () => {
+  it("архивное демо удаляется через 30 дней, карточка отказа — через год, бывший клиент с оплатами остаётся", async () => {
     const now = new Date("2026-10-04T00:00:00Z");
     const longAgo = new Date("2025-09-01T00:00:00Z");
     const old = await makeBusiness({ slug: "staroe" });
@@ -121,10 +124,16 @@ describe("очистка", () => {
     const paid = await makeBusiness({ slug: "platil" });
     await db.business.update({ where: { id: paid.id }, data: { status: "archived", demoExpiresAt: longAgo, payments: { create: { amount: 3500, purpose: "Подключение" } } } });
     const fresh = await makeBusiness({ slug: "svezhee" });
-    await db.business.update({ where: { id: fresh.id }, data: { status: "archived", demoExpiresAt: new Date("2026-09-01T00:00:00Z") } });
+    await db.business.update({ where: { id: fresh.id }, data: { status: "archived", demoExpiresAt: new Date("2026-09-20T00:00:00Z") } });
+    const silent = await makeBusiness({ slug: "molchit" });
+    await db.business.update({ where: { id: silent.id }, data: { status: "archived", demoExpiresAt: new Date("2026-09-01T00:00:00Z"), lead: { create: { status: "asked" } } } });
+    const refused = await makeBusiness({ slug: "otkaz" });
+    await db.business.update({ where: { id: refused.id }, data: { status: "archived", demoExpiresAt: new Date("2026-09-01T00:00:00Z"), lead: { create: { status: "refused" } } } });
 
     const r = await runCleanup(now);
-    expect(r.demosDeleted).toBe(1);
+    expect(r.demosDeleted).toBe(2);
+    expect(await db.business.findUnique({ where: { id: silent.id } })).toBeNull();
+    expect(await db.business.findUnique({ where: { id: refused.id } })).not.toBeNull();
     expect(await db.business.findUnique({ where: { id: old.id } })).toBeNull();
     expect(await db.lead.count({ where: { businessId: old.id } })).toBe(0);
     expect(await db.business.findUnique({ where: { id: paid.id } })).not.toBeNull();

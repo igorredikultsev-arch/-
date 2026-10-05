@@ -81,7 +81,7 @@ async function clashRows(businessId: string, tz: string, start: number, end: num
 const clashNote = (rows: string[], what: string) =>
   rows.length ? ` Внимание: ${what} уже записаны клиенты, их записи остались: ${rows.join("; ")}. Предупредите их, если нужно перенести.` : "";
 
-/** Право клиента на удаление данных (раздел 6.3, п. 6): обезличиваем запись, время и услуга остаются для статистики. */
+/** Право клиента на удаление данных (раздел 6.3, п. 6): имя, телефон, автомобиль, комментарий и IP уничтожаются, время и услуга остаются для статистики. */
 export async function erasePersonalData(id: string) {
   const { user, business } = await ownBooking(id);
   await db.booking.update({

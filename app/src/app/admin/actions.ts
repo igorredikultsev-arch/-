@@ -11,7 +11,7 @@ import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
 import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
-import { outreach, withLink } from "@/lib/outreach";
+import { outreach, question, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
@@ -133,7 +133,7 @@ export async function createDemo(_prev: AdminResult, f: FormData): Promise<Admin
   redirect(`/admin/b/${biz.id}?created=1`);
 }
 
-export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; channel?: string | null; contact?: string | null };
+export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; question?: string; message?: string; channel?: string | null; contact?: string | null };
 export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[] } | null;
 
 // Запрос к серверному действию ограничен 1 МБ (настройка Next.js по умолчанию), таблица на сотню строк весит десятки КБ
@@ -175,7 +175,7 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
       await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: message } });
       await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
     }
-    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
+    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, question: question(biz), message, channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
   }
   revalidatePath("/admin");
   return { sheet: parsed.sheet, rows };
@@ -237,7 +237,7 @@ export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Pro
 }
 
 const LeadForm = z.object({
-  status: z.enum(["new", "demo_sent", "replied", "interested", "trial", "paid", "refused"]),
+  status: z.enum(["new", "asked", "demo_sent", "replied", "interested", "trial", "paid", "refused"]),
   channel: z.string().max(40),
   contact: z.string().max(120),
   notes: z.string().max(2000),
@@ -250,7 +250,7 @@ export async function saveLead(id: string, _prev: AdminResult, f: FormData): Pro
   const prev = await db.lead.findUnique({ where: { businessId: id } });
   const contactedAt = p.data.status !== "new" && (!prev || prev.status === "new") ? new Date() : prev?.contactedAt;
   // Отказ: контакт для связи и текст первого сообщения стираются, демо закрывается (политика avtoslot.ru/privacy, п. 3.3).
-  // Карточка с названием и отметкой «отказ» остаётся, чтобы не написать повторно, и удаляется очисткой через 12 месяцев
+  // Карточка с названием и отметкой «отказ» остаётся, чтобы не написать повторно, и удаляется очисткой через 12 месяцев (REFUSED_KEEP_DAYS)
   const refused = p.data.status === "refused";
   const data = refused ? { ...p.data, contact: null, firstMessage: null } : p.data;
   await db.lead.upsert({

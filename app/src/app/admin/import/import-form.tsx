@@ -15,8 +15,8 @@ const STATUS: Record<ImportRow["status"], { label: string; cls: string }> = {
 /** Таблица результата для Excel: точка с запятой и BOM, чтобы кириллица открылась без настройки. */
 function downloadCsv(rows: ImportRow[]) {
   const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Строка", "Название", "Итог", "Ссылка на демо", "Первое сообщение", "Канал связи", "Контакт", "Причина"];
-  const body = rows.map((r) => [r.line, r.name, STATUS[r.status].label, r.url, r.message, r.channel, r.contact, r.reason].map(q).join(";"));
+  const head = ["Строка", "Название", "Итог", "Ссылка на демо", "Первый вопрос", "Сообщение с демо (после «да»)", "Канал связи", "Контакт", "Причина"];
+  const body = rows.map((r) => [r.line, r.name, STATUS[r.status].label, r.url, r.question, r.message, r.channel, r.contact, r.reason].map(q).join(";"));
   const blob = new Blob(["﻿" + [head.map(q).join(";"), ...body].join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -25,7 +25,7 @@ function downloadCsv(rows: ImportRow[]) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function Copy({ text }: { text: string }) {
+function Copy({ text, label = "Скопировать сообщение" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
@@ -41,7 +41,7 @@ function Copy({ text }: { text: string }) {
         }
       }}
     >
-      {done ? "Скопировано" : "Скопировать сообщение"}
+      {done ? "Скопировано" : label}
     </button>
   );
 }
@@ -83,7 +83,7 @@ export function ImportForm() {
               </button>
             )}
           </div>
-          <p className="text-[13px] text-zinc-500">Перед отправкой откройте демо и проверьте. После отправки поставьте у сервиса этап «Демо отправлено»: так считается воронка.</p>
+          <p className="text-[13px] text-zinc-500">Откройте демо и проверьте. Первым сообщением отправьте только вопрос, можно ли прислать пример, и поставьте этап «Спросили, ждём ответа». Сообщение с демо — в карточке сервиса, отправляйте его после ответа «да».</p>
           <ul className="grid gap-2">
             {rows.map((r) => (
               <li key={`${r.line}-${r.name}`} className="grid gap-2 rounded-2xl bg-white p-4 ring-1 ring-zinc-200">
@@ -99,7 +99,7 @@ export function ImportForm() {
                     <a href={r.url} target="_blank" rel="noopener noreferrer" className="mr-auto break-all text-[14px] font-semibold text-accent">
                       {r.url.replace(/^https?:\/\//, "")}
                     </a>
-                    {r.message && <Copy text={r.message} />}
+                    {r.question && <Copy text={r.question} label="Скопировать вопрос" />}
                     <Link href={`/admin/b/${r.id}`} className={btn2}>Карточка</Link>
                   </div>
                 )}

@@ -23,6 +23,11 @@ export function configProblems(env: Record<string, string | undefined> = process
     out.push("Не вписаны ваши ФИО или ИНН (PROCESSOR_NAME, PROCESSOR_INN): в оферте и согласиях будет «не указан»");
   }
   if (!env.PROCESSOR_EMAIL?.trim()) out.push("Не вписана ваша почта для документов (PROCESSOR_EMAIL)");
+  // С 1 июля 2025 данные россиян нельзя собирать в зарубежных базах (ч. 5 ст. 18 152-ФЗ), почта в документах — российская
+  else if (/@(gmail|googlemail|outlook|hotmail|live|icloud|me|yahoo|proton|protonmail)\./i.test(env.PROCESSOR_EMAIL)) {
+    out.push("Почта в документах на зарубежном сервисе (PROCESSOR_EMAIL): замените на Яндекс или Mail.ru");
+  }
+  if (!env.HOSTING_PROVIDER?.trim()) out.push("Не указан хостинг-провайдер (HOSTING_PROVIDER, название и ИНН из договора): попадает в список подрядчиков в оферте");
   if (!env.DB_LOCATION?.trim()) out.push("Не указано, где стоит сервер (DB_LOCATION, например «Россия, г. Москва, Timeweb Cloud»): попадает в черновики уведомлений клиентов в Роскомнадзор");
   if (!env.S3_BUCKET?.trim()) {
     out.push("Копии базы лежат только на этом же сервере (S3_BUCKET не задан): если сервер сломается, пропадут все записи и клиенты. Настройте хранилище, README, «Копии и мониторинг»");

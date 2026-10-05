@@ -397,8 +397,7 @@ export function BookingWidget(p: Props) {
           <label className="consent" htmlFor="bk-consent">
             <input id="bk-consent" type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); clearErr("consent"); }} />
             <span>
-              Даю <a href={p.consentHref} target="_blank" rel="noopener noreferrer">согласие на обработку персональных данных</a> по{" "}
-              <a href={p.privacyHref} target="_blank" rel="noopener noreferrer">политике</a>
+              Даю <a href={p.consentHref} target="_blank" rel="noopener noreferrer">согласие на обработку персональных данных</a>
               {fieldErr.consent && (
                 <>
                   <br />
@@ -407,6 +406,10 @@ export function BookingWidget(p: Props) {
               )}
             </span>
           </label>
+          {/* Согласие — отдельно от других документов (ч. 1 ст. 9 152-ФЗ с 1 сентября 2025): политика своей строкой, без галочки */}
+          <p className="consent-doc">
+            <a href={p.privacyHref} target="_blank" rel="noopener noreferrer">Политика обработки персональных данных</a>
+          </p>
           {p.captchaKey && <div ref={captchaRef} style={{ minHeight: 102, marginBottom: 12 }} />}
           {fieldErr.captcha && <p className="form-err">{fieldErr.captcha}</p>}
           {p.demo && <p className="demo-note">Это пример сайта: запись пробная, сервис её не получит. Имя и телефон не сохраняются.</p>}

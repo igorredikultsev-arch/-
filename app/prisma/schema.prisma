@@ -48,6 +48,7 @@ enum Role {
 
 enum LeadStatus {
   new
+  asked // спросили, можно ли прислать демо (ст. 15 152-ФЗ), ждём ответа
   demo_sent
   replied
   interested
@@ -281,7 +282,7 @@ model Lead {
   channel     String?
   contact     String?
   notes       String?
-  firstMessage String? // из таблицы при импорте, ссылка на демо уже подставлена
+  firstMessage String? // сообщение с демо (после ответа «да») из таблицы при импорте, ссылка уже подставлена
   contactedAt DateTime?
   updatedAt   DateTime   @updatedAt
 }

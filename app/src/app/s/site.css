@@ -184,9 +184,11 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .field input:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 1px; border-color: transparent; }
 .field input::placeholder, .field textarea::placeholder { color: var(--s-muted); opacity: .8; }
 .field .err, .form-err { font-size: 13px; color: var(--err); }
-.consent { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; font-size: 13px; line-height: 1.45; margin: 6px 0 16px; color: var(--s-muted); }
+.consent { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; font-size: 13px; line-height: 1.45; margin: 6px 0 6px; color: var(--s-muted); }
 .consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--s-fg); }
 .consent a { color: var(--s-fg); text-decoration: underline; text-underline-offset: 3px; }
+.consent-doc { margin: 0 0 16px 32px; font-size: 13px; line-height: 1.45; }
+.consent-doc a { color: var(--s-muted); text-decoration: underline; text-underline-offset: 3px; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .form-err { margin: 0 0 12px; padding: 11px 13px; border-radius: 12px; background: var(--s-card-2); }
 .skeleton { grid-column: 1 / -1; height: 96px; border-radius: 12px; background: linear-gradient(90deg, var(--s-card-2), var(--s-bg), var(--s-card-2)); background-size: 200% 100%; }
