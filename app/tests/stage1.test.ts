@@ -8,7 +8,7 @@ import { GET as tlsCheck } from "@/app/api/tls-check/route";
 import { createSiteBooking } from "@/lib/booking";
 import { runCleanup } from "@/lib/cleanup";
 import { db } from "@/lib/db";
-import { configProblems, operatorMissing } from "@/lib/readiness";
+import { backupProblem, configProblems, operatorMissing } from "@/lib/readiness";
 import { localToUtc } from "@/lib/time";
 import { makeBusiness, resetDb } from "./helpers";
 
@@ -112,6 +112,18 @@ describe("готовность к приёму записей", () => {
     expect(configProblems({ ...full, PROCESSOR_EMAIL: "igor@gmail.com" }).join()).toMatch(/зарубежном/);
     expect(configProblems({ ...full, PROCESSOR_EMAIL: "igor@yandex.ru" })).toEqual([]);
     expect(configProblems({ ...full, HOSTING_PROVIDER: "" }).join()).toMatch(/HOSTING_PROVIDER/);
+    // Внешний мониторинг (Statuser) вместо healthchecks.io
+    expect(configProblems({ ...full, HEALTHCHECK_URL: "" }).join()).toMatch(/Нет мониторинга/);
+    expect(configProblems({ ...full, HEALTHCHECK_URL: "", MONITORING: "Statuser" })).toEqual([]);
+  });
+
+  it("админка предупреждает, если ночная копия базы не отмечалась 2 суток", async () => {
+    const now = new Date("2026-10-06T06:00:00Z").getTime();
+    expect(await backupProblem(now)).toMatch(/ни разу/);
+    await db.auditLog.create({ data: { action: "backup.done", details: { s3: true }, createdAt: new Date(now - 60 * 3600000) } });
+    expect(await backupProblem(now)).toMatch(/больше 2 суток/);
+    await db.auditLog.create({ data: { action: "backup.done", details: { s3: true }, createdAt: new Date(now - 4 * 3600000) } });
+    expect(await backupProblem(now)).toBeNull();
   });
 });
 

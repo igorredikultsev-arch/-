@@ -3,7 +3,8 @@
 # Копия хранится на сервере 14 дней и отправляется в S3-хранилище в России у другой компании
 # (Yandex Object Storage, Selectel), если заданы переменные S3_*: пропадёт сервер — копии останутся.
 # Срок хранения в хранилище (30 дней, как в оферте) задаётся правилом жизненного цикла в самом хранилище.
-# Если задан HEALTHCHECK_BACKUP_URL, об успехе и ошибке узнаёт мониторинг (и пишет вам).
+# Успех отмечается в журнале базы (админка предупредит, если копии нет 2 суток), а при заданном
+# HEALTHCHECK_BACKUP_URL — ещё и в мониторинге.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; . ./.env; set +a
@@ -28,7 +29,14 @@ if [[ -n "${S3_BUCKET:-}" ]]; then
     amazon/aws-cli s3 cp --only-show-errors "/b/$(basename "$file")" "s3://$S3_BUCKET/$(basename "$file")" --endpoint-url "$S3_ENDPOINT" \
     || fail "копия не отправилась в хранилище $S3_BUCKET"
   echo "$(date -Is) отправлена в хранилище s3://$S3_BUCKET"
+  s3=true
 else
   echo "$(date -Is) хранилище не настроено (S3_BUCKET пуст): копия только на этом сервере"
+  s3=false
 fi
+# Отметка в журнале: по ней админка видит, что ночная копия делается (без неё через 2 суток — предупреждение)
+docker compose exec -T db psql -U avtoslot -d avtoslot -q -v ON_ERROR_STOP=1 >/dev/null <<SQL || echo "$(date -Is) не удалось отметить копию в журнале" >&2
+INSERT INTO "AuditLog" (id, action, details)
+VALUES ('bk' || md5(random()::text || clock_timestamp()::text), 'backup.done', '{"file": "$(basename "$file")", "s3": $s3}'::jsonb);
+SQL
 ping ""

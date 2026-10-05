@@ -1,5 +1,6 @@
 // Готовность к приёму записей: реквизиты оператора у сервиса и настройки сервера (.env).
 import { captchaEnabled } from "./captcha";
+import { db } from "./db";
 
 type OperatorFields = { status: string; operatorName: string | null; operatorInn: string | null };
 
@@ -32,7 +33,10 @@ export function configProblems(env: Record<string, string | undefined> = process
   if (!env.S3_BUCKET?.trim()) {
     out.push("Копии базы лежат только на этом же сервере (S3_BUCKET не задан): если сервер сломается, пропадут все записи и клиенты. Настройте хранилище, README, «Копии и мониторинг»");
   }
-  if (!env.HEALTHCHECK_URL?.trim()) out.push("Нет мониторинга (HEALTHCHECK_URL): если сайт упадёт, вы узнаете об этом от клиентов");
+  // Внешний мониторинг (Statuser и т. п.) сервер сам не видит: о нём говорит MONITORING в .env
+  if (!env.HEALTHCHECK_URL?.trim() && !env.MONITORING?.trim()) {
+    out.push("Нет мониторинга (HEALTHCHECK_URL или MONITORING): если сайт упадёт, вы узнаете об этом от клиентов");
+  }
   if (!env.CONTACT_TELEGRAM?.trim()) out.push("Не указан ваш Telegram (CONTACT_TELEGRAM): владельцам в кабинете остаётся только почта для связи");
   if (!env.CRON_SECRET || env.CRON_SECRET === "change-me") {
     out.push("Не задан CRON_SECRET: не работают утренние сводки владельцам и сертификаты для адресов клиентов");
@@ -42,3 +46,18 @@ export function configProblems(env: Record<string, string | undefined> = process
 
 /** Капча на боевом сервере выключена: записи пускаем реже. */
 export const strictWithoutCaptcha = () => !captchaEnabled() && process.env.NODE_ENV === "production";
+
+/** Ночная копия базы отмечается в журнале (deploy/backup.sh). Через 2 суток без отметки — предупреждение в админке. */
+export const BACKUP_MAX_AGE_H = 50;
+
+export async function backupProblem(now = Date.now()): Promise<string | null> {
+  const last = await db.auditLog.findFirst({ where: { businessId: null, action: "backup.done" }, orderBy: { createdAt: "desc" }, select: { createdAt: true, details: true } });
+  if (!last) return "Ночная копия базы ещё ни разу не отметилась. Выполните на сервере ./deploy/backup.sh и проверьте, что в конце нет ошибки";
+  if (now - last.createdAt.getTime() > BACKUP_MAX_AGE_H * 3600000) {
+    const when = last.createdAt.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Yekaterinburg" });
+    return `Ночная копия базы не делалась больше 2 суток (последняя — ${when}). Посмотрите ошибку на сервере: tail deploy/backup.log`;
+  }
+  const s3 = (last.details as { s3?: boolean } | null)?.s3;
+  if (s3 === false && process.env.S3_BUCKET?.trim()) return "Последняя копия базы не ушла в хранилище: посмотрите ошибку на сервере, tail deploy/backup.log";
+  return null;
+}

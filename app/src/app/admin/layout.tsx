@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { logoutAction } from "@/app/login/actions";
 import { requireAdmin } from "@/lib/auth";
-import { configProblems } from "@/lib/readiness";
+import { backupProblem, configProblems } from "@/lib/readiness";
 
 export const metadata: Metadata = { title: "Админка", robots: { index: false } };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
-  const problems = configProblems();
+  const backup = await backupProblem();
+  const problems = [...configProblems(), ...(backup ? [backup] : [])];
   return (
     <div className="min-h-dvh bg-paper text-ink">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 backdrop-blur">
@@ -29,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {problems.length > 0 && (
         <div className="border-b border-red-200 bg-red-50">
           <div className="mx-auto max-w-5xl px-4 py-3 text-[14px] text-red-800">
-            <p className="font-semibold">Сервер настроен не до конца (файл .env на сервере):</p>
+            <p className="font-semibold">Что поправить на сервере:</p>
             <ul className="mt-1 grid list-disc gap-1 pl-5">
               {problems.map((p) => (
                 <li key={p}>{p}</li>
