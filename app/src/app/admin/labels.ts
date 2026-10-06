@@ -26,3 +26,12 @@ export const STATUS_CLS = {
 } as const;
 
 export { THEMES } from "@/lib/themes";
+
+/**
+ * Можно ли удалить сервис галочкой из списка: только демо и архив, как и кнопкой в карточке.
+ * Отказы не удаляем пачкой: карточка с отметкой «отказ» нужна, чтобы не написать повторно (политика, п. 3.3),
+ * её стирает очистка через 12 месяцев. Удалить отказ раньше можно в карточке сервиса, «Управление».
+ */
+export function canBulkDelete(status: string, lead: string | null | undefined) {
+  return (status === "demo" || status === "archived") && lead !== "refused";
+}

@@ -5,9 +5,11 @@ import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { phoneQuery } from "@/lib/phone";
 import { TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
 import { formatDate } from "@/lib/time";
-import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "./labels";
+import { BusinessList } from "./business-list";
+import { LEAD_LABEL } from "./labels";
 
-const FUNNEL = ["asked", "demo_sent", "replied", "interested", "trial", "paid"] as const;
+// «Спросили» (до 6 октября первым сообщением был вопрос) в воронку не входит: демо теперь отправляем сразу
+const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
 const ended = (d: Date) => d.getTime() < Date.now();
 // Когда очистка приостановит сайт без оплаты (оферта, п. 4.1)
 const suspendOn = (d: Date) => formatDate(d.getTime() + UNPAID_GRACE_DAYS * 86400000, "Asia/Yekaterinburg");
@@ -68,7 +70,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           ))}
         </div>
         <p className="text-[13px] text-zinc-500">
-          Отказов: {n("refused")}. Ещё не писали: {n("new")}. Если на вопрос мало кто отвечает «да», меняйте его текст; если демо смотрят, но не платят, меняйте предложение.
+          Отказов: {n("refused")}. Ещё не писали: {n("new")}.{n("asked") ? ` Спросили по-старому и ждут ответа: ${n("asked")}.` : ""} Если на демо мало кто отвечает, меняйте текст сообщения; если смотрят, но не платят, меняйте предложение.
         </p>
       </section>
 
@@ -119,58 +121,12 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             )}
           </div>
         ) : (
-          <>
-            {/* Телефон: карточки вместо широкой таблицы */}
-            <ul className="grid gap-2 md:hidden">
-              {all.map((b) => (
-                <li key={b.id}>
-                  <Link href={`/admin/b/${b.id}`} className="grid gap-1.5 rounded-2xl bg-white p-4 ring-1 ring-zinc-200 active:bg-zinc-50">
-                    <div className="flex items-start justify-between gap-3">
-                      <b className="text-[15.5px] leading-tight">{b.name}</b>
-                      <span className={`shrink-0 rounded-md px-2 py-0.5 text-[12px] font-semibold ${STATUS_CLS[b.status]}`}>{STATUS_LABEL[b.status]}</span>
-                    </div>
-                    <span className="text-[13px] text-zinc-500">{b.city}, {b.address}</span>
-                    <span className="text-[13px] text-zinc-600">
-                      {b.lead ? LEAD_LABEL[b.lead.status] : ""}
-                      {b._count.bookings ? `, записей с сайта ${b._count.bookings}` : ""}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="hidden overflow-x-auto rounded-2xl bg-white ring-1 ring-zinc-200 md:block">
-              <table className="w-full text-left text-[14px]">
-                <thead className="text-[12.5px] text-zinc-500">
-                  <tr className="border-b border-zinc-100">
-                    <th className="px-4 py-2.5 font-medium">Сервис</th>
-                    <th className="px-4 py-2.5 font-medium">Статус</th>
-                    <th className="px-4 py-2.5 font-medium">Этап</th>
-                    <th className="px-4 py-2.5 font-medium">С сайта</th>
-                    <th className="px-4 py-2.5 font-medium">Стиль</th>
-                    <th className="px-4 py-2.5 font-medium">Канал</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {all.map((b) => (
-                    <tr key={b.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50">
-                      <td className="px-4 py-3">
-                        <Link href={`/admin/b/${b.id}`} className="font-semibold hover:text-accent">{b.name}</Link>
-                        <div className="text-[12.5px] text-zinc-500">{b.city}, {b.address}</div>
-                      </td>
-                      <td className="px-4 py-3"><span className={`rounded-md px-2 py-0.5 text-[12px] font-semibold ${STATUS_CLS[b.status]}`}>{STATUS_LABEL[b.status]}</span></td>
-                      <td className="px-4 py-3">{b.lead ? LEAD_LABEL[b.lead.status] : ""}</td>
-                      <td className="px-4 py-3 tabular-nums">{b._count.bookings}</td>
-                      <td className="px-4 py-3">
-                        {THEMES.find((t) => t.value === b.theme)?.label}
-                        {b.themeChosenAt && <div className="text-[12px] font-semibold text-emerald-700">выбрал владелец</div>}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-600">{b.lead?.channel || ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+          <BusinessList
+            rows={all.map((b) => ({
+              id: b.id, name: b.name, city: b.city, address: b.address, status: b.status, theme: b.theme,
+              themeChosen: !!b.themeChosenAt, lead: b.lead?.status ?? null, channel: b.lead?.channel ?? null, bookings: b._count.bookings,
+            }))}
+          />
         )}
       </section>
     </div>

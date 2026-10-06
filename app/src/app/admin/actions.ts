@@ -13,13 +13,15 @@ import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
 import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
-import { outreach, question, withLink } from "@/lib/outreach";
+import { earlyPrice } from "@/lib/business";
+import { demoMessage, emailSubject, outreach, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
 import { publicSiteUrl } from "@/lib/site-url";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
 import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
+import { canBulkDelete } from "./labels";
 
 export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
 
@@ -136,7 +138,7 @@ export async function createDemo(_prev: AdminResult, f: FormData): Promise<Admin
   redirect(`/admin/b/${biz.id}?created=1`);
 }
 
-export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; question?: string; message?: string; channel?: string | null; contact?: string | null };
+export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; subject?: string; channel?: string | null; contact?: string | null };
 export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[]; cut?: number } | null;
 
 // Запрос к серверному действию ограничен 1 МБ (настройка Next.js по умолчанию), таблица на сотню строк весит десятки КБ
@@ -161,6 +163,7 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
   if ("error" in parsed) return { error: parsed.error };
 
   const rows: ImportRow[] = [];
+  const early = await earlyPrice();
   for (const r of parsed.rows) {
     const d = r.demo;
     if (!d) {
@@ -175,12 +178,12 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
     const existing = match.kind === "exists" ? match.biz : null;
     const biz = existing ?? (await insertDemo({ ...d, firstMessage: null }));
     const url = publicSiteUrl(biz.slug, biz.customDomain, biz.status);
-    const message = existing?.lead?.firstMessage ?? (d.message ? withLink(d.message, url) : outreach(biz, url));
+    const message = existing ? demoMessage(existing.lead?.firstMessage, existing, url, { early }) : d.message ? withLink(d.message, url) : outreach(biz, url, { early });
     if (!existing) {
       await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: message } });
       await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
     }
-    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, question: question(biz), message, channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
+    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, subject: emailSubject(biz), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
   }
   revalidatePath("/admin");
   return { sheet: parsed.sheet, rows, cut: parsed.cut };
@@ -423,4 +426,19 @@ export async function deleteBusiness(id: string) {
   await audit("admin.delete", { userId: admin.id, details: { slug: biz.slug } });
   revalidatePath("/admin");
   redirect("/admin");
+}
+
+/** Удаление отмеченных на главной админки: только демо и архив, без отказов (canBulkDelete). */
+export async function deleteBusinesses(_prev: AdminResult, f: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const ids = [...new Set(f.getAll("id").map(String))].slice(0, 300);
+  if (!ids.length) return { error: "Отметьте сервисы, которые нужно удалить" };
+  const found = await db.business.findMany({ where: { id: { in: ids } }, select: { id: true, slug: true, status: true, lead: { select: { status: true } } } });
+  const ok = found.filter((b) => canBulkDelete(b.status, b.lead?.status));
+  // Статус ещё раз в условии: если сервис успели подключить, пока список был открыт, он не удалится
+  const { count } = await db.business.deleteMany({ where: { id: { in: ok.map((b) => b.id) }, status: { in: ["demo", "archived"] } } });
+  for (const b of ok) await audit("admin.delete", { userId: admin.id, details: { slug: b.slug, bulk: true } });
+  revalidatePath("/admin");
+  const left = ids.length - count;
+  return { ok: true, message: `Удалено: ${count}.${left ? ` Не удалено: ${left} (подключённые сервисы и отказы удаляются только из карточки).` : ""}` };
 }

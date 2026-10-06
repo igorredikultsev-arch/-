@@ -4,7 +4,8 @@ import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { outreach, question } from "@/lib/outreach";
+import { earlyPrice } from "@/lib/business";
+import { demoMessage, emailSubject } from "@/lib/outreach";
 import { formatPhone } from "@/lib/phone";
 import { connectFirst, operatorMissing, TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
 import { processor } from "@/lib/legal";
@@ -60,7 +61,8 @@ function nextStep(b: Biz): { text: string; tab: Tab; tone: "do" | "wait" | "ok" 
   if (b.status === "archived") return { text: "Сервис в архиве. Вернуть его можно во вкладке «Управление».", tab: "manage", tone: "wait" };
   if (b.status === "suspended") return { text: "Сайт приостановлен. Когда владелец оплатит, запишите оплату — сайт включится.", tab: "pay", tone: "bad" };
   if (b.status === "demo") {
-    if (lead === "new") return { text: "Спросите, можно ли прислать пример сайта, и поставьте этап «Спросили, ждём ответа».", tab: "work", tone: "do" };
+    if (lead === "new") return { text: "Проверьте демо, отправьте владельцу сообщение со ссылкой и поставьте этап «Демо отправлено».", tab: "work", tone: "do" };
+    // «Спросили» остался у лидов, которым писали по-старому, до 6 октября
     if (lead === "asked") return { text: "Ждём ответа на вопрос. Ответили «да» — отправьте демо, «нет» — поставьте «Отказ».", tab: "work", tone: "wait" };
     if (lead === "refused") return { text: "Владелец отказался. Можно отправить в архив.", tab: "manage", tone: "wait" };
     if (operatorMissing({ ...b, status: "active" })) return { text: "Ждём ответа. Чтобы подключить, понадобятся ФИО или название ИП и ИНН владельца.", tab: "info", tone: "wait" };
@@ -100,7 +102,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   // Демо или архивное демо без владельца: оплату и «Активировать» не показываем, сначала «Создать вход»
   const payBlocked = connectFirst({ status: b.status, owners: b.users.filter((u) => u.role === "owner").length });
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
-  const siteBookings = await db.booking.count({ where: { businessId: id, source: "site" } });
+  const [siteBookings, early] = await Promise.all([db.booking.count({ where: { businessId: id, source: "site" } }), earlyPrice()]);
   const facts: [string, React.ReactNode][] = [
     ["Телефон", formatPhone(b.phone)],
     ["Записей", `${b._count.bookings}, с сайта ${siteBookings}`],
@@ -125,7 +127,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
         <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="justify-self-start text-[14.5px] font-semibold text-accent hover:underline">{siteUrl.replace(/^https?:\/\//, "")}</a>
       </div>
 
-      {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте и проверьте его, потом спросите владельца, можно ли прислать ссылку.</p>}
+      {created && b.status === "demo" && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-[14px] text-emerald-900">Демо создано. Откройте и проверьте его, потом отправьте владельцу сообщение со ссылкой.</p>}
 
       <Link href={`/admin/b/${b.id}?tab=${step.tab}`} className={`grid gap-1 rounded-2xl px-5 py-4 ${TONE[step.tone]}`}>
         <span className={`text-[13px] font-semibold ${step.tone === "do" ? "text-white" : "text-zinc-500"}`}>Что сделать дальше</span>
@@ -145,21 +147,12 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
 
           {tab === "work" && (
             <>
-              {lead === "new" && (
-                <Card title="Первое сообщение: вопрос">
-                  <CopyBox label="Без ссылки и цен: сначала спрашиваем, можно ли прислать" rows={6} text={question(b)} />
+              {b.status === "demo" && lead !== "refused" && (
+                <Card title={lead === "new" ? "Первое сообщение: демо" : "Сообщение с демо"}>
+                  <CopyBox label="Поправьте под сервис перед отправкой" rows={10} text={demoMessage(b.lead?.firstMessage, b, siteUrl, { early })} />
+                  {/@/.test(b.lead?.contact ?? "") && <CopyBox label="Тема письма" rows={2} text={emailSubject(b)} />}
                   <p className="text-[13px] text-zinc-500">
-                    Пишите на официальный номер или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Спросили, ждём ответа».
-                  </p>
-                </Card>
-              )}
-              {(lead === "asked" || (lead !== "new" && b.status === "demo")) && (
-                <Card title={lead === "asked" ? "Ответили «да»? Отправьте демо" : "Сообщение с демо"}>
-                  <CopyBox label="Поправьте под сервис перед отправкой" rows={8} text={b.lead?.firstMessage ?? outreach(b, siteUrl)} />
-                  <p className="text-[13px] text-zinc-500">
-                    {lead === "asked"
-                      ? "Только после ответа «да»: сохраните скриншот ответа, это согласие на сообщение. Потом поставьте этап «Демо отправлено». Ответили «нет» — поставьте «Отказ», контакт удалится."
-                      : "Отправляйте только тем, кто ответил «да» на вопрос."}
+                    Пишите на официальный номер, почту или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Демо отправлено». Ответили «нет» — поставьте «Отказ» и больше не пишите.
                   </p>
                 </Card>
               )}

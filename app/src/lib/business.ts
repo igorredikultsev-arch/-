@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { db } from "./db";
+import { EARLY_CLIENTS } from "./pricing";
 
 export const PUBLIC_STATUSES = ["demo", "trial", "active"] as const;
 
@@ -52,4 +53,9 @@ export function shortName(name: string): string {
   const rest = name.replace(/^(?:шиномонтаж|автосервис|автотехцентр)\s+/i, "");
   const s = (quoted ?? (/^[A-ZА-ЯЁ0-9]/.test(rest) ? rest : name)).replace(/[«»"]/g, "").trim();
   return s || name;
+}
+
+/** Подключение ещё по цене для первых клиентов: оплативших сервисов меньше EARLY_CLIENTS. */
+export async function earlyPrice() {
+  return (await db.business.count({ where: { payments: { some: {} } } })) < EARLY_CLIENTS;
 }

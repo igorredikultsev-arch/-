@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDemoRows } from "@/lib/demo-import";
-import { outreach, question, withLink } from "@/lib/outreach";
+import { demoMessage, outreach, reviewsText, withLink } from "@/lib/outreach";
 import { readCsv, readTable } from "@/lib/sheet";
 
 describe("импорт демо из таблицы", () => {
@@ -45,14 +45,31 @@ describe("импорт демо из таблицы", () => {
     expect(withLink("Привет, вот стиль сайта", "https://x")).toBe("Привет, вот стиль сайта\n\nhttps://x");
   });
 
-  it("первое сообщение — только вопрос: без ссылки и цен; ссылка и цены — во втором", () => {
-    const b = { name: "Ось", rating: 4.8, yandexMapsUrl: "https://yandex.ru/maps/org/1", status: "demo" };
-    const q = question(b);
-    expect(q).toContain("у вас 4,8");
-    expect(q).toContain("Можно прислать ссылку и условия?");
-    expect(q).not.toMatch(/https?:\/\/|₽/);
-    const m = outreach(b, "https://avtoslot.ru/s/os");
-    expect(m).toContain("https://avtoslot.ru/s/os");
-    expect(m).toMatch(/3\s500\s₽/);
+  it("первое сообщение — сразу демо: ссылка, цена, отзывы из 2ГИС и отказ одним словом", () => {
+    const b = { name: "Ось", rating: 4.8, reviews2gis: 173, twoGisUrl: "https://2gis.ru/perm/firm/1", yandexMapsUrl: null, status: "demo" };
+    const oct = Date.UTC(2026, 9, 6, 12);
+    const m = outreach(b, "https://avtoslot.ru/s/os", { early: true, now: oct });
+    expect(m).toMatch(/^Здравствуйте! Увидел вас в 2ГИС: 4,8 и 173 отзыва, а записаться онлайн к вам пока нельзя\. Сделал для «Ось» сайт с записью, посмотрите: https:\/\/avtoslot\.ru\/s\/os\n/);
+    expect(m).toContain("переключить три варианта оформления");
+    expect(m).toContain("В сезон переобувки");
+    expect(m).toMatch(/Подключение 3\s500\s₽, первый месяц уже входит, дальше 990\s₽ в месяц/);
+    expect(m).toContain("только для первых 10 сервисов");
+    expect(m).toContain("напишите «нет», больше не побеспокою");
+    // Рейтинг ниже 4,7 не называем, «первых 10» — только пока цена действует, вне сезона без переобувки
+    const low = outreach({ ...b, rating: 4.3, status: "active" }, "https://x", { now: Date.UTC(2026, 6, 1) });
+    expect(low).toContain("Увидел вас в 2ГИС: 173 отзыва,");
+    expect(low).not.toMatch(/4,3|первых|переобувки|оформления/);
+    expect(outreach({ name: "Ось", rating: null, yandexMapsUrl: null }, "https://x")).toContain("Увидел ваш сервис на картах, а записаться");
+  });
+
+  it("старое сообщение «после ответа» из прошлого импорта заменяется новым, своё из таблицы остаётся", () => {
+    const b = { name: "Ось", rating: null, yandexMapsUrl: null };
+    expect(demoMessage("Спасибо, что ответили! Вот пример: https://x", b, "https://x")).toMatch(/^Здравствуйте!/);
+    expect(demoMessage("Привет, вот сайт https://x", b, "https://x")).toBe("Привет, вот сайт https://x");
+    expect(demoMessage(null, b, "https://x")).toMatch(/^Здравствуйте!/);
+  });
+
+  it("склоняет отзывы", () => {
+    expect([1, 3, 11, 12, 21, 25, 104, 111].map(reviewsText)).toEqual(["1 отзыв", "3 отзыва", "11 отзывов", "12 отзывов", "21 отзыв", "25 отзывов", "104 отзыва", "111 отзывов"]);
   });
 });
