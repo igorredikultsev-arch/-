@@ -2,6 +2,7 @@
 // «поздно» вместо «занято», обед на витрине, повтор записи, защита служебных адресов.
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { BookingError, businessForSlotsSelect, createSiteBooking, getDayLoad, getHorizonSummary } from "@/lib/booking";
+import { brandContacts } from "@/lib/brand";
 import { shortName } from "@/lib/business";
 import { runCleanup } from "@/lib/cleanup";
 import { cronAllowed } from "@/lib/cron";
@@ -239,5 +240,17 @@ describe("решения после аудита: оплата после под
     const after = await db.business.findUniqueOrThrow({ where: { id: biz.id } });
     expect(after.status).toBe("suspended");
     expect(after.suspendedAt?.getTime()).toBe(now.getTime());
+  });
+});
+
+describe("Telegram для связи", () => {
+  it("на сайте @avtoslot1, даже если на сервере в .env остался старый адрес", () => {
+    const old = process.env.CONTACT_TELEGRAM;
+    process.env.CONTACT_TELEGRAM = "old_account";
+    try {
+      expect(brandContacts()).toMatchObject({ telegram: "https://t.me/avtoslot1", telegramName: "@avtoslot1" });
+    } finally {
+      process.env.CONTACT_TELEGRAM = old;
+    }
   });
 });

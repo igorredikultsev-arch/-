@@ -101,7 +101,7 @@ describe("готовность к приёму записей", () => {
   });
 
   it("админка предупреждает о незаполненных настройках сервера", () => {
-    const full = { SMARTCAPTCHA_CLIENT_KEY: "ysc1_c", SMARTCAPTCHA_SERVER_KEY: "ysc2_s", PROCESSOR_NAME: "Иванов И. И.", PROCESSOR_INN: "590000000000", PROCESSOR_EMAIL: "a@ya.ru", DB_LOCATION: "Россия, Москва", HOSTING_PROVIDER: "ООО «Хостинг», ИНН 7700000000", CRON_SECRET: "x", S3_BUCKET: "b", HEALTHCHECK_URL: "https://hc", CONTACT_TELEGRAM: "igor" };
+    const full = { SMARTCAPTCHA_CLIENT_KEY: "ysc1_c", SMARTCAPTCHA_SERVER_KEY: "ysc2_s", PROCESSOR_NAME: "Иванов И. И.", PROCESSOR_INN: "590000000000", PROCESSOR_EMAIL: "a@ya.ru", DB_LOCATION: "Россия, Москва", HOSTING_PROVIDER: "ООО «Хостинг», ИНН 7700000000", CRON_SECRET: "x", S3_BUCKET: "b", HEALTHCHECK_URL: "https://hc" };
     expect(configProblems(full)).toEqual([]);
     expect(configProblems({ ...full, SMARTCAPTCHA_SERVER_KEY: "" })[0]).toMatch(/только один ключ/);
     expect(configProblems({ ...full, SMARTCAPTCHA_CLIENT_KEY: "", SMARTCAPTCHA_SERVER_KEY: "" })[0]).toMatch(/Капча выключена/);

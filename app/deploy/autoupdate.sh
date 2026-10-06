@@ -3,6 +3,7 @@
 # Дальше cron раз в 5 минут смотрит ветку на GitHub. Появился новый коммит и проверка на GitHub прошла
 # (она же собирает и публикует образы) — запускается update.sh: скачать образы, миграции, перезапуск.
 # Если проверка упала или обновление не удалось, этот коммит пропускается до следующего.
+# Если проверку отменили (GitHub не дал машину), коммит ждёт: после перезапуска проверки он выложится сам.
 # Если образы не скачались (GitHub недоступен), попытка повторяется через 5 минут.
 # Журнал: /opt/avtoslot/app/deploy/update.log
 set -euo pipefail
@@ -37,16 +38,20 @@ main() {
   # Новый коммит берём со второго захода: за 5 минут GitHub успевает завести по нему проверку
   if [[ "$target" != "$(cat "$seen" 2>/dev/null)" ]]; then echo "$target" > "$seen"; return 0; fi
 
-  # Ждём проверку на GitHub (тесты и сборка). Нет проверок или API не ответил — не ждём:
+  # Ждём проверку на GitHub (тесты и сборка) — только запуски этой ветки: тот же коммит в другой ветке
+  # проверяется отдельно и на сервер не влияет. Нет запусков или API не ответил — не ждём:
   # образы публикуются только после зелёных тестов, без них update.sh вернёт «образов ещё нет»
-  local checks
-  if checks=$(curl -fsS -m 20 -H "Accept: application/vnd.github+json" "$REPO_API/commits/$target/check-runs" 2>/dev/null); then
-    if grep -Eq '"status": *"(queued|in_progress|waiting|pending)"' <<<"$checks"; then return 0; fi
-    if grep -Eq '"conclusion": *"(failure|timed_out|cancelled)"' <<<"$checks"; then
+  local runs
+  if runs=$(curl -fsS -m 20 -G -H "Accept: application/vnd.github+json" \
+      --data-urlencode "branch=$branch" --data-urlencode "head_sha=$target" "$REPO_API/actions/runs" 2>/dev/null); then
+    if grep -Eq '"status": *"(queued|in_progress|waiting|pending|requested)"' <<<"$runs"; then return 0; fi
+    if grep -Eq '"conclusion": *"(failure|timed_out|startup_failure)"' <<<"$runs"; then
       echo "$(date '+%F %T') ${target:0:7}: проверка на GitHub не прошла, пропускаю"
       echo "$target" > "$failed"
       return 0
     fi
+    # «cancelled» — проверку отменили (у GitHub не нашлось машины или её перезапускают), код тут ни при чём.
+    # Коммит не бросаем: ниже update.sh раз в 5 минут пробует скачать образы и возьмёт их после перезапуска
   fi
 
   # Образы не скачались — повторяем позже, но пишем в журнал только первый раз

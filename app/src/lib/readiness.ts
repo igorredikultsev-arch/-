@@ -37,7 +37,6 @@ export function configProblems(env: Record<string, string | undefined> = process
   if (!env.HEALTHCHECK_URL?.trim() && !env.MONITORING?.trim()) {
     out.push("Нет мониторинга (HEALTHCHECK_URL или MONITORING): если сайт упадёт, вы узнаете об этом от клиентов");
   }
-  if (!env.CONTACT_TELEGRAM?.trim()) out.push("Не указан ваш Telegram (CONTACT_TELEGRAM): владельцам в кабинете остаётся только почта для связи");
   if (!env.CRON_SECRET || env.CRON_SECRET === "change-me") {
     out.push("Не задан CRON_SECRET: не работают утренние сводки владельцам и сертификаты для адресов клиентов");
   }

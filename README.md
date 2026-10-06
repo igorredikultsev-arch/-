@@ -78,7 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/igorredikultsev-arch/-/claude/admir
    git clone -b claude/admiring-davinci-ej5p3n <репозиторий> /opt/avtoslot && cd /opt/avtoslot/app
    cp .env.example .env && nano .env
    ```
-   Обязательно заполните: `ROOT_DOMAIN`, `APP_URL` (`https://ваш-домен.ru`), `POSTGRES_PASSWORD`, `ACME_EMAIL`, `CRON_SECRET`, ключи SmartCaptcha, `PROCESSOR_NAME`/`PROCESSOR_INN`/`PROCESSOR_EMAIL` (ваши реквизиты, они попадают в согласие и политику; почта — только российская, Яндекс или Mail.ru), `DB_LOCATION` и `HOSTING_PROVIDER` (где стоит сервер и название с ИНН хостинга — для оферты и уведомлений в Роскомнадзор). Необязательно: `CONTACT_TELEGRAM` (кнопка «Написать в Telegram» на главной) и `EXAMPLE_SLUG` (какое демо показывать как пример).
+   Обязательно заполните: `ROOT_DOMAIN`, `APP_URL` (`https://ваш-домен.ru`), `POSTGRES_PASSWORD`, `ACME_EMAIL`, `CRON_SECRET`, ключи SmartCaptcha, `PROCESSOR_NAME`/`PROCESSOR_INN`/`PROCESSOR_EMAIL` (ваши реквизиты, они попадают в согласие и политику; почта — только российская, Яндекс или Mail.ru), `DB_LOCATION` и `HOSTING_PROVIDER` (где стоит сервер и название с ИНН хостинга — для оферты и уведомлений в Роскомнадзор). Необязательно: `EXAMPLE_SLUG` (какое демо показывать как пример).
 4. **Запуск** (скачать образы текущего коммита, миграции, старт; версия запишется в `.env` как `AVTOSLOT_TAG`):
    ```bash
    docker compose up -d db
