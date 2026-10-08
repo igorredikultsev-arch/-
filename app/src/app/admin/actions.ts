@@ -178,9 +178,11 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
     const existing = match.kind === "exists" ? match.biz : null;
     const biz = existing ?? (await insertDemo({ ...d, firstMessage: null }));
     const url = publicSiteUrl(biz.slug, biz.customDomain, biz.status);
-    const message = existing ? demoMessage(existing.lead?.firstMessage, existing, url, { early }) : d.message ? withLink(d.message, url) : outreach(biz, url, { early });
+    // В базе храним только своё сообщение из таблицы. Шаблонное собирается при показе: так правка шаблона доходит и до уже загруженных
+    const own = !existing && d.message ? withLink(d.message, url) : null;
+    const message = existing ? demoMessage(existing.lead?.firstMessage, existing, url, { early }) : own ?? outreach(biz, url, { early });
     if (!existing) {
-      await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: message } });
+      if (own) await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: own } });
       await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
     }
     rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, subject: emailSubject(biz), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
