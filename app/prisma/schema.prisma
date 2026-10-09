@@ -128,6 +128,7 @@ model Business {
   payments     Payment[]
   pushSubs     PushSubscription[]
   logo         BusinessLogo?
+  demoViews    DemoView[]
 }
 
 /// Картинка логотипа отдельно от Business: сервис читается на каждой странице, а картинка нужна только сайту.
@@ -292,6 +293,19 @@ model Lead {
   firstMessage String? // сообщение с демо (после ответа «да») из таблицы при импорте, ссылка уже подставлена
   contactedAt DateTime?
   updatedAt   DateTime   @updatedAt
+}
+
+/// Владелец открыл демо по ссылке из сообщения (или переключил в нём стиль). Видно в админке: кто смотрел и сколько раз.
+/// Без IP, cookie и других сведений об устройстве: только время и телефон это или компьютер.
+model DemoView {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind       String // open — открыли демо, style — посмотрели другой стиль
+  device     String // phone, desktop
+  at         DateTime @default(now())
+
+  @@index([businessId, at])
 }
 
 model Payment {

@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { earlyPrice } from "@/lib/business";
 import { demoMessage, emailSubject } from "@/lib/outreach";
+import { deviceText, summaryText, timesText, viewSummaries, whenText, type ViewSummary } from "@/lib/demo-views";
 import { formatPhone } from "@/lib/phone";
 import { connectFirst, operatorMissing, TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
 import { processor } from "@/lib/legal";
@@ -48,7 +49,7 @@ const load = (id: string) =>
 const day = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
 /** Что сделать с сервисом дальше: одна подсказка и вкладка, где это делается. */
-function nextStep(b: Biz): { text: string; tab: Tab; tone: "do" | "wait" | "ok" | "bad" } {
+function nextStep(b: Biz, views?: ViewSummary): { text: string; tab: Tab; tone: "do" | "wait" | "ok" | "bad" } {
   const lead = b.lead?.status ?? "new";
   const due = terminationDue(b);
   if (due) {
@@ -65,6 +66,8 @@ function nextStep(b: Biz): { text: string; tab: Tab; tone: "do" | "wait" | "ok" 
     // «Спросили» остался у лидов, которым писали по-старому, до 6 октября
     if (lead === "asked") return { text: "Ждём ответа на вопрос. Ответили «да» — отправьте демо, «нет» — поставьте «Отказ».", tab: "work", tone: "wait" };
     if (lead === "refused") return { text: "Владелец отказался. Можно отправить в архив.", tab: "manage", tone: "wait" };
+    // Открыл, но молчит: самое время написать второе сообщение
+    if (lead === "demo_sent" && views) return { text: `Владелец открыл демо ${summaryText(views)}, но пока не ответил. Напишите ему: спросите, какой стиль понравился, или предложите подключить.`, tab: "work", tone: "do" };
     if (operatorMissing({ ...b, status: "active" })) return { text: "Ждём ответа. Чтобы подключить, понадобятся ФИО или название ИП и ИНН владельца.", tab: "info", tone: "wait" };
     return { text: "Владелец согласен? Создайте ему вход и подключите сервис.", tab: "connect", tone: "do" };
   }
@@ -92,7 +95,11 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   const created = sp.created === "1";
   const b = await load(id);
   if (!b) notFound();
-  const step = nextStep(b);
+  const [views, viewLog] = await Promise.all([
+    viewSummaries([b.id]).then((m) => m.get(b.id)),
+    db.demoView.findMany({ where: { businessId: b.id }, orderBy: { at: "desc" }, take: 30 }),
+  ]);
+  const step = nextStep(b, views);
   const lead = b.lead?.status ?? "new";
   // Вкладка всегда в адресе: иначе после сохранения формы «что сделать дальше» пересчитывается, страница
   // перепрыгивает на другую вкладку, и пропадают «Сохранено» и одноразовый пароль владельца
@@ -111,6 +118,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
     ...(b.paidUntil ? [["Оплачено до", date(b.paidUntil)] as [string, string]] : []),
     ...(b.status !== "demo" ? [["Оферта", b.offerAcceptedAt ? `принята ${date(b.offerAcceptedAt)}` : "не принята"] as [string, string]] : []),
     ...(b.status !== "demo" ? [["Роскомнадзор", b.rknFiledAt ? `подано ${date(b.rknFiledAt)}` : "не отмечено"] as [string, string]] : []),
+    ...(views || b.status === "demo" ? [["Открыли демо", views ? `${summaryText(views)}, ${deviceText(views)}` : "ещё нет"] as [string, string]] : []),
     ["Стиль", <>{THEMES.find((t) => t.value === b.theme)?.label}{b.themeChosenAt && <span className="text-emerald-700">, выбрал владелец</span>}</>],
     ...(b.lead?.channel || b.lead?.contact ? [["Связь", [b.lead?.channel, b.lead?.contact].filter(Boolean).join(": ")] as [string, string]] : []),
   ];
@@ -154,6 +162,27 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                   <p className="text-[13px] text-zinc-500">
                     Пишите на официальный номер, почту или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Демо отправлено». Ответили «нет» — поставьте «Отказ» и больше не пишите.
                   </p>
+                </Card>
+              )}
+              {(viewLog.length > 0 || b.status === "demo") && (
+                <Card title="Как смотрели демо">
+                  {views ? (
+                    <>
+                      <p className="text-[14px] text-zinc-700">
+                        Открыли {timesText(views.opens)}, впервые {whenText(views.first)}, последний раз {whenText(views.last)}, {deviceText(views)}.
+                        {views.styles > 0 ? ` Переключали стили: ${timesText(views.styles)}.` : ""}
+                        {b.themeChosenAt ? " Выбрали стиль." : ""}
+                        {siteBookings > 0 ? ` Записей с сайта в демо: ${siteBookings} (ваши пробные тоже считаются).` : ""}
+                      </p>
+                      <ul className="grid gap-1 text-[13px] text-zinc-600">
+                        {viewLog.map((v) => (
+                          <li key={v.id}>{whenText(v.at)}: {v.kind === "open" ? "открыли" : "смотрели другой стиль"}, {v.device === "phone" ? "телефон" : "компьютер"}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <p className="text-[14px] text-zinc-500">Демо ещё не открывали. Превью ссылки в мессенджере и ваши просмотры с телефона или компьютера, где вы вошли в админку, не считаются.</p>
+                  )}
                 </Card>
               )}
               <Card title="Этап и заметки">

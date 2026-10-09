@@ -17,6 +17,10 @@ export type ListRow = {
   lead: keyof typeof LEAD_LABEL | null;
   channel: string | null;
   bookings: number;
+  /** «3 раза, последний раз сегодня в 14:05» — сколько раз владелец открыл демо */
+  views: string | null;
+  /** открыли за последние 48 часов */
+  hot: boolean;
 };
 
 const services = (n: number) => {
@@ -104,6 +108,7 @@ export function BusinessList({ rows }: { rows: ListRow[] }) {
                 {r.lead ? LEAD_LABEL[r.lead] : ""}
                 {r.bookings ? `, записей с сайта ${r.bookings}` : ""}
               </span>
+              {r.views && <span className={`text-[13px] ${r.hot ? "font-semibold text-emerald-700" : "text-zinc-600"}`}>Открыли демо {r.views}</span>}
               {picking && why(r) && <span className="text-[12.5px] text-zinc-400">{why(r)}</span>}
             </>
           );
@@ -130,6 +135,7 @@ export function BusinessList({ rows }: { rows: ListRow[] }) {
               <th className="px-4 py-2.5 font-medium">Сервис</th>
               <th className="px-4 py-2.5 font-medium">Статус</th>
               <th className="px-4 py-2.5 font-medium">Этап</th>
+              <th className="px-4 py-2.5 font-medium">Открыли демо</th>
               <th className="px-4 py-2.5 font-medium">С сайта</th>
               <th className="px-4 py-2.5 font-medium">Стиль</th>
               <th className="px-4 py-2.5 font-medium">Канал</th>
@@ -150,6 +156,7 @@ export function BusinessList({ rows }: { rows: ListRow[] }) {
                 </td>
                 <td className="px-4 py-3"><span className={`rounded-md px-2 py-0.5 text-[12px] font-semibold ${STATUS_CLS[r.status]}`}>{STATUS_LABEL[r.status]}</span></td>
                 <td className="px-4 py-3">{r.lead ? LEAD_LABEL[r.lead] : ""}</td>
+                <td className={`px-4 py-3 text-[13px] ${r.hot ? "font-semibold text-emerald-700" : "text-zinc-600"}`}>{r.views ?? (r.status === "demo" ? <span className="text-zinc-400">нет</span> : "")}</td>
                 <td className="px-4 py-3 tabular-nums">{r.bookings}</td>
                 <td className="px-4 py-3">
                   {THEMES.find((t) => t.value === r.theme)?.label}
