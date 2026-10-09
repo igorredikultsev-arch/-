@@ -69,6 +69,10 @@ export type SlotInput = {
   bookings: Interval[]; // активные записи (каждая занимает один пост)
   blocksAll: Interval[]; // закрыт весь сервис
   blocksOnePost: Interval[]; // закрыт один пост
+  /** Постов под запись с сайта; не задано или не меньше posts — под запись все посты. */
+  onlinePosts?: number;
+  /** Записи с сайта: только они занимают посты под онлайн-запись (звонки и живая очередь идут на остальные). */
+  siteBookings?: Interval[];
   nowMs: number;
   minLeadMin: number;
 };
@@ -81,6 +85,10 @@ export function daySlots(input: SlotInput): Slot[] {
   if (!window || durationMin <= 0 || stepMin <= 0 || posts <= 0) return [];
   const earliest = input.nowMs + input.minLeadMin * 60000;
   const occupied = [...input.bookings, ...input.blocksOnePost];
+  // Посты под онлайн-запись: их занимают записи с сайта и «закрыт один пост» (владелец мог закрыть именно его).
+  // Общее число постов проверяется тоже: если владелец всё же внёс звонки, перебора не будет
+  const online = Math.min(input.onlinePosts ?? posts, posts);
+  const onlineLane = online < posts ? [...(input.siteBookings ?? []), ...input.blocksOnePost] : null;
   const lunch = breakIntervals(date, tz, window);
   const slots: Slot[] = [];
   for (let m = window.openMin; m + durationMin <= window.closeMin; m += stepMin) {
@@ -89,7 +97,8 @@ export function daySlots(input: SlotInput): Slot[] {
     const slot = { start, end: start + durationMin * 60000 };
     // На обед запись не предлагается вовсе, как и вне часов работы
     if (lunch.some((b) => overlaps(b, slot))) continue;
-    const free = !input.blocksAll.some((b) => overlaps(b, slot)) && peakLoad(slot, occupied) < posts;
+    const free =
+      !input.blocksAll.some((b) => overlaps(b, slot)) && peakLoad(slot, occupied) < posts && (!onlineLane || peakLoad(slot, onlineLane) < online);
     slots.push({ time: hhmm(m), start: slot.start, end: slot.end, free });
   }
   return slots;
@@ -181,4 +190,17 @@ export function fullBusy(lanes: LaneSpan[][]): LaneSpan[] {
     else out.push({ from, to });
   }
   return out;
+}
+
+/** Объединение промежутков занятости: занято, если занято хотя бы в одном списке. */
+export function unionSpans(...lists: LaneSpan[][]): LaneSpan[] {
+  return lists
+    .flat()
+    .sort((a, b) => a.from - b.from)
+    .reduce<LaneSpan[]>((acc, s) => {
+      const last = acc[acc.length - 1];
+      if (last && s.from <= last.to) last.to = Math.max(last.to, s.to);
+      else acc.push({ ...s });
+      return acc;
+    }, []);
 }

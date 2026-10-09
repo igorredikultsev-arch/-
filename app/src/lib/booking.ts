@@ -1,7 +1,7 @@
 // Запись: расчёт окон по данным из базы и создание записи без двойного бронирования (раздел 4.3).
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "./db";
-import { breakIntervals, dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, type Interval, type LaneSpan, type Slot } from "./slots";
+import { breakIntervals, dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, unionSpans, type Interval, type LaneSpan, type Slot } from "./slots";
 import { newToken } from "./tokens";
 import { localToUtc, toLocal } from "./time";
 
@@ -42,7 +42,7 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
       // Нижняя граница по началу: без неё запрос перебирал бы всю историю записей сервиса. Запись не длиннее 10 часов,
       // закрытие — не длиннее суток, а from уже взят с запасом в сутки, поэтому ничего пересекающееся не теряется
       where: { businessId, status: { in: [...OCCUPYING] }, startAt: { gte: from, lt: to }, endAt: { gt: from } },
-      select: { startAt: true, endAt: true },
+      select: { startAt: true, endAt: true, source: true },
     }),
     tx.block.findMany({
       where: { businessId, startAt: { gte: from, lt: to }, endAt: { gt: from } },
@@ -52,6 +52,7 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
   const iv = (r: { startAt: Date; endAt: Date }): Interval => ({ start: r.startAt.getTime(), end: r.endAt.getTime() });
   return {
     bookings: bookings.map(iv),
+    siteBookings: bookings.filter((b) => b.source === "site").map(iv),
     blocksAll: blocks.filter((b) => b.scope === "all").map(iv),
     blocksOnePost: blocks.filter((b) => b.scope === "one_post").map(iv),
   };
@@ -61,6 +62,7 @@ type BusinessForSlots = {
   id: string;
   timezone: string;
   posts: number;
+  onlinePosts: number;
   slotStepMin: number;
   minLeadMin: number;
   horizonDays: number;
@@ -72,6 +74,7 @@ export const businessForSlotsSelect = {
   id: true,
   timezone: true,
   posts: true,
+  onlinePosts: true,
   slotStepMin: true,
   minLeadMin: true,
   horizonDays: true,
@@ -97,6 +100,7 @@ export async function getDaySlots(
     durationMin,
     stepMin: biz.slotStepMin,
     posts: biz.posts,
+    onlinePosts: biz.onlinePosts,
     ...occ,
     nowMs,
     minLeadMin: biz.minLeadMin,
@@ -113,8 +117,13 @@ export async function getDayLoad(biz: BusinessForSlots, date: string, nowMs = Da
   const occ = await loadDay(db, biz.id, date, biz.timezone);
   const local = toLocal(nowMs, biz.timezone);
   const day = dayLanes({ date, tz: biz.timezone, window, posts: biz.posts, ...occ });
+  // Для записи с сайта занято и тогда, когда заняты все посты под онлайн-запись (записями с сайта или закрытием поста)
+  const online = Math.min(biz.onlinePosts, biz.posts);
+  const onlineBusy = online < biz.posts
+    ? fullBusy(dayLanes({ date, tz: biz.timezone, window, posts: online, bookings: occ.siteBookings, blocksAll: occ.blocksAll, blocksOnePost: occ.blocksOnePost }).lanes)
+    : [];
   const lunch = window.breakFrom != null && window.breakTo != null ? { from: window.breakFrom, to: window.breakTo } : null;
-  return { date, open: day.open, close: day.close, busy: fullBusy(day.lanes), now: local.date === date ? local.minutes : null, lunch };
+  return { date, open: day.open, close: day.close, busy: unionSpans(fullBusy(day.lanes), onlineBusy), now: local.date === date ? local.minutes : null, lunch };
 }
 
 /** ended — день рабочий, но окон нет совсем (сегодня время уже вышло): это «поздно», а не «занято». */
@@ -128,7 +137,7 @@ export async function getHorizonSummary(biz: BusinessForSlots, durationMin: numb
     const window = resolveDayWindow(date, biz.hours, biz.exceptions);
     if (!window) return { date, closed: true, free: 0 };
     const slots = daySlots({
-      date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts,
+      date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts, onlinePosts: biz.onlinePosts,
       ...occ, nowMs, minLeadMin: biz.minLeadMin,
     });
     // «Поздно» — только сегодня и только когда окна были, но время уже вышло (а не услуга длиннее рабочего дня)

@@ -24,7 +24,7 @@ const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 // Названия полей для сообщений об ошибке: «Цена: слишком большое число…»
 const LABELS: Record<string, string> = {
   name: "Название", category: "Раздел", description: "Пояснение", priceFrom: "Цена", durationMin: "Длительность",
-  posts: "Посты", cancelHours: "Отмена", horizonDays: "Запись вперёд", minLeadMin: "Самое раннее время", headline: "Главная фраза", addressNote: "Как найти въезд",
+  posts: "Посты", onlinePosts: "Посты под запись", cancelHours: "Отмена", horizonDays: "Запись вперёд", minLeadMin: "Самое раннее время", headline: "Главная фраза", addressNote: "Как найти въезд",
   phone: "Телефон", comment: "Комментарий",
 };
 
@@ -100,7 +100,8 @@ export async function ownerDaySlots(date: string, serviceId: string) {
   if (!service) return [];
   const biz = await db.business.findUniqueOrThrow({ where: { id: business.id }, select: businessForSlotsSelect });
   // Владельцу показываем весь день, без «запаса» на подготовку и без ограничения горизонта
-  const slots = await getDaySlots({ ...biz, minLeadMin: -24 * 60, horizonDays: 3650 }, date, service.durationMin, Date.now() - 365 * 86400000);
+  // Владелец записывает на любой пост, а не только на посты под онлайн-запись
+  const slots = await getDaySlots({ ...biz, onlinePosts: biz.posts, minLeadMin: -24 * 60, horizonDays: 3650 }, date, service.durationMin, Date.now() - 365 * 86400000);
   return slots.map((s) => ({ time: s.time, free: s.free }));
 }
 
@@ -302,6 +303,7 @@ const Texts = z.object({
 
 const Rules = z.object({
   posts: z.coerce.number().int().min(1, "Хотя бы 1 пост").max(20),
+  onlinePosts: z.coerce.number().int().min(1, "Хотя бы 1 пост под запись").max(20),
   cancelHours: z.coerce.number().int().min(0).max(168),
   horizonDays: z.coerce.number().int().min(1).max(60),
   minLeadMin: z.coerce.number().int().min(0).max(48 * 60),
@@ -330,9 +332,10 @@ export async function saveTexts(_prev: ActionResult, f: FormData): Promise<Actio
 
 export async function saveRules(_prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
-  const p = Rules.safeParse(pick(f, ["posts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]));
+  const p = Rules.safeParse(pick(f, ["posts", "onlinePosts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]));
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
-  await db.business.update({ where: { id: business.id }, data: p.data });
+  // Постов под запись не больше, чем всего: после уменьшения постов лишнее срезается
+  await db.business.update({ where: { id: business.id }, data: { ...p.data, onlinePosts: Math.min(p.data.onlinePosts, p.data.posts) } });
   await audit("settings.save", { userId: user.id, businessId: business.id, details: { part: "rules" } });
   siteChanged();
   return { ok: true, message: "Сохранено. Сайт уже считает свободное время по новым правилам" };

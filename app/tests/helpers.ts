@@ -6,7 +6,8 @@ export async function resetDb() {
   );
 }
 
-export async function makeBusiness(over: { posts?: number; slug?: string } = {}) {
+/** onlinePosts по умолчанию = posts (все посты под запись), как было до 9 октября: старые тесты проверяют то же, что раньше. */
+export async function makeBusiness(over: { posts?: number; onlinePosts?: number; slug?: string } = {}) {
   return db.business.create({
     data: {
       slug: over.slug ?? "koleso",
@@ -14,6 +15,7 @@ export async function makeBusiness(over: { posts?: number; slug?: string } = {})
       address: "Пермь, ул. Примерная, 12",
       phone: "+73422541873",
       posts: over.posts ?? 1,
+      onlinePosts: over.onlinePosts ?? over.posts ?? 1,
       minLeadMin: 0,
       horizonDays: 30,
       hours: { create: [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({ weekday, openMin: 540, closeMin: 1200 })) },

@@ -133,12 +133,14 @@ const withValue = (opts: { value: number; label: string }[], v: number, label: (
   opts.some((o) => o.value === v) ? opts : [...opts, { value: v, label: label(v) }].sort((a, b) => a.value - b.value);
 const hours = (m: number) => (m % 60 ? `${m} мин` : `${m / 60} ч`);
 
-type Rules = { posts: number; cancelHours: number; horizonDays: number; minLeadMin: number; slotStepMin: number };
+type Rules = { posts: number; onlinePosts: number; cancelHours: number; horizonDays: number; minLeadMin: number; slotStepMin: number };
 
 /** Правила записи кнопками вместо чисел. Необычные значения, выставленные раньше, остаются в списке. */
 export function RulesForm({ r }: { r: Rules }) {
   const [state, action, pending] = useActionState(saveRules, null);
   const [posts, setPosts] = useState(r.posts);
+  const [online, setOnline] = useState(Math.min(r.onlinePosts, r.posts));
+  const shown = Math.min(online, posts);
   return (
     <form onSubmit={keepValues(action)} className="grid gap-7">
       <fieldset className="grid gap-2">
@@ -151,6 +153,22 @@ export function RulesForm({ r }: { r: Rules }) {
         </div>
         <p className="text-[13px] leading-snug text-zinc-500">Обычно это число подъёмников или постов. Клиенты этого не видят: так сайт понимает, сколько машин можно записать на одно время.</p>
       </fieldset>
+      {posts > 1 && (
+        <fieldset className="grid gap-2">
+          <legend className="mb-2 text-[15px] font-semibold">Из них под запись с сайта</legend>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setOnline(Math.max(1, shown - 1))} aria-label="Меньше постов под запись" className="grid size-12 place-items-center rounded-xl border border-zinc-300 bg-white"><Minus size={20} /></button>
+            <output className="min-w-12 text-center text-[28px] font-bold tabular-nums" aria-live="polite">{shown}</output>
+            <button type="button" onClick={() => setOnline(Math.min(posts, shown + 1))} aria-label="Больше постов под запись" className="grid size-12 place-items-center rounded-xl border border-zinc-300 bg-white"><Plus size={20} /></button>
+          </div>
+          <p className="text-[13px] leading-snug text-zinc-500">
+            {shown < posts
+              ? `Сайт записывает только на ${shown === 1 ? "один пост" : `${shown} поста`}. Держите ${shown === 1 ? "его" : "их"} под клиентов с сайта, остальные работают как раньше, по живой очереди и звонкам. Звонки в кабинет вносить не обязательно.`
+              : "Сайт записывает на все посты. Тогда звонки и машины с улицы нужно вносить в кабинет, иначе сайт запишет клиента на занятое время."}
+          </p>
+        </fieldset>
+      )}
+      <input type="hidden" name="onlinePosts" value={shown} />
       <Choice
         name="slotStepMin"
         legend="Через сколько начинаются записи"

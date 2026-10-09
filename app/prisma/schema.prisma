@@ -83,6 +83,8 @@ model Business {
 
   // Настройки расписания (раздел 4.1)
   posts        Int @default(1)
+  /// Сколько постов отдано под запись с сайта (остальные — живая очередь и звонки, их в кабинет вносить не нужно)
+  onlinePosts  Int @default(1)
   slotStepMin  Int @default(30)
   minLeadMin   Int @default(120)
   horizonDays  Int @default(14)

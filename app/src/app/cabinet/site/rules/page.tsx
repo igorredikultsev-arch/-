@@ -10,7 +10,7 @@ export default async function RulesPage() {
         Как сайт предлагает клиентам свободное время.
       </SubHead>
       <div className="px-[18px] lg:max-w-2xl lg:px-0">
-        <RulesForm r={{ posts: b.posts, cancelHours: b.cancelHours, horizonDays: b.horizonDays, minLeadMin: b.minLeadMin, slotStepMin: b.slotStepMin }} />
+        <RulesForm r={{ posts: b.posts, onlinePosts: b.onlinePosts, cancelHours: b.cancelHours, horizonDays: b.horizonDays, minLeadMin: b.minLeadMin, slotStepMin: b.slotStepMin }} />
       </div>
     </>
   );
