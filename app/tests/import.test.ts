@@ -52,7 +52,11 @@ describe("импорт демо из таблицы", () => {
     expect(OUTREACH_VARIANTS).toBe(5);
     expect(new Set(texts).size).toBe(5);
     for (const m of texts) {
-      expect(m).toContain("«Ось»");
+      // Название сервиса не пишем: «ваш автосервис» звучит как личное сообщение, а не рассылка
+      expect(m).toMatch(/ваш(его)? автосервис|вашу карточку/);
+      expect(m).not.toContain("Ось");
+      // Предложение помочь с чем-то ещё, в каждом варианте своими словами
+      expect(m).toMatch(/что-то (ещё|другое)/);
       expect(m).toContain("https://avtoslot.ru/s/os");
       expect(m).toMatch(/3\s500\s₽/);
       expect(m).toMatch(/990\s₽/);

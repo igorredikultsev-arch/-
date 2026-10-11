@@ -158,7 +158,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
               {b.status === "demo" && lead !== "refused" && (
                 <Card title={lead === "new" ? "Первое сообщение: демо" : "Сообщение с демо"}>
                   <CopyBox label="Поправьте под сервис перед отправкой" rows={10} text={demoMessage(b.lead?.firstMessage, b, siteUrl, { early })} />
-                  {/@/.test(b.lead?.contact ?? "") && <CopyBox label="Тема письма" rows={2} text={emailSubject(b)} />}
+                  {/@/.test(b.lead?.contact ?? "") && <CopyBox label="Тема письма" rows={2} text={emailSubject()} />}
                   <p className="text-[13px] text-zinc-500">
                     Пишите на официальный номер, почту или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Демо отправлено». Ответили «нет» — поставьте «Отказ» и больше не пишите.
                   </p>

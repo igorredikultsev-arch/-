@@ -185,7 +185,7 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
       if (own) await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: own } });
       await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
     }
-    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, subject: emailSubject(biz), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
+    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, subject: emailSubject(), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
   }
   revalidatePath("/admin");
   return { sheet: parsed.sheet, rows, cut: parsed.cut };
