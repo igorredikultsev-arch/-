@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDemoRows } from "@/lib/demo-import";
-import { demoMessage, outreach, OUTREACH_VARIANTS, reviewsText, withLink } from "@/lib/outreach";
+import { afterDemo, demoMessage, followUps, outreach, priceText, question, QUESTION_NAMES, questionVariant, reviewsText, withLink } from "@/lib/outreach";
 import { readCsv, readTable } from "@/lib/sheet";
 
 describe("импорт демо из таблицы", () => {
@@ -45,45 +45,55 @@ describe("импорт демо из таблицы", () => {
     expect(withLink("Привет, вот стиль сайта", "https://x")).toBe("Привет, вот стиль сайта\n\nhttps://x");
   });
 
-  it("первое сообщение — сразу демо: пять разных текстов, в каждом ссылка, цена, возврат, отказ и подпись", () => {
-    const b = { name: "Ось", rating: 4.8, reviews2gis: 173, twoGisUrl: "https://2gis.ru/perm/firm/1", yandexMapsUrl: null, status: "demo" };
+  it("первое сообщение — короткий вопрос: три разных текста, без ссылки и цены, с отказом и подписью", () => {
+    const b = { name: "Ось", slug: "os", rating: 4.8, reviews2gis: 173, twoGisUrl: "https://2gis.ru/perm/firm/1", yandexMapsUrl: null, status: "demo" };
     const oct = Date.UTC(2026, 9, 6, 12);
-    const texts = Array.from({ length: OUTREACH_VARIANTS }, (_, variant) => outreach(b, "https://avtoslot.ru/s/os", { early: true, now: oct, variant }));
-    expect(OUTREACH_VARIANTS).toBe(5);
-    expect(new Set(texts).size).toBe(5);
+    const july = Date.UTC(2026, 6, 1, 12);
+    const texts = QUESTION_NAMES.flatMap((_, variant) => [question(b, { now: oct, variant }), question(b, { now: july, variant })]);
+    expect(QUESTION_NAMES).toHaveLength(3);
+    expect(new Set(texts.filter((_, i) => i % 2 === 0)).size).toBe(3);
     for (const m of texts) {
-      // Название сервиса не пишем: «ваш автосервис» звучит как личное сообщение, а не рассылка
-      expect(m).toMatch(/ваш(его)? автосервис|вашу карточку/);
+      // Ни ссылки, ни адреса сайта, ни цены: это вопрос, а не реклама
+      expect(m).not.toMatch(/https?:|avtoslot|\.ru|₽|руб/);
       expect(m).not.toContain("Ось");
-      // Предложение помочь с чем-то ещё, в каждом варианте своими словами
-      expect(m).toMatch(/что-то (ещё|другое)/);
-      expect(m).toContain("https://avtoslot.ru/s/os");
-      expect(m).toMatch(/3\s500\s₽/);
-      expect(m).toMatch(/990\s₽/);
-      expect(m).toMatch(/верн/);
-      expect(m).toMatch(/первых 10/);
-      expect(m).toMatch(/больше не (буду беспокоить|потревожу|побеспокою|напишу)|больше писать не буду/);
-      expect(m).toMatch(/Игорь/);
-      expect(m.split("\n").at(-1)).toMatch(/Автослот/);
-      expect(m.split("\n").at(-1)).toContain(process.env.ROOT_DOMAIN || "avtoslot.ru");
+      expect(m).toContain("?");
+      expect(m).toMatch(/онлайн-запис/);
+      expect(m).toMatch(/больше не (потревожу|напишу)/);
+      expect(m.split("\n").at(-1)).toBe("Игорь, Автослот");
+      expect(m.split(/\s+/).length).toBeLessThanOrEqual(60);
       // Без тире: по ним текст сразу выдаёт нейросеть
       expect(m).not.toMatch(/[—–]/);
     }
-    // У одного сервиса текст всегда один и тот же, у разных — разный
-    expect(outreach(b, "https://avtoslot.ru/s/os")).toBe(outreach(b, "https://avtoslot.ru/s/os"));
-    const which = (url: string) => [...Array(OUTREACH_VARIANTS).keys()].find((variant) => outreach(b, url, { variant }) === outreach(b, url));
-    const used = new Set(["os", "koleso", "shina", "disk", "balans", "pit", "r16", "tihaya", "chajka", "kord"].map((s) => which(`https://avtoslot.ru/s/${s}`)));
-    expect(used.size).toBeGreaterThanOrEqual(3);
-    expect(texts.some((m) => m.includes("рейтинг 4,8 и 173 отзыва"))).toBe(true);
-    // Рейтинг ниже 4,7 не называем, «первых 10» — только пока цена действует, вне сезона без переобувки, у подключённого без выбора оформления
-    for (let variant = 0; variant < OUTREACH_VARIANTS; variant++) {
-      const low = outreach({ ...b, rating: 4.3, status: "active" }, "https://x", { now: Date.UTC(2026, 6, 1), variant });
-      expect(low).not.toMatch(/4,3|первых|сезон|оформлени/);
-    }
-    expect(outreach({ ...b, rating: 5 }, "https://x", { variant: 0 })).toContain("рейтинг 5 и 173 отзыва");
+    expect(question(b, { variant: 1 })).toContain("в 2ГИС, у вас рейтинг 4,8 и 173 отзыва");
+    expect(question({ ...b, rating: 4.3, reviews2gis: null }, { variant: 1 })).not.toMatch(/4,3|у вас рейтинг/);
+    expect(question(b, { now: oct, variant: 2 })).toMatch(/сезон/);
+    expect(question(b, { now: july, variant: 2 })).not.toMatch(/сезон/);
+    // У одного сервиса вариант всегда один и тот же, у разных — разный
+    expect(question(b)).toBe(question(b));
+    const used = new Set(["os", "koleso", "shina", "disk", "balans", "pit", "r16", "tihaya", "chajka", "kord"].map(questionVariant));
+    expect(used.size).toBe(3);
+    expect(question(b, { now: oct })).toBe(question(b, { now: oct, variant: questionVariant("os") }));
   });
 
-  it("сообщения, которые импорт сохранил по старым шаблонам, заменяются текущим, своё из таблицы остаётся", () => {
+  it("второе сообщение — демо со ссылкой, цена отдельно, повторные без ссылки", () => {
+    const b = { name: "Ось", slug: "os", rating: null, yandexMapsUrl: null, status: "demo" };
+    const demo = outreach(b, "https://avtoslot.ru/s/os");
+    expect(demo).toContain("https://avtoslot.ru/s/os");
+    expect(demo).toContain("оформление");
+    expect(demo).not.toMatch(/₽/);
+    expect(outreach({ ...b, status: "active" }, "https://x")).not.toMatch(/оформлени/);
+    expect(priceText({ early: true })).toMatch(/3\s500\s₽.*990\s₽.*первых 10.*верну/s);
+    expect(priceText()).not.toMatch(/первых/);
+    const [second, last] = followUps(b, { now: Date.UTC(2026, 9, 6) });
+    expect(second).not.toMatch(/https?:/);
+    expect(second).toMatch(/\?$/);
+    expect(last).toMatch(/Последний раз/);
+    expect(last).toMatch(/сезона/);
+    expect(followUps(b, { now: Date.UTC(2026, 6, 1) })[1]).not.toMatch(/сезон/);
+    for (const m of [demo, priceText({ early: true }), second, last, afterDemo()]) expect(m).not.toMatch(/[—–]/);
+  });
+
+  it("сообщения с демо, которые импорт сохранил по старым шаблонам, заменяются текущим, своё из таблицы остаётся", () => {
     const b = { name: "Ось", rating: null, yandexMapsUrl: null };
     expect(demoMessage("Спасибо, что ответили! Вот пример: https://x", b, "https://x")).toBe(outreach(b, "https://x"));
     expect(demoMessage("Здравствуйте! Увидел вас в 2ГИС: 4,9 и 173 отзыва, а записаться…", b, "https://x")).toBe(outreach(b, "https://x"));

@@ -291,6 +291,7 @@ model Lead {
   contact     String?
   notes       String?
   firstMessage String? // сообщение с демо (после ответа «да») из таблицы при импорте, ссылка уже подставлена
+  askVariant  Int? // какой вариант первого сообщения-вопроса отправили (QUESTION_NAMES в lib/outreach.ts), с 13 октября 2026
   contactedAt DateTime?
   updatedAt   DateTime   @updatedAt
 }

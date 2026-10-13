@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { AdminResult } from "./actions";
 
 export const inp = "h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-[15px] outline-none focus:border-transparent focus:ring-2 focus:ring-accent";
@@ -26,7 +26,7 @@ export function Result({ state }: { state: AdminResult }) {
 /** Кнопка «Скопировать»: в браузерах без доступа к буферу выделяет текст. */
 export function CopyBox({ text, rows = 3, label }: { text: string; rows?: number; label: string }) {
   const [done, setDone] = useState(false);
-  const id = `copy-${label.length}-${rows}`;
+  const id = useId();
   return (
     <div className="grid gap-1.5">
       <label htmlFor={id} className="text-[13px] font-semibold text-zinc-600">{label}</label>

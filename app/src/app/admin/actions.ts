@@ -13,8 +13,7 @@ import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
 import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
-import { earlyPrice } from "@/lib/business";
-import { demoMessage, emailSubject, outreach, withLink } from "@/lib/outreach";
+import { demoMessage, emailSubject, outreach, question, questionVariant, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
@@ -138,7 +137,7 @@ export async function createDemo(_prev: AdminResult, f: FormData): Promise<Admin
   redirect(`/admin/b/${biz.id}?created=1`);
 }
 
-export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; subject?: string; channel?: string | null; contact?: string | null };
+export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; demo?: string; subject?: string; channel?: string | null; contact?: string | null };
 export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[]; cut?: number } | null;
 
 // Запрос к серверному действию ограничен 1 МБ (настройка Next.js по умолчанию), таблица на сотню строк весит десятки КБ
@@ -163,7 +162,6 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
   if ("error" in parsed) return { error: parsed.error };
 
   const rows: ImportRow[] = [];
-  const early = await earlyPrice();
   for (const r of parsed.rows) {
     const d = r.demo;
     if (!d) {
@@ -180,12 +178,12 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
     const url = publicSiteUrl(biz.slug, biz.customDomain, biz.status);
     // В базе храним только своё сообщение из таблицы. Шаблонное собирается при показе: так правка шаблона доходит и до уже загруженных
     const own = !existing && d.message ? withLink(d.message, url) : null;
-    const message = existing ? demoMessage(existing.lead?.firstMessage, existing, url, { early }) : own ?? outreach(biz, url, { early });
+    const demo = existing ? demoMessage(existing.lead?.firstMessage, existing, url) : own ?? outreach(biz, url);
     if (!existing) {
       if (own) await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: own } });
       await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
     }
-    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message, subject: emailSubject(), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
+    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message: question(biz), demo, subject: emailSubject(), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
   }
   revalidatePath("/admin");
   return { sheet: parsed.sheet, rows, cut: parsed.cut };
@@ -259,14 +257,17 @@ export async function saveLead(id: string, _prev: AdminResult, f: FormData): Pro
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const prev = await db.lead.findUnique({ where: { businessId: id } });
   const contactedAt = p.data.status !== "new" && (!prev || prev.status === "new") ? new Date() : prev?.contactedAt;
+  // Отправили первое сообщение-вопрос: запоминаем вариант, чтобы сравнивать, какой текст чаще даёт ответ
+  const biz = p.data.status === "asked" && prev?.askVariant == null ? await db.business.findUnique({ where: { id }, select: { slug: true } }) : null;
+  const askVariant = biz ? questionVariant(biz.slug) : prev?.askVariant;
   // Отказ: контакт для связи и текст первого сообщения стираются, демо закрывается (политика avtoslot.ru/privacy, п. 3.3).
   // Карточка с названием и отметкой «отказ» остаётся, чтобы не написать повторно, и удаляется очисткой через 12 месяцев (REFUSED_KEEP_DAYS)
   const refused = p.data.status === "refused";
   const data = refused ? { ...p.data, contact: null, firstMessage: null } : p.data;
   await db.lead.upsert({
     where: { businessId: id },
-    create: { businessId: id, ...data, contactedAt },
-    update: { ...data, contactedAt },
+    create: { businessId: id, ...data, contactedAt, askVariant },
+    update: { ...data, contactedAt, askVariant },
   });
   if (refused) {
     await db.business.updateMany({ where: { id, status: "demo" }, data: { status: "archived", demoExpiresAt: new Date() } });

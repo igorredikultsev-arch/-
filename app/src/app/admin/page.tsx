@@ -7,10 +7,13 @@ import { TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
 import { formatDate } from "@/lib/time";
 import { deviceText, HOT_HOURS, isHot, summaryText, viewSummaries } from "@/lib/demo-views";
 import { BusinessList } from "./business-list";
+import { QUESTION_NAMES } from "@/lib/outreach";
 import { LEAD_LABEL } from "./labels";
 
-// «Спросили» (до 6 октября первым сообщением был вопрос) в воронку не входит: демо теперь отправляем сразу
-const FUNNEL = ["demo_sent", "replied", "interested", "trial", "paid"] as const;
+// С 13 октября первое сообщение — вопрос без ссылки («Написали»), демо отправляем после ответа.
+// У лидов до 13 октября демо ушло первым сообщением, без этапа «Написали»: воронка накопительная, они считаются и в нём
+const FUNNEL = ["asked", "demo_sent", "replied", "interested", "trial", "paid"] as const;
+const GOT_DEMO = FUNNEL.slice(1);
 const ended = (d: Date) => d.getTime() < Date.now();
 // Когда очистка приостановит сайт без оплаты (оферта, п. 4.1)
 const suspendOn = (d: Date) => formatDate(d.getTime() + UNPAID_GRACE_DAYS * 86400000, "Asia/Yekaterinburg");
@@ -27,7 +30,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const [all, counts, live] = await Promise.all([
     db.business.findMany({
       where: {
-        ...(lead ? { lead: { status: lead as never } } : openedOnly ? { lead: { status: { in: [...FUNNEL] } }, demoViews: { some: { kind: "open" as const } } } : q ? {} : { status: { not: "archived" } }),
+        ...(lead ? { lead: { status: lead as never } } : openedOnly ? { lead: { status: { in: [...GOT_DEMO] } }, demoViews: { some: { kind: "open" as const } } } : q ? {} : { status: { not: "archived" } }),
         // Поиск по названию, адресу и телефону: нужен, когда демо станет много
         ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { address: { contains: q, mode: "insensitive" as const } }, { phone: { contains: phoneQuery(q) } }] } : {}),
       },
@@ -50,7 +53,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
     }),
   ]);
   // Открыли демо, но ещё не ответили: написать сейчас, пока владелец помнит сайт. Отдельным запросом, как «Нужно внимание»
-  const [hotRows, opened] = await Promise.all([
+  const [hotRows, opened, asks] = await Promise.all([
     db.business.findMany({
       where: {
         status: "demo",
@@ -60,7 +63,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       select: { id: true, name: true },
     }),
     // Сколько из получивших демо его открыли (до 9 октября открытия не отмечались)
-    db.business.count({ where: { lead: { status: { in: [...FUNNEL] } }, demoViews: { some: { kind: "open" } } } }),
+    db.business.count({ where: { lead: { status: { in: [...GOT_DEMO] } }, demoViews: { some: { kind: "open" } } } }),
+    // Какой вариант первого сообщения чаще даёт ответ: ответили — ушли с этапа «Написали» (в том числе отказом)
+    db.lead.groupBy({ by: ["askVariant", "status"], where: { askVariant: { not: null } }, _count: true }),
   ]);
   const views = await viewSummaries([...new Set([...all.map((b) => b.id), ...hotRows.map((b) => b.id)])]);
   const hot = hotRows
@@ -68,15 +73,21 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
     .sort((a, b) => b.v.last.getTime() - a.v.last.getTime());
   const n = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
   // Воронка накопительная: кто дошёл до этапа или дальше
-  const stages = FUNNEL.map((s, i) => ({ href: `/admin?lead=${s}`, label: LEAD_LABEL[s], count: FUNNEL.slice(i).reduce((sum, x) => sum + n(x), 0) }));
+  const stages = FUNNEL.map((s, i) => ({ href: `/admin?lead=${s}`, label: s === "asked" ? "Написали" : LEAD_LABEL[s], count: FUNNEL.slice(i).reduce((sum, x) => sum + n(x), 0) }));
   // «Открыли демо» — не этап, который ставят руками: его отмечает сама страница демо. Ответить могли и не открыв
   // (до 9 октября открытия не отмечались), поэтому «Ответили» считаем от отправленных демо, а не от открывших.
   // of — с каким этапом сравнивать процент
   const reached = [
     { ...stages[0], of: -1 },
-    { href: "/admin?opened=1", label: "Открыли демо", count: opened, of: 0 },
-    ...stages.slice(1).map((st, i) => ({ ...st, of: i === 0 ? 0 : i + 1 })),
+    { ...stages[1], of: 0 },
+    { href: "/admin?opened=1", label: "Открыли демо", count: opened, of: 1 },
+    ...stages.slice(2).map((st, i) => ({ ...st, of: i === 0 ? 1 : i + 2 })),
   ];
+  const variants = QUESTION_NAMES.map((name, v) => {
+    const rows = asks.filter((a) => a.askVariant === v);
+    const sum = (f: (s: string) => boolean) => rows.filter((a) => f(a.status)).reduce((x, a) => x + a._count, 0);
+    return { name, sent: sum(() => true), replied: sum((s) => s !== "asked"), refused: sum((s) => s === "refused") };
+  });
   const expiring = live.filter((b) => b.status === "trial" && b.trialEndsAt && b.trialEndsAt.getTime() - Date.now() < 3 * 86400000);
   const unpaid = live.filter((b) => b.status === "active" && b.paidUntil && b.paidUntil.getTime() < Date.now() + 3 * 86400000);
   const noRkn = live.filter((b) => b.status === "active" && !b.rknFiledAt);
@@ -86,20 +97,31 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
     <div className="grid gap-6">
       <section className="grid gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Воронка</h1>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {reached.map((r, i) => (
             <Link key={r.label} href={r.href} className="rounded-2xl bg-white p-4 ring-1 ring-zinc-200 hover:ring-accent">
               <div className="text-[28px] font-bold leading-none">{r.count}</div>
               <div className="mt-1 text-[13px] text-zinc-600">{r.label}</div>
               {r.of >= 0 && reached[r.of].count > 0 && (
-                <div className="mt-1 text-[12px] text-zinc-500">{Math.round((r.count / reached[r.of].count) * 100)}% {i - 1 === r.of ? "от прошлого этапа" : "от отправленных"}</div>
+                <div className="mt-1 text-[12px] text-zinc-500">{Math.round((r.count / reached[r.of].count) * 100)}% {i - 1 === r.of ? "от прошлого этапа" : "от получивших демо"}</div>
               )}
             </Link>
           ))}
         </div>
         <p className="text-[13px] text-zinc-500">
-          Отказов: {n("refused")}. Ещё не писали: {n("new")}.{n("asked") ? ` Спросили по-старому и ждут ответа: ${n("asked")}.` : ""} Если на демо мало кто отвечает, меняйте текст сообщения; если смотрят, но не платят, меняйте предложение.
+          Отказов: {n("refused")}. Ещё не писали: {n("new")}. Ждут ответа на первое сообщение: {n("asked")}. Если на вопрос мало кто отвечает, меняйте первое сообщение; если смотрят демо, но не платят, меняйте предложение.
         </p>
+        {variants.some((v) => v.sent > 0) && (
+          <div className="grid gap-1.5 rounded-2xl bg-white p-4 text-[14px] ring-1 ring-zinc-200">
+            <h2 className="font-bold">Какое первое сообщение лучше</h2>
+            {variants.map((v) => (
+              <p key={v.name}>
+                «{v.name}»: написали {v.sent}, ответили {v.replied}{v.sent ? ` (${Math.round((v.replied / v.sent) * 100)}%)` : ""}{v.refused ? `, из них отказ ${v.refused}` : ""}
+              </p>
+            ))}
+            <p className="text-[13px] text-zinc-500">Выводы делайте, когда у каждого варианта наберётся хотя бы 20 отправленных. Потом оставьте лучший.</p>
+          </div>
+        )}
       </section>
 
       {hot.length > 0 && (
