@@ -59,7 +59,8 @@ describe("импорт демо из таблицы", () => {
       expect(m).toContain("?");
       expect(m).toMatch(/онлайн-запис/);
       expect(m).toMatch(/больше не (потревожу|напишу)/);
-      expect(m.split("\n").at(-1)).toBe("Игорь, Автослот");
+      // Без подписи: имя и так видно в мессенджере
+      expect(m).not.toMatch(/Автослот|Игорь/);
       expect(m.split(/\s+/).length).toBeLessThanOrEqual(60);
       // Без тире: по ним текст сразу выдаёт нейросеть
       expect(m).not.toMatch(/[—–]/);
