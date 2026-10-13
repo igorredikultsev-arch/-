@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDemoRows } from "@/lib/demo-import";
-import { afterDemo, demoMessage, followUps, outreach, priceText, question, QUESTION_NAMES, questionVariant, reviewsText, withLink } from "@/lib/outreach";
+import { afterDemo, REPLIES, demoMessage, followUps, outreach, priceText, question, QUESTION_NAMES, questionVariant, reviewsText, withLink } from "@/lib/outreach";
 import { readCsv, readTable } from "@/lib/sheet";
 
 describe("импорт демо из таблицы", () => {
@@ -90,7 +90,9 @@ describe("импорт демо из таблицы", () => {
     expect(last).toMatch(/Последний раз/);
     expect(last).toMatch(/сезона/);
     expect(followUps(b, { now: Date.UTC(2026, 6, 1) })[1]).not.toMatch(/сезон/);
-    for (const m of [demo, priceText({ early: true }), second, last, afterDemo()]) expect(m).not.toMatch(/[—–]/);
+    for (const m of [demo, priceText({ early: true }), second, last, afterDemo(), ...REPLIES.map((r) => r.text)]) expect(m).not.toMatch(/[—–]/);
+    // Ответы на возражения без ссылок и без обещаний, что все начнут записываться
+    for (const r of REPLIES) expect(r.text).not.toMatch(/https?:|все (начнут|будут)/);
   });
 
   it("сообщения с демо, которые импорт сохранил по старым шаблонам, заменяются текущим, своё из таблицы остаётся", () => {

@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { earlyPrice } from "@/lib/business";
-import { afterDemo, demoMessage, emailSubject, FOLLOW_UP_DAYS, followUps, priceText, question, QUESTION_NAMES, questionVariant } from "@/lib/outreach";
+import { afterDemo, demoMessage, emailSubject, FOLLOW_UP_DAYS, followUps, priceText, question, QUESTION_NAMES, questionVariant, REPLIES } from "@/lib/outreach";
 import { deviceText, summaryText, timesText, viewSummaries, whenText, type ViewSummary } from "@/lib/demo-views";
 import { formatPhone } from "@/lib/phone";
 import { connectFirst, operatorMissing, TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
@@ -173,13 +173,20 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                   <CopyBox label="Сообщение со ссылкой. Если ответили на вопрос подробно, начните с ответа на их слова" rows={10} text={demoMessage(b.lead?.firstMessage, b, siteUrl)} />
                   <CopyBox label="Если спросят цену или посмотрели демо" rows={8} text={priceText({ early })} />
                   {lead !== "asked" && <CopyBox label="Если получили демо и молчат пару дней" rows={5} text={afterDemo()} />}
+                  {lead === "asked" && (
+                    <>
+                      <h3 className="mt-2 text-[15px] font-bold">Если ответили без «да»</h3>
+                      <p className="text-[13px] text-zinc-500">Не спорьте и не обещайте, что все начнут записываться онлайн. Согласитесь и скажите про тех, кого сервис сейчас теряет.</p>
+                      {REPLIES.map((r) => <CopyBox key={r.when} label={`Ответили ${r.when}`} rows={r.text.length > 250 ? 11 : 7} text={r.text} />)}
+                    </>
+                  )}
                   <p className="text-[13px] text-zinc-500">Ответили «нет» — поставьте «Отказ» и больше не пишите.</p>
                 </Card>
               )}
               {b.status === "demo" && lead === "asked" && (
                 <Card title="Если молчат">
                   {followUps(b).map((text, i) => (
-                    <CopyBox key={i} label={`${i ? "Последнее" : "Второе"} сообщение, через ${FOLLOW_UP_DAYS[i] === 7 ? "неделю" : `${FOLLOW_UP_DAYS[i]} дня`} после первого${b.lead?.contactedAt ? `, с ${day(new Date(b.lead.contactedAt.getTime() + FOLLOW_UP_DAYS[i] * 86400000))}` : ""}`} rows={i ? 5 : 6} text={text} />
+                    <CopyBox key={i} label={`${i ? "Последнее" : "Второе"} сообщение, через ${FOLLOW_UP_DAYS[i] === 7 ? "неделю" : `${FOLLOW_UP_DAYS[i]} дня`} после первого${b.lead?.contactedAt ? `, с ${day(new Date(b.lead.contactedAt.getTime() + FOLLOW_UP_DAYS[i] * 86400000))}` : ""}`} rows={i ? 5 : 7} text={text} />
                   ))}
                   <p className="text-[13px] text-zinc-500">После последнего больше не пишите. Если позже ответят сами, отправьте демо.</p>
                 </Card>
