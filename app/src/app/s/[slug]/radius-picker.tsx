@@ -1,20 +1,24 @@
 "use client";
 
 import { aboutDuration } from "@/lib/duration";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { RadiusBand } from "@/lib/radius";
 import type { WidgetService } from "./booking-widget";
-import { PICK_EVENT, scrollToBook } from "./events";
+import { PICK_EVENT, RADIUS_EVENT, scrollToBook, type RadiusPick } from "./events";
 
 const duration = aboutDuration;
 const price = (p: number) => (p > 0 ? `${p.toLocaleString("ru-RU")} ₽` : "бесплатно");
 
-/** «Боковина»: сначала радиус, сразу цена подходящей услуги и кнопка к выбору времени. */
+/** Стили с 3D-сценой: сначала радиус, сразу цена подходящей услуги и кнопка к выбору времени. */
 export function RadiusPicker({ services, bands, radii }: { services: WidgetService[]; bands: RadiusBand[]; radii: number[] }) {
   const [r, setR] = useState(radii.includes(16) ? 16 : radii[0]);
   const band = bands.find((b) => r >= b.from && r <= b.to)!;
   const svc = services.find((s) => s.id === band.serviceId)!;
   const what = svc.name.replace(/\s*R\s?\d{2}.*$/i, "").trim() || svc.name;
+  // Сцена первого экрана показывает выбранный радиус (надпись на шине, подписи на колёсах машины)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent<RadiusPick>(RADIUS_EVENT, { detail: { r, minutes: svc.durationMin } }));
+  }, [r, svc.durationMin]);
 
   return (
     <section className="size" aria-labelledby="size-h">

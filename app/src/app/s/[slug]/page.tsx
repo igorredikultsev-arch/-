@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, NavigationArrow, Phone, Snowflake, Star, Sun } from "@phosphor-icons/react/dist/ssr";
 import { getSiteBusiness, isExampleSlug, isPublic, readFacts, shortName, type SiteBusiness, decodeKey } from "@/lib/business";
 import { captchaClientKey } from "@/lib/captcha";
 import { formatPhone } from "@/lib/phone";
@@ -11,7 +11,7 @@ import { hoursLines } from "@/lib/hours-text";
 import { logoSrc } from "@/lib/logo";
 import { hhmm, toLocal } from "@/lib/time";
 import { radiusBands, radiusList } from "@/lib/radius";
-import { isThemeKey, type ThemeKey } from "@/lib/themes";
+import { isShowroom, isThemeKey, type ThemeKey } from "@/lib/themes";
 import { operatorMissing } from "@/lib/readiness";
 import { BookingWidget, type WidgetService } from "./booking-widget";
 import { DayLoad } from "./day-load";
@@ -21,6 +21,7 @@ import { ServicesList } from "./services-list";
 import { DemoBeacon } from "./demo-beacon";
 import { ThemeSwitch } from "./theme-switch";
 import { TireArt } from "./tire-art";
+import { CarStage, DotsStage, WheelStage } from "./stage/stages";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ theme?: string }> };
 
@@ -262,10 +263,22 @@ export default async function SitePage({ params, searchParams }: Props) {
   );
 
   let content: React.ReactNode;
-  if (theme === "tire") {
+  if (isShowroom(theme)) {
+    // «Колесо», «Сканер», «Частицы»: 3D-сцена в первом экране, ниже радиус с ценой, запись и сведения
     const bands = radiusBands(services);
     const radii = radiusList(bands);
-    const ring = [biz.name.replace(/[«»"]/g, ""), biz.city].join(" • ").toUpperCase();
+    const r0 = radii.includes(16) ? 16 : (radii[0] ?? null);
+    const svc0 = r0 == null ? null : services.find((s) => s.id === bands.find((b) => r0 >= b.from && r0 <= b.to)?.serviceId);
+    const initial = r0 != null && svc0 ? { r: r0, minutes: svc0.durationMin } : null;
+    const ring = [biz.name, biz.city].join(" • ").toUpperCase();
+    const stage =
+      theme === "tire" ? (
+        <WheelStage text={ring} initial={initial} fallback={<TireArt text={ring} />} />
+      ) : theme === "scan" ? (
+        <CarStage initial={initial} poster={{ mobile: "/3d/car-m.webp", desktop: "/3d/car-d.webp" }} />
+      ) : (
+        <DotsStage text={biz.name.toUpperCase()} marks={[biz.city, radii.length ? `R${radii[0]}-R${radii[radii.length - 1]}` : ""].filter(Boolean).join(" • ").toUpperCase()} />
+      );
     content = (
       <>
         <header className="hero">
@@ -279,11 +292,17 @@ export default async function SitePage({ params, searchParams }: Props) {
             </div>
             {callBtn}
           </div>
-          <TireArt text={ring} />
+          <div className="stage">{stage}</div>
           <div className="hero-text">
             <h1 className="h3">{headline}</h1>
             {meta}
           </div>
+          <a className="btn hero-cta" href={noOnline ? tel : "#book"}>
+            {noOnline ? "Позвонить" : "Записаться онлайн"}
+            <span className="ic">
+              <ArrowRight />
+            </span>
+          </a>
         </header>
         <div className="layout">
           {radii.length > 0 && <RadiusPicker services={services} bands={bands} radii={radii} />}
@@ -389,6 +408,15 @@ export default async function SitePage({ params, searchParams }: Props) {
       <a href={`${base}/consent`}>Согласие на обработку персональных данных</a>
       <br />
       {/* Ссылка на главную Автослота: соседние сервисы, увидев сайт, могут подключиться сами. Новая вкладка — запись не теряется */}
+      {theme === "scan" ? (
+        <>
+          3D-модель автомобиля: Eric Chadwick, Darmstadt Graphics Group,{" "}
+          <a href="https://creativecommons.org/licenses/by/4.0/deed.ru" target="_blank" rel="noopener noreferrer">
+            CC BY 4.0
+          </a>
+          <br />
+        </>
+      ) : null}
       Сайт работает на сервисе{" "}
       <a href={process.env.ROOT_DOMAIN ? `https://${process.env.ROOT_DOMAIN}` : process.env.APP_URL || "https://avtoslot.ru"} target="_blank" rel="noopener">
         «Автослот»

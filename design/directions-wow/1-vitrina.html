@@ -26,7 +26,7 @@
 .poster,#wheel{position:absolute;inset:0;width:100%;height:100%;display:block}
 .poster{object-fit:contain;transition:opacity .8s cubic-bezier(.22,1,.36,1)}
 .poster.off{opacity:0}
-#wheel{-webkit-box-reflect:below var(--refl,-30px) linear-gradient(transparent 80%,rgba(255,255,255,.12))}
+#wheel{-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
 .hint{position:absolute;right:16px;bottom:8px;font-size:12.5px;color:var(--muted);opacity:0;transition:opacity .8s;display:flex;gap:6px;align-items:center;pointer-events:none}
 .hero-copy{position:relative;z-index:2;margin-top:-4px}
 .hero h1{font:800 clamp(38px,10.4vw,46px)/1.02 var(--f-body);letter-spacing:-.045em;margin:0 0 12px;max-width:12ch}
@@ -60,8 +60,7 @@
 </header>
 <section class="hero">
   <div class="stage">
-    <picture><source media="(min-width:960px)" srcset="shots/web/poster-wheel-d.webp"><img class="poster" src="shots/web/poster-wheel-m.webp" alt="" aria-hidden="true"></picture>
-    <canvas id="wheel" aria-label="Колесо в 3D, можно покрутить" role="img"></canvas>
+        <canvas id="wheel" aria-label="Колесо в 3D, можно покрутить" role="img"></canvas>
     <span class="hint">Колесо можно покрутить</span>
   </div>
   <div class="hero-copy">
@@ -77,7 +76,7 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
 <script type="module">
 import { mountWheel } from "./wheel3d.js";
-const cv = document.getElementById("wheel"), poster = document.querySelector(".poster");
+const cv = document.getElementById("wheel");
 const q = new URLSearchParams(location.search), T = parseFloat(q.get("t"));
 // Размер шины на боковине меняется вместе с выбранным радиусом
 const SIZE = { 13: "175/70", 14: "185/65", 15: "195/65", 16: "205/55", 17: "225/45", 18: "235/40", 19: "245/40", 20: "255/35", 21: "265/35", 22: "275/35" };
@@ -87,7 +86,6 @@ fitRefl(); addEventListener("resize", fitRefl);
 const w = mountWheel(cv, { text: NAME, marks: "205/55 R16 • ЗИМА", accent: "#2f7bff", frozenT: isNaN(T) ? undefined : T, reduced: AS.reduced() });
 if (w) {
   // картинка-заглушка уходит, когда колесо нарисовано
-  requestAnimationFrame(() => requestAnimationFrame(() => poster.classList.add("off")));
   addEventListener("as:radius", (e) => w.setMarks(NAME, `${SIZE[e.detail.r]} R${e.detail.r} • ЗИМА`));
   setTimeout(() => (document.querySelector(".hint").style.opacity = 0.75), 3600);
   cv.addEventListener("pointerdown", () => (document.querySelector(".hint").style.opacity = 0), { once: true });

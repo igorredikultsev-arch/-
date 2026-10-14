@@ -110,7 +110,7 @@ import { mountCar } from "./car3d.js";
 const q = new URLSearchParams(location.search), T = parseFloat(q.get("t"));
 const poster = document.querySelector(".poster"), load = document.querySelector(".load"), hint = document.querySelector(".hint");
 const car = mountCar(document.getElementById("car"), document.getElementById("ov"), {
-  url: ["models/car.glb", "models/car-glb.wasm"], accent: "#ff3b30", frozenT: isNaN(T) ? undefined : T, reduced: AS.reduced(),
+  url: ["../../app/public/3d/car.glb", "models/car-glb.wasm"], accent: "#ff3b30", frozenT: isNaN(T) ? undefined : T, reduced: AS.reduced(),
   tagFront: "R16 · 4 КОЛЕСА", tagRear: "≈ 40 МИН",
   onProgress: (p) => (load.firstElementChild.style.width = `${Math.round(p * 100)}%`),
   onReady: () => { poster.classList.add("off"); load.style.opacity = 0; setTimeout(() => (hint.style.opacity = 0.8), 3800); requestAnimationFrame(() => (window.done = true)); },

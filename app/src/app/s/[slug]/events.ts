@@ -2,8 +2,10 @@
 export const PICK_EVENT = "avtoslot:pick-service"; // detail: id услуги
 export const SLOT_EVENT = "avtoslot:pick-slot"; // detail: SlotPick, сразу к контактам
 export const STATE_EVENT = "avtoslot:state"; // detail: BookState, форма сообщает о выборе
+export const RADIUS_EVENT = "avtoslot:radius"; // detail: RadiusPick, выбран радиус (3D-сцена меняет надпись и подписи)
 
 export type SlotPick = { serviceId: string; date: string; time: string };
+export type RadiusPick = { r: number; minutes: number };
 export type BookState = { serviceId: string | null; date: string | null; time: string | null };
 
 export function scrollToBook() {

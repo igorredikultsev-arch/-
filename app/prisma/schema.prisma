@@ -19,9 +19,11 @@ enum BusinessStatus {
 }
 
 enum Theme {
-  tire // «Боковина»
-  plan // «План»
-  taxi // «Такси»
+  tire // «Колесо» (до 14.10.2026 — «Тёмный», «Боковина»)
+  plan // «Светлый», «План»
+  taxi // «Чёрно-белый», «Такси»
+  scan // «Сканер»
+  dots // «Частицы»
 }
 
 enum BookingSource {

@@ -1,6 +1,6 @@
 # 3D-модель машины
 
-`car.glb` — «Car Concept» из Khronos glTF Sample Assets: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
+Модель лежит в `app/public/3d/car.glb` (макет «Сканер» берёт её оттуда). Это «Car Concept» из Khronos glTF Sample Assets: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
 
 © 2024 Darmstadt Graphics Group GmbH, модель и текстуры — Eric Chadwick. Лицензия Creative Commons Attribution 4.0 (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/ — на сайте нужна подпись автора (в макете она в подвале). Исходник основан на модели «Free Concept Car 004» (Unity Fan, CC0).
 
