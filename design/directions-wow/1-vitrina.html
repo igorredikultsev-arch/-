@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Витрина: Шиномонтаж «Колесо»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* «Витрина»: чёрный бархат, шина под прожектором, как экспонат в салоне. Кнопки белые, цвет сервиса — в выборе и на суппорте. */
+:root{
+  --bg:#060607;--fg:#f2f2f0;--muted:#8d8d93;--line:rgba(255,255,255,.09);--card:#0e0e10;--card-2:#17171a;
+  --accent:#2f7bff;--on-accent:#fff;--accent-text:#6aa1ff;--btn-bg:#f2f2f0;--btn-fg:#0b0b0c;
+  --f-body:"Manrope",system-ui,sans-serif;--r:24px;--r-ctl:14px;--r-btn:999px;
+  --btn-font:700 16px/1 var(--f-body);--chip-font:700 15px/1 var(--f-body);--price-font:700 21px/1 var(--f-body);
+  --h2-font:700 23px/1.15 var(--f-body);--h2-track:-.02em;--score-font:700 54px/1 var(--f-body);
+}
+.top{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:16px 16px 0}
+.who{flex:1;min-width:0}.who b{display:block;font-weight:700;font-size:15px;letter-spacing:-.01em}.who span{color:var(--muted);font-size:13px}
+.call{display:grid;place-items:center;width:46px;height:46px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);text-decoration:none}
+.call .num{display:none}
+
+.hero{position:relative;overflow:hidden;padding:0 16px 8px}
+.stage{position:relative;height:min(108vw,440px);margin:0 -16px}
+.stage::before{content:"";position:absolute;inset:0 0 14%;background:radial-gradient(46% 70% at 50% 8%,rgba(225,232,255,.15),rgba(225,232,255,.045) 48%,transparent 74%);-webkit-mask-image:linear-gradient(transparent,#000 22%);mask-image:linear-gradient(transparent,#000 22%);pointer-events:none}
+.stage::after{content:"";position:absolute;left:14%;right:14%;bottom:6%;height:14%;background:radial-gradient(50% 50% at 50% 50%,rgba(255,255,255,.10),transparent 70%);pointer-events:none}
+#tire{position:absolute;inset:0;width:100%;height:100%;display:block;-webkit-box-reflect:below var(--refl,-40px) linear-gradient(transparent 76%,rgba(255,255,255,.16))}
+.hint{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--muted);opacity:0;transition:opacity .8s}
+.hero-copy{position:relative;z-index:2;margin-top:-6px}
+.hero h1{font:800 clamp(38px,10.4vw,46px)/1.02 var(--f-body);letter-spacing:-.045em;margin:0 0 12px;max-width:12ch}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:14.5px;margin:0 0 18px}
+.meta .r{color:var(--fg);font-weight:700}.meta .r i{color:var(--accent-text);font-style:normal}
+.meta .open{color:#8fe3a8}
+.hero .btn.primary{width:100%}
+@media (prefers-reduced-motion:no-preference){
+  .hero-copy>*{opacity:0;transform:translateY(18px);animation:up 1s cubic-bezier(.22,1,.36,1) forwards}
+  .hero-copy>:nth-child(1){animation-delay:.9s}.hero-copy>:nth-child(2){animation-delay:1.05s}.hero-copy>:nth-child(3){animation-delay:1.2s}
+  .top{opacity:0;animation:fade 1.2s .5s cubic-bezier(.22,1,.36,1) forwards}
+}
+@keyframes up{to{opacity:1;transform:none}}@keyframes fade{to{opacity:1}}
+
+/* Блоки ниже: «постаменты» с тонкой рамкой и внутренним бликом */
+.quote,.book,.season{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.book{background:linear-gradient(#111114,#0c0c0e)}
+
+@media (min-width:960px){
+  .top{max-width:1200px;margin:0 auto;padding:26px 40px 0}
+  .call{width:auto;padding:0 18px;gap:10px;display:inline-flex;align-items:center;height:48px;font-weight:600}
+  .call .num{display:inline}
+  .hero{max-width:1200px;margin:0 auto;padding:0 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);align-items:center;min-height:640px}
+  .stage{order:2;height:620px;margin:0 -40px 0 0}
+  .hero-copy{margin:0}
+  .hero h1{font-size:76px;margin-bottom:20px}
+  .meta{font-size:16px;margin-bottom:30px}
+  .hero .btn.primary{width:auto;min-height:58px;padding:0 26px;font-size:17px}
+  .hint{bottom:16px;right:40px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="who"><b>Шиномонтаж «Колесо»</b><span>Пермь, ул. Примерная, 12</span></div>
+  <a class="call" href="#" aria-label="Позвонить +7 (342) 254-18-73"><i class="ph ph-phone"></i><span class="num">+7 (342) 254-18-73</span></a>
+</header>
+<section class="hero">
+  <div class="stage"><canvas id="tire" aria-hidden="true"></canvas><span class="hint">Нажмите на колесо</span></div>
+  <div class="hero-copy">
+    <h1>Шиномонтаж без очереди</h1>
+    <p class="meta"><span class="r"><i>★</i> 4,8</span><span>126 отзывов на картах</span><span class="open">Открыто до 20:00</span></p>
+    <a class="btn primary" href="#book">Записаться онлайн<span class="btn-ic"><i class="ph ph-arrow-right"></i></span></a>
+  </div>
+</section>
+<main class="rest" id="rest"></main>
+
+<script src="tire3d.js"></script>
+<script src="common.js"></script>
+<script>
+AS.render(document.getElementById("rest"));
+const cv = document.getElementById("tire");
+const reduce = AS.reduced();
+const tire = Tire3D.mount(cv, { text: "ШИНОМОНТАЖ «КОЛЕСО» • ПЕРМЬ", marks: "225/55 R16 • ЗИМА", params: { accent: [0.18, 0.48, 1.0] } });
+const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 4);
+// Отражение на полу: колесо занимает ~75% высоты холста, отражение подтягиваем к его нижнему краю
+const fitRefl = () => cv.style.setProperty("--refl", `${-Math.round(cv.clientHeight * 0.12)}px`);
+fitRefl(); addEventListener("resize", fitRefl);
+// Касание: колесо делает оборот. Указатель на компьютере: колесо слегка поворачивается за ним
+let flick = -10, px = 0, py = 0, sx = 0, sy = 0;
+cv.addEventListener("pointerdown", () => { flick = Tire3D.now(); });
+cv.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = cv.getBoundingClientRect(); px = (e.clientX - r.left) / r.width - 0.5; py = (e.clientY - r.top) / r.height - 0.5; });
+cv.addEventListener("pointerleave", () => { px = py = 0; });
+if (tire) {
+  if (reduce) { tire.set({ yaw: 0.5 }); tire.draw(0); }
+  else Tire3D.loop(cv, tire, (t) => {
+    // 0-2.4 с: свет зажигается, колесо поворачивается от протектора к нам. Дальше медленно «дышит»
+    const k = ease(t / 2.4);
+    sx += (px - sx) * 0.06; sy += (py - sy) * 0.06;
+    const now = Tire3D.now(), f = ease((now - flick) / 1.6);
+    const scroll = Tire3D.frozen ? 0 : Math.min(scrollY, 900) * 0.0012;
+    if (t > 3) document.querySelector(".hint").style.opacity = .7;
+    return {
+      exp: 0.15 + 0.85 * ease(t / 1.6),
+      yaw: 1.5 - 1.0 * k + 0.1 * Math.sin(t * 0.35) * k + sx * 0.5 + scroll,
+      pitch: -0.08 - sy * 0.25,
+      spin: 0.9 * (1 - k) - f * Math.PI * 2 * (now - flick < 1.6 ? 1 : 0) + t * 0.04,
+      key: [-0.6 + 1.2 * (1 - k) + 0.25 * Math.sin(t * 0.3), 0.7, 0.6],
+    };
+  });
+}
+</script>
+</body>
+</html>

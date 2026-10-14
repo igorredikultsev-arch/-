@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Драйв: Шиномонтаж «Колесо»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Extra+Condensed:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Sofia+Sans:wght@400;500;600;700;800&family=Unbounded:wght@800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* «Драйв»: чёрный и сигнальный красный, узкие заглавные буквы. Колесо въезжает с разгона, тормозит и встаёт. */
+:root{
+  --bg:#0b0b0b;--fg:#f5f5f3;--muted:#8f8f8f;--line:rgba(255,255,255,.11);--card:#121212;--card-2:#1a1a1a;
+  --accent:#e1251b;--on-accent:#fff;--accent-text:#ff5a4f;
+  --f-body:"Sofia Sans",system-ui,sans-serif;--f-cond:"Sofia Sans Extra Condensed","Sofia Sans",sans-serif;
+  --r:4px;--r-ctl:3px;--r-btn:3px;
+  --btn-font:800 15px/1 var(--f-body);--chip-font:800 16px/1 var(--f-body);--price-font:900 26px/1 var(--f-cond);
+  --h2-font:900 34px/1 var(--f-cond);--h2-track:.01em;--score-font:900 76px/.9 var(--f-cond);
+}
+.btn{text-transform:uppercase;letter-spacing:.08em}
+.rest h2{text-transform:uppercase}
+.top{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:16px 16px 0}
+.who{flex:1;min-width:0}.who b{display:block;font:800 14px/1.2 var(--f-body);text-transform:uppercase;letter-spacing:.06em}.who span{color:var(--muted);font-size:13px}
+.call{display:grid;place-items:center;width:46px;height:46px;border-radius:3px;border:1px solid var(--line);text-decoration:none}
+.call .num{display:none}
+.hero{position:relative;padding:18px 16px 0;overflow:hidden}
+.hero h1{position:relative;z-index:2;font:900 clamp(56px,17.4vw,82px)/.84 var(--f-cond);text-transform:uppercase;letter-spacing:-.005em;margin:0}
+.hero h1 span{display:block}
+.hero h1 .red{color:var(--accent)}
+.road{position:relative;height:min(74vw,320px);margin:-18px -16px 0}
+#tire{position:absolute;inset:0;width:100%;height:100%;display:block}
+.road::after{content:"";position:absolute;left:0;right:0;top:88%;height:2px;background:linear-gradient(90deg,transparent,var(--accent) 30%,var(--accent) 70%,transparent);opacity:.9}
+.streak{position:absolute;right:-40%;height:2px;width:45%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7));opacity:0;z-index:2}
+.streak:nth-of-type(1){top:30%}.streak:nth-of-type(2){top:52%;width:30%}.streak:nth-of-type(3){top:71%;width:38%}
+.spec{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,auto);justify-content:space-between;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0;margin:4px 0 16px}
+.spec div{display:grid;gap:3px}
+.spec small{font:700 11px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.spec b{font:900 26px/1 var(--f-cond);text-transform:uppercase;letter-spacing:.01em}
+.spec .open b{color:#8fe3a8}
+.meta{color:var(--muted);font-size:14px;margin:0 0 14px}.meta b{color:var(--fg)}.meta i{color:var(--accent-text);font-style:normal}
+.hero .btn.primary{width:100%;min-height:56px}
+@media (prefers-reduced-motion:no-preference){
+  .hero h1 span{transform:translateX(-110%);animation:inL .9s cubic-bezier(.16,1,.3,1) forwards}
+  .hero h1 span:nth-child(2){animation-delay:.08s}.hero h1 span:nth-child(3){animation-delay:.16s}
+  .go .streak{animation:streak .7s cubic-bezier(.3,0,.2,1) forwards}
+  .go .streak:nth-of-type(2){animation-delay:.12s}.go .streak:nth-of-type(3){animation-delay:.22s}
+  .spec,.meta,.hero .btn{opacity:0;transform:translateY(14px);animation:up .8s cubic-bezier(.22,1,.36,1) forwards}
+  .spec{animation-delay:1.15s}.meta{animation-delay:1.25s}.hero .btn{animation-delay:1.35s}
+}
+@keyframes inL{to{transform:none}}
+@keyframes streak{0%{opacity:0;transform:translateX(0)}30%{opacity:.9}100%{opacity:0;transform:translateX(-260%)}}
+@keyframes up{to{opacity:1;transform:none}}
+.book{border-top:3px solid var(--accent)}
+.q-price b,.svc-row em{color:var(--fg)}
+.day[aria-pressed="true"]{background:var(--fg)}
+@media (min-width:960px){
+  .top{max-width:1200px;margin:0 auto;padding:26px 40px 0}
+  .call{width:auto;padding:0 18px;gap:10px;display:inline-flex;align-items:center;height:48px;font-weight:700}.call .num{display:inline}
+  .hero{max-width:none;padding:30px 0 0}
+  .hero h1,.hero .after{max-width:1200px;margin-left:auto;margin-right:auto;padding:0 40px}
+  .hero h1{font-size:150px;line-height:.82}
+  .road{height:560px;margin:-200px 0 0}
+  .after{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:end;padding-bottom:10px}
+  .spec{margin:0;grid-template-columns:repeat(3,auto);justify-content:start;gap:48px;border:0;padding:0}
+  .spec b{font-size:38px}
+  .meta{grid-column:1;margin:0}
+  .hero .btn.primary{grid-column:2;grid-row:1/3;width:auto;padding:0 34px;min-height:64px;font-size:16px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="who"><b>Шиномонтаж «Колесо»</b><span>Пермь, ул. Примерная, 12</span></div>
+  <a class="call" href="#" aria-label="Позвонить +7 (342) 254-18-73"><i class="ph ph-phone"></i><span class="num">+7 (342) 254-18-73</span></a>
+</header>
+<section class="hero" id="hero">
+  <h1><span>Шиномонтаж</span><span>без</span><span class="red">очереди</span></h1>
+  <div class="road" id="road"><canvas id="tire" aria-hidden="true"></canvas><i class="streak"></i><i class="streak"></i><i class="streak"></i></div>
+  <div class="after">
+    <div class="spec" aria-live="polite">
+      <div><small>Смена колёс</small><b id="sp">от 1 600 ₽</b></div>
+      <div><small>Время</small><b id="st">40 минут</b></div>
+      <div class="open"><small>Сегодня</small><b>до 20:00</b></div>
+    </div>
+    <p class="meta"><i>★</i> <b>4,8</b> · 126 отзывов на картах</p>
+    <a class="btn primary" href="#book">Записаться<span class="btn-ic"><i class="ph ph-arrow-right"></i></span></a>
+  </div>
+</section>
+<main class="rest" id="rest"></main>
+
+<script src="tire3d.js"></script>
+<script src="common.js"></script>
+<script>
+AS.render(document.getElementById("rest"));
+addEventListener("as:radius", (e) => { document.getElementById("sp").textContent = `от ${e.detail.priceText}`; document.getElementById("st").textContent = e.detail.min >= 60 ? "около часа" : `${e.detail.min} минут`; });
+const cv = document.getElementById("tire"), road = document.getElementById("road");
+const reduce = AS.reduced(), wide = innerWidth >= 960;
+const tire = Tire3D.mount(cv, { bg: [11 / 255, 11 / 255, 11 / 255], text: "ШИНОМОНТАЖ «КОЛЕСО» • ПЕРМЬ", marks: "205/55 R16 • ЗИМА", params: { accent: [0.88, 0.1, 0.06], spokes: 5, off: 99 } });
+// Куда встаёт колесо: на телефоне правее центра, на компьютере в правой трети
+const stopAt = () => { const a = cv.clientWidth / cv.clientHeight; return wide ? a * 1.326 * 0.42 : 0.28 * a; };
+const startAt = () => cv.clientWidth / cv.clientHeight * 1.326 + 1.3;
+let rollT = -10, from = 0;
+// Старт подбираем так, чтобы колесо докатилось ровно целым числом оборотов: надпись встаёт ровно
+const roll = (delay = 0) => { rollT = (Tire3D.frozen ? 0 : Tire3D.now()) + delay; const end = stopAt(); from = end + Math.ceil((startAt() - end) / (Math.PI * 2)) * Math.PI * 2; road.classList.remove("go"); void road.offsetWidth; road.classList.add("go"); };
+cv.addEventListener("pointerdown", () => { if (Tire3D.now() - rollT > 2.2) roll(); });
+if (tire) {
+  if (reduce) { tire.set({ off: stopAt(), yaw: 0.42, spin: 0 }); tire.draw(0); }
+  else {
+    roll(0.25);
+    Tire3D.loop(cv, tire, (t) => {
+      const now = Tire3D.now(), u = Math.min(Math.max((now - rollT) / 1.9, 0), 1);
+      // торможение: быстрый въезд и мягкая остановка; колесо катится без проскальзывания
+      const k = 1 - Math.pow(1 - u, 3.2), end = stopAt(), off = from + (end - from) * k;
+      const speed = (1 - u) * (1 - u);
+      const settle = Math.min(Math.max((now - rollT - 1.7) / 1.2, 0), 1), se = 1 - Math.pow(1 - settle, 3);
+      return {
+        off, spin: (from - off) / 1.0, trail: 0.72 * speed, yaw: 0.12 + 0.3 * se, pitch: -0.05,
+        key: [-0.5 + 0.35 * Math.sin(t * 0.25), 0.75, 0.55], exp: 1,
+      };
+    });
+  }
+}
+</script>
+</body>
+</html>

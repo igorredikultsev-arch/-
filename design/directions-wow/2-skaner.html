@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Сканер: Шиномонтаж «Колесо»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* «Сканер»: как диагностический стенд. Машина тонкими линиями, луч проходит по ней и подписывает колёса. */
+:root{
+  --bg:#09090a;--fg:#f1f1ee;--muted:#8b8b90;--line:rgba(255,255,255,.1);--card:#101011;--card-2:#18181a;
+  --accent:#ff3b30;--on-accent:#fff;--accent-text:#ff6a60;
+  --f-body:"Onest",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
+  --r:14px;--r-ctl:10px;--r-btn:12px;
+  --btn-font:600 16px/1 var(--f-body);--chip-font:700 14px/1 var(--f-mono);--price-font:700 20px/1 var(--f-body);
+  --h2-font:700 22px/1.15 var(--f-body);--score-font:800 52px/1 var(--f-body);
+}
+body{background:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.2px) 0 0/22px 22px,var(--bg)}
+.top{display:flex;align-items:center;gap:12px;padding:16px 16px 0}
+.who{flex:1;min-width:0}.who b{display:block;font-weight:700;font-size:15px}.who span{color:var(--muted);font-size:13px}
+.call{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--card);text-decoration:none}
+.call .num{display:none}
+
+.hero{padding:22px 16px 0}
+.hero h1{font:800 clamp(34px,9.2vw,44px)/1.02 var(--f-body);letter-spacing:-.035em;margin:0 0 10px;max-width:13ch}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:14px;margin:0}
+.meta .r{color:var(--fg);font-weight:700}.meta .r i{color:var(--accent-text);font-style:normal}.meta .open{color:#8fe3a8}
+
+/* Стенд с машиной */
+.bay{position:relative;margin:14px -16px 0;aspect-ratio:800/310;overflow:hidden}
+.bay svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.car-line{stroke:#f1f1ee;fill:none;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.dim{stroke-opacity:.5}
+.mesh line{stroke:var(--accent);stroke-opacity:.32;stroke-width:1;vector-effect:non-scaling-stroke}
+.beam{transform:translateX(-200px)}
+.tag{position:absolute;font:700 10.5px/1 var(--f-mono);letter-spacing:.02em;color:#fff;background:var(--accent);padding:5px 7px 4px;border-radius:3px;white-space:nowrap;transform:translateY(-100%);margin-top:-3px}
+.box{position:absolute;border:1px solid var(--accent);opacity:0}
+.box i{position:absolute;width:7px;height:7px;background:#fff;border:1px solid var(--accent)}
+.box i:nth-child(1){left:-4px;top:-4px}.box i:nth-child(2){right:-4px;top:-4px}.box i:nth-child(3){left:-4px;bottom:-4px}.box i:nth-child(4){right:-4px;bottom:-4px}
+.box.front{left:71%;top:57%;width:14.5%;height:37.4%}
+.box.rear{left:16.1%;top:57%;width:14.5%;height:37.4%}
+.box.front .tag{right:-1px}.box.rear .tag{left:-1px}
+.box .tag{top:0}
+
+/* Выбор радиуса прямо под машиной: показ цены и времени */
+.ctrl{padding:6px 0 0}
+.ctrl h2{font:600 14px/1 var(--f-mono);color:var(--muted);margin:0 0 10px;letter-spacing:.02em}
+.ctrl .radii{margin:0 -16px;padding:0 16px 4px}
+.readout{margin-top:12px;border:1px solid var(--line);border-radius:var(--r);background:rgba(16,16,17,.85);padding:14px 14px 14px}
+.ro{display:grid;grid-template-columns:repeat(3,auto);justify-content:space-between;gap:10px;margin-bottom:14px}
+.ro div{display:grid;gap:4px}
+.ro small{font:500 11px/1 var(--f-mono);color:var(--muted);letter-spacing:.04em}
+.ro b{font:700 19px/1.1 var(--f-body);letter-spacing:-.01em}
+.ro b.p{color:var(--fg)}
+
+@media (prefers-reduced-motion:no-preference){
+  .draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw 1.4s cubic-bezier(.65,0,.35,1) forwards}
+  .beam{animation:beam 1.7s .9s cubic-bezier(.45,0,.2,1) both}
+  .reveal-rect{animation:grow 1.7s .9s cubic-bezier(.45,0,.2,1) both}
+  .box{animation:snap .55s 2.2s cubic-bezier(.22,1.4,.36,1) both}
+  .box.rear{animation-delay:2.32s}
+}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes beam{from{transform:translateX(-200px)}to{transform:translateX(920px)}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes snap{from{opacity:0;transform:scale(1.35)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.box{opacity:1}.beam{display:none}}
+
+@media (min-width:960px){
+  .top{max-width:1200px;margin:0 auto;padding:26px 40px 0}
+  .call{width:auto;padding:0 18px;gap:10px;display:inline-flex;align-items:center;height:48px;font-weight:600}.call .num{display:inline}
+  .hero{max-width:1200px;margin:0 auto;padding:40px 40px 10px;display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-areas:"copy bay" "ctrl bay";column-gap:40px;align-items:start}
+  .copy{grid-area:copy}.ctrl{grid-area:ctrl;padding-top:28px}.bay{grid-area:bay;margin:30px -40px 0 0;align-self:center}
+  .hero h1{font-size:62px}
+  .meta{font-size:15.5px}
+  .ctrl .radii{display:grid;grid-template-columns:repeat(5,1fr);margin:0;padding:0}
+  .tag{font-size:12.5px;padding:6px 9px 5px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="who"><b>Шиномонтаж «Колесо»</b><span>Пермь, ул. Примерная, 12</span></div>
+  <a class="call" href="#" aria-label="Позвонить +7 (342) 254-18-73"><i class="ph ph-phone"></i><span class="num">+7 (342) 254-18-73</span></a>
+</header>
+<section class="hero" id="hero">
+  <div class="copy">
+    <h1>Шиномонтаж без очереди</h1>
+    <p class="meta"><span class="r"><i>★</i> 4,8</span><span>126 отзывов на картах</span><span class="open">Открыто до 20:00</span></p>
+  </div>
+  <div class="bay" aria-hidden="true">
+    <svg viewBox="0 0 800 310" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <clipPath id="cp"><path id="bodyClip" d="M742 236 C758 234 764 222 765 206 L764 186 C763 176 758 170 748 166 L700 156 C672 151 640 147 612 144 C584 124 552 104 520 94 C498 87 470 84 440 83 L318 83 C286 84 258 90 236 100 C206 114 176 130 150 144 L92 152 C70 156 58 166 52 182 L48 210 C47 226 54 236 70 238 L120 238 A68 68 0 0 1 252 238 L560 238 A68 68 0 0 1 692 238 Z"/></clipPath>
+        <linearGradient id="bm" x1="0" x2="1"><stop offset="0" stop-color="#ff3b30" stop-opacity="0"/><stop offset=".82" stop-color="#ff3b30" stop-opacity=".22"/><stop offset="1" stop-color="#ff3b30" stop-opacity=".0"/></linearGradient>
+        <clipPath id="rv"><rect class="reveal-rect" x="0" y="0" width="800" height="310" style="transform-origin:0 0"/></clipPath>
+      </defs>
+      <line x1="0" y1="291" x2="800" y2="291" class="car-line" stroke-opacity=".22"/>
+      <!-- сетка «скана» внутри кузова -->
+      <g clip-path="url(#rv)"><g class="mesh" clip-path="url(#cp)" id="mesh"></g></g>
+      <g id="car">
+        <path class="car-line draw" d="M742 236 C758 234 764 222 765 206 L764 186 C763 176 758 170 748 166 L700 156 C672 151 640 147 612 144 C584 124 552 104 520 94 C498 87 470 84 440 83 L318 83 C286 84 258 90 236 100 C206 114 176 130 150 144 L92 152 C70 156 58 166 52 182 L48 210 C47 226 54 236 70 238 L120 238 A68 68 0 0 1 252 238 L560 238 A68 68 0 0 1 692 238 Z"/>
+        <path class="car-line dim draw" d="M598 146 C574 128 548 110 520 101 C500 95 476 92 446 92 L392 92 L392 146 Z"/>
+        <path class="car-line dim draw" d="M380 92 L320 92 C292 93 268 98 248 107 C228 117 208 129 190 141 L190 146 L380 146 Z"/>
+        <path class="car-line dim draw" d="M386 146 L386 236 M598 148 C592 182 576 214 560 236 M200 146 C228 168 250 200 254 236"/>
+        <path class="car-line draw" d="M60 176 C200 170 520 168 760 180" stroke-opacity=".3"/>
+        <path class="car-line draw" d="M424 162 L452 162 M232 162 L258 162" stroke-width="2.6" stroke-opacity=".7"/>
+        <path class="car-line dim draw" d="M600 146 L612 134 L626 136 L626 148 Z M762 186 L736 178 C730 176 728 170 734 168 L752 170 M52 182 L74 176 L80 162 L94 154"/>
+        <g id="wheels"></g>
+      </g>
+      <rect class="beam" x="0" y="40" width="120" height="252" fill="url(#bm)"/>
+      <line class="beam" x1="120" y1="40" x2="120" y2="292" stroke="#ff3b30" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="box front"><i></i><i></i><i></i><i></i><span class="tag" id="tagF">R16 · 4 КОЛЕСА</span></div>
+    <div class="box rear"><i></i><i></i><i></i><i></i><span class="tag" id="tagR">≈ 40 МИН</span></div>
+  </div>
+  <div class="ctrl">
+    <h2 id="rad-h">Радиус ваших колёс</h2>
+    <div class="radii" role="group" aria-labelledby="rad-h">
+      <button type="button" class="rad" data-r="13" aria-pressed="false">R13</button>
+      <button type="button" class="rad" data-r="14" aria-pressed="false">R14</button>
+      <button type="button" class="rad" data-r="15" aria-pressed="false">R15</button>
+      <button type="button" class="rad" data-r="16" aria-pressed="true">R16</button>
+      <button type="button" class="rad" data-r="17" aria-pressed="false">R17</button>
+      <button type="button" class="rad" data-r="18" aria-pressed="false">R18</button>
+      <button type="button" class="rad" data-r="19" aria-pressed="false">R19</button>
+      <button type="button" class="rad" data-r="20" aria-pressed="false">R20</button>
+      <button type="button" class="rad" data-r="21" aria-pressed="false">R21</button>
+      <button type="button" class="rad" data-r="22" aria-pressed="false">R22</button>
+    </div>
+    <div class="readout" aria-live="polite">
+      <div class="ro">
+        <div><small>УСЛУГА</small><b id="roN">Смена колёс</b></div>
+        <div><small>ВРЕМЯ</small><b id="roT">40 мин</b></div>
+        <div><small>ЦЕНА</small><b class="p" id="roP">от 1 600 ₽</b></div>
+      </div>
+      <a class="btn primary wide" href="#book">Выбрать время<span class="btn-ic"><i class="ph ph-arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+<main class="rest" id="rest"></main>
+
+<script src="common.js"></script>
+<script>
+AS.render(document.getElementById("rest"), { pick: false });
+const NS = "http://www.w3.org/2000/svg", el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+// Сетка внутри кузова: вертикали и линии, повторяющие изгиб крыши, как сетка 3D-скана
+const mesh = document.getElementById("mesh");
+for (let x = 40; x <= 770; x += 16) mesh.append(el("line", { x1: x, y1: 70, x2: x, y2: 245 }));
+for (let y = 92; y <= 240; y += 12) mesh.append(el("line", { x1: 40, y1: y, x2: 770, y2: y + (y < 150 ? 0 : 0) }));
+// Колёса: шина, обод, спицы
+const W = document.getElementById("wheels");
+[[626, 238], [186, 238]].forEach(([cx, cy]) => {
+  const g = el("g", {});
+  g.append(el("circle", { cx, cy, r: 52, class: "car-line draw" }), el("circle", { cx, cy, r: 46, class: "car-line dim draw" }), el("circle", { cx, cy, r: 33, class: "car-line dim draw" }), el("circle", { cx, cy, r: 8, class: "car-line dim draw" }));
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 - Math.PI / 2, c = Math.cos(a), s = Math.sin(a); g.append(el("path", { d: `M${cx + c * 10} ${cy + s * 10} L${cx + c * 31} ${cy + s * 31}`, class: "car-line dim draw" })); }
+  W.append(g);
+});
+// Длина каждой линии для «прорисовки»
+document.querySelectorAll(".draw").forEach((p) => p.style.setProperty("--len", Math.ceil(p.getTotalLength ? p.getTotalLength() : 600)));
+// Повторный проход луча при смене радиуса: те же анимации, без начальной задержки
+const scan = () => document.querySelectorAll(".beam,.reveal-rect,.box").forEach((e) => {
+  e.style.animationDelay = e.classList.contains("rear") ? ".92s" : e.classList.contains("box") ? ".8s" : "0s";
+  e.getAnimations().forEach((a) => { a.cancel(); a.play(); });
+});
+
+const setR = (r) => {
+  const b = AS.band(r);
+  document.querySelectorAll(".ctrl .rad").forEach((x) => x.setAttribute("aria-pressed", String(+x.dataset.r === r)));
+  document.getElementById("tagF").textContent = `R${r} · 4 КОЛЕСА`;
+  document.getElementById("tagR").textContent = `≈ ${b.min} МИН`;
+  document.getElementById("roT").textContent = b.min >= 60 ? "около часа" : `${b.min} мин`;
+  document.getElementById("roP").textContent = `от ${b.priceText || AS.rub(b.price)}`;
+  window.AS.setR && window.AS.setR(r);
+};
+document.querySelector(".ctrl .radii").addEventListener("click", (e) => { const t = e.target.closest(".rad"); if (!t) return; setR(+t.dataset.r); if (!AS.reduced()) scan(); });
+// На телефоне лента радиусов сразу показывает выбранный R16
+const R = document.querySelector(".ctrl .radii"), sel = R.querySelector('[aria-pressed="true"]');
+R.scrollLeft = sel.offsetLeft - R.clientWidth / 2 + sel.clientWidth / 2;
+</script>
+</body>
+</html>
