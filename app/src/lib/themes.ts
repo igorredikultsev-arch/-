@@ -1,17 +1,21 @@
 // Темы сайта автосервиса. Ключи совпадают с enum Theme в схеме базы.
-export const THEME_KEYS = ["tire", "scan", "dots", "plan", "taxi"] as const;
+export const THEME_KEYS = ["dots", "tire", "scan", "plan", "taxi"] as const;
 export type ThemeKey = (typeof THEME_KEYS)[number];
 
 // Названия видят владельцы сервисов, поэтому они описывают вид сайта. Прежние названия (old) ещё
 // принимаются в таблице для загрузки демо, чтобы старые таблицы не сломались.
-// «Колесо», «Сканер», «Частицы» — тёмные стили с 3D-анимацией в первом экране (с 14 октября 2026, вместо «Тёмного»).
+// «Частицы», «Колесо», «Сканер» — тёмные стили с 3D-анимацией в первом экране (с 14 октября 2026, вместо «Тёмного»).
+// Порядок списка — порядок кнопок в переключателе демо и в выпадающих списках админки.
 export const THEMES: { value: ThemeKey; label: string; old: string[]; accent: string; about: string }[] = [
+  { value: "dots", label: "Частицы", old: [], accent: "#7c5cff", about: "чёрный фон, шина из светящихся точек собирается и вращается" },
   { value: "tire", label: "Колесо", old: ["Тёмный", "Боковина"], accent: "#2f7bff", about: "чёрный фон, 3D-колесо с названием сервиса собирается в первом экране" },
   { value: "scan", label: "Сканер", old: [], accent: "#ff3b30", about: "чёрный фон, 3D-машина на стенде, луч сканирует её, радиус и цена сразу" },
-  { value: "dots", label: "Частицы", old: [], accent: "#7c5cff", about: "чёрный фон, шина из светящихся точек собирается и вращается" },
   { value: "plan", label: "Светлый", old: ["План"], accent: "#ffc400", about: "светлый фон, крупные буквы, свободное время клетками" },
   { value: "taxi", label: "Чёрно-белый", old: ["Такси"], accent: "#1f9d55", about: "белый фон, чёрные блоки, ближайшее свободное время" },
 ];
+
+/** Стиль новых демо (форма в админке и таблица без колонки «Тема»): лёгкий и быстро грузится на любом телефоне. */
+export const DEFAULT_THEME: ThemeKey = "dots";
 
 export const isThemeKey = (v: unknown): v is ThemeKey => typeof v === "string" && (THEME_KEYS as readonly string[]).includes(v);
 export const themeAccent = (t: ThemeKey) => THEMES.find((x) => x.value === t)!.accent;

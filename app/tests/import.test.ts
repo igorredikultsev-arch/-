@@ -20,7 +20,7 @@ describe("импорт демо из таблицы", () => {
     expect(a).toMatchObject({ phone: "+79000000001", city: "Пермь", twoGisUrl: "https://2gis.ru/perm/firm/1", rating: 4.7, reviews2gis: 120, theme: "plan", accent: "#ffc400", posts: 3, channel: "Telegram", contact: "t.me/koleso" });
     expect(a.message).toContain("[ссылка на демо]");
     const b = res.rows[2].demo!;
-    expect(b).toMatchObject({ phone: "+79000000003", city: "Пермь", rating: 4.5, theme: "taxi", accent: "#1f9d55", posts: 2, template: "tire" });
+    expect(b).toMatchObject({ phone: "+79000000003", city: "Пермь", rating: 4.5, theme: "dots", accent: "#7c5cff", posts: 2, template: "tire" });
   });
 
   it("читает csv из Excel в кодировке Windows-1251 с точкой с запятой и кавычками", () => {

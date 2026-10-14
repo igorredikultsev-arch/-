@@ -1,6 +1,6 @@
 import { isHexColor } from "./color";
 import { normalizePhone } from "./phone";
-import { THEMES, themeAccent, type ThemeKey } from "./themes";
+import { DEFAULT_THEME, THEMES, themeAccent, type ThemeKey } from "./themes";
 import type { Sheet } from "./sheet";
 import type { TemplateKey } from "./templates";
 
@@ -62,7 +62,7 @@ const url = (s: string) => (/^https?:\/\/\S+$/i.test(s.trim()) ? s.trim() : null
 
 function theme(s: string): ThemeKey {
   const v = s.toLowerCase().trim();
-  return THEMES.find((t) => t.label.toLowerCase() === v || t.old.some((o) => o.toLowerCase() === v) || t.value === v)?.value ?? "taxi";
+  return THEMES.find((t) => t.label.toLowerCase() === v || t.old.some((o) => o.toLowerCase() === v) || t.value === v)?.value ?? DEFAULT_THEME;
 }
 
 /** «Telegram: t.me/x» из таблицы лидов → канал и контакт. */

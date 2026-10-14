@@ -5,11 +5,12 @@ import { createDemo } from "../actions";
 import { THEMES } from "../labels";
 import { btn, F, inp, Result } from "../ui";
 import { keepValues } from "@/lib/keep-form";
+import { DEFAULT_THEME, themeAccent } from "@/lib/themes";
 
 export function DemoForm() {
   const [state, action, pending] = useActionState(createDemo, null);
-  const [theme, setTheme] = useState<string>("taxi");
-  const [accent, setAccent] = useState<string>("#1f9d55");
+  const [theme, setTheme] = useState<string>(DEFAULT_THEME);
+  const [accent, setAccent] = useState<string>(themeAccent(DEFAULT_THEME));
   return (
     <form onSubmit={keepValues(action)} className="grid gap-4">
       <fieldset className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-zinc-200 sm:grid-cols-2">
