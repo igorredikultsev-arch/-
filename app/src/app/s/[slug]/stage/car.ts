@@ -20,7 +20,7 @@ export function mountCar(canvas: HTMLCanvasElement, overlay: HTMLElement, o: Car
   }
   const accent = new THREE.Color(o.accent), BG = new THREE.Color(o.bg);
   // Общие для всех материалов машины параметры скана
-  const SCAN = { uInv: { value: new THREE.Matrix4() }, uScanZ: { value: 99 }, uHolo: { value: 0 }, uLit: { value: 0 }, uAccent: { value: accent }, uDir: { value: 1 } };
+  const SCAN = { uInv: { value: new THREE.Matrix4() }, uScanZ: { value: 99 }, uBand: { value: 0 }, uHolo: { value: 0 }, uLit: { value: 0 }, uAccent: { value: accent }, uDir: { value: 1 } };
   const addScan = (mat: THREE.Material) => {
     mat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, SCAN);
@@ -28,7 +28,7 @@ export function mountCar(canvas: HTMLCanvasElement, overlay: HTMLElement, o: Car
         .replace("#include <common>", "#include <common>\nvarying vec3 vScanPos;\nuniform mat4 uInv;")
         .replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvScanPos = (uInv * modelMatrix * vec4(transformed, 1.0)).xyz;");
       sh.fragmentShader = sh.fragmentShader
-        .replace("#include <common>", "#include <common>\nvarying vec3 vScanPos;\nuniform float uScanZ, uHolo, uLit, uDir;\nuniform vec3 uAccent;")
+        .replace("#include <common>", "#include <common>\nvarying vec3 vScanPos;\nuniform float uScanZ, uBand, uHolo, uLit, uDir;\nuniform vec3 uAccent;")
         .replace(
           "#include <dithering_fragment>",
           `#include <dithering_fragment>
@@ -37,7 +37,7 @@ export function mountCar(canvas: HTMLCanvasElement, overlay: HTMLElement, o: Car
           vec3 gq = abs(fract(vScanPos * 11.0) - 0.5) / fwidth(vScanPos * 11.0);
           float grid = clamp(1.0 - min(min(gq.x, gq.y), gq.z), 0.0, 1.0);
           float band = exp(-dz * dz * 900.0);
-          gl_FragColor.rgb = gl_FragColor.rgb * uLit + uAccent * (grid * 0.85 + 0.05) * passed * uHolo + uAccent * band * 2.4 * (1.0 - step(98.0, uScanZ));`,
+          gl_FragColor.rgb = gl_FragColor.rgb * uLit + uAccent * (grid * 0.85 + 0.05) * passed * uHolo + uAccent * band * 2.4 * uBand;`,
         );
     };
     mat.needsUpdate = true;
@@ -199,17 +199,23 @@ export function mountCar(canvas: HTMLCanvasElement, overlay: HTMLElement, o: Car
   const v3 = new THREE.Vector3(), up = new THREE.Vector3(), axisX = new THREE.Vector3(), out = new THREE.Vector3(), toCam = new THREE.Vector3(), p = new THREE.Vector3();
   function frame(t: number) {
     if (!ready) return;
-    // 0.3-2.3 с: луч от носа к корме, за ним сетка; 2.0-3.4: свет; 3.0+: рамки на колёсах
-    const pScan = easeIO(span(t, 0.3, 2.3)), pLit = ease(span(t, 2.0, 3.4)), pTags = ease(span(t, 3.0, 3.6));
+    // 0.3-2.3 с: луч от носа к корме, за ним сетка; 1.8-2.9: свет (сетка гаснет 2.0-3.1); 3.0+: рамки на колёсах
+    const pScan = easeIO(span(t, 0.3, 2.3)), pLit = ease(span(t, 1.8, 2.9)), pTags = ease(span(t, 3.0, 3.6));
+    // сетка скана гаснет плавно, пока зажигается свет: переходы накладываются, яркость не проваливается
+    const grid = 1 - easeIO(span(t, 2.0, 3.1));
     const rs = o.frozenT !== undefined ? 99 : now() - scanT; // повторный проход при смене радиуса
     const len = zMax - zMin + 0.4, dir = SCAN.uDir.value, startZ = dir > 0 ? zMin - 0.2 : zMax + 0.2;
-    let sz = 99, holo = 0.15 * (1 - pLit);
-    if (pScan < 1) { sz = startZ + dir * len * pScan; holo = 1 - 0.85 * pLit; }
-    else if (rs < 1.6) { sz = rs < 1.3 ? startZ + dir * len * easeIO(rs / 1.3) : 99; holo = Math.sin(Math.PI * clamp(rs / 1.6)) * 0.9; }
+    const again = rs < 1.6 ? Math.sin(Math.PI * clamp(rs / 1.6)) : 0;
+    // когда луч не идёт, он стоит за кормой: вся машина считается пройденной, сетка не пропадает разом
+    let sz = startZ + dir * len, band = 0;
+    if (pScan < 1) { sz = startZ + dir * len * pScan; band = 1; }
+    else if (rs < 1.3) { sz = startZ + dir * len * easeIO(rs / 1.3); band = 1; }
+    const holo = Math.max(grid, again * 0.9);
     SCAN.uScanZ.value = sz;
+    SCAN.uBand.value = band;
     SCAN.uHolo.value = holo;
     SCAN.uLit.value = 0.02 + 0.98 * pLit;
-    floorMat.uniforms.uRing.value = pScan < 1 ? 1 : 0.35 + (rs < 1.6 ? 0.65 * (1 - rs / 1.6) : 0);
+    floorMat.uniforms.uRing.value = 0.35 + 0.65 * Math.max(grid, again);
     renderer.toneMappingExposure = 0.6 + 0.5 * pLit;
     key.intensity = 0.2 + 2.0 * pLit;
     back.intensity = 0.6 + 0.8 * pLit;
