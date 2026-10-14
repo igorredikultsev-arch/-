@@ -279,10 +279,12 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .show .stage { order: 1; position: relative; height: min(98vw, 430px); margin: 0 -16px; }
 .show .stage::before { content: ""; position: absolute; inset: 0 0 12%; pointer-events: none;
   background: radial-gradient(46% 70% at 50% 6%, var(--glow), transparent 74%); -webkit-mask-image: linear-gradient(transparent, #000 22%); mask-image: linear-gradient(transparent, #000 22%); }
-.show .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.show .stage canvas, .show .stage .poster { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.show .stage .poster { object-fit: cover; transition: opacity .6s; pointer-events: none; }
+.show .stage .poster.off { opacity: 0; }
 .show .stage .tire { position: absolute; inset: 8%; }
 /* низ сцены (пол с отражением) плавно уходит в фон страницы */
-.t-tire .stage canvas { -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent); }
+.t-tire .stage :is(canvas, .poster) { -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent); }
 .show .hero-text { order: 2; position: relative; z-index: 2; }
 .show .hero h1 { font: 800 clamp(36px, 10.2vw, 46px)/1.02 var(--s-head); letter-spacing: -.045em; margin: 0 0 12px; max-width: 13ch; text-wrap: balance; }
 .show .sub { font-size: 15px; gap: 4px 16px; color: color-mix(in srgb, var(--s-fg) 78%, transparent); }
@@ -327,8 +329,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 /* у «Сканера» заголовок над машиной — появляется сразу, не ждёт сцену */
 .t-scan .hero-text { animation-delay: .15s; }
 /* пока грузится модель — затемнённый кадр той же сцены, из темноты потом начинается скан */
-.t-scan .stage .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.35); transition: opacity .8s; }
-.t-scan .stage .poster.off { opacity: 0; }
+.t-scan .stage .poster { filter: brightness(.35); }
 .t-scan .tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .t-scan .wtag { position: absolute; left: 0; top: 0; border: 1px solid var(--accent); opacity: 0; }
 .t-scan .wtag i { position: absolute; width: 7px; height: 7px; background: #fff; border: 1px solid var(--accent); }
@@ -339,7 +340,8 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .t-scan .size h2 { font-size: 13px; font-weight: 600; color: var(--s-muted); letter-spacing: .02em; }
 .t-scan .slot, .t-scan .day b { font-family: var(--s-label); }
 
-/* «Частицы»: тонкий крупный шрифт */
+/* «Частицы»: тонкий крупный шрифт; точки без видимых краёв холста */
+.t-dots .stage canvas { -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 80%, transparent); mask-image: linear-gradient(transparent, #000 14%, #000 80%, transparent); }
 .t-dots .hero h1 { font-weight: 400; font-size: clamp(40px, 11vw, 50px); letter-spacing: -.055em; line-height: .98; }
 .t-dots .hero { touch-action: pan-y; }
 
@@ -528,6 +530,11 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
   .t-scan .stage { height: 600px; -webkit-mask-image: radial-gradient(farthest-side, #000 70%, transparent); mask-image: radial-gradient(farthest-side, #000 70%, transparent); }
   .t-scan .wtag span { font-size: 12.5px; padding: 6px 9px 5px; }
   .t-dots .hero h1 { font-size: 84px; }
+  /* точки на весь первый экран, шина справа; текст и кнопка поверх */
+  .t-dots .stage { grid-area: auto; position: absolute; z-index: 0; top: 0; bottom: 0; left: 0; right: 0; height: auto; margin: 0; --cx: .7; }
+  .t-dots .stage canvas { -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 84%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 84%, transparent); }
+  .t-dots .hero-cta, .t-dots .top { position: relative; z-index: 2; }
+  .t-dots .hero { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
 
   /* План */
   .t-plan .top { padding: 26px var(--gutter) 0; }

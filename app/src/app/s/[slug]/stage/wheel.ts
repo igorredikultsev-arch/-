@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { TAU, dragYaw, ease, easeIO, runLoop, settle, span, sstep } from "./loop";
 
-export type WheelOpts = { text: string; marks: string; accent: string; bg: string; font: string; reduced: boolean; frozenT?: number };
+export type WheelOpts = { text: string; marks: string; accent: string; bg: string; font: string; reduced: boolean; frozenT?: number; startAt?: number; onReady?: () => void };
 export type WheelScene = { setMarks(marks: string): void; destroy(): void };
 
 // Студия для отражений: тёмный зал, большие софтбоксы сверху и спереди, вертикальные полосы по бокам
@@ -124,7 +124,7 @@ function drawSide(c: HTMLCanvasElement, text: string, marks: string, font: strin
 }
 
 // Лицевая часть литого диска одним куском: пять сдвоенных спиц, окна с прямыми боками и дугами
-function rimFaceGeometry() {
+function rimFaceGeometry(curve: number) {
   const R = 0.655, s = new THREE.Shape();
   s.absarc(0, 0, R, 0, TAU, false);
   const w = 0.03, pair = 0.13;
@@ -147,7 +147,7 @@ function rimFaceGeometry() {
     const a1 = spokes[2 * k], a2 = spokes[2 * k + 1], a3 = spokes[(2 * k + 2) % 10] + (k === 4 ? TAU : 0);
     s.holes.push(win(a1, a2, 0.4, 0.6), win(a2, a3, 0.235, 0.6));
   }
-  return new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelSegments: 5, curveSegments: 128 });
+  return new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelSegments: 4, curveSegments: curve });
 }
 
 function canvasTex(size: number, draw: (g: CanvasRenderingContext2D) => void) {
@@ -182,7 +182,7 @@ export function mountWheel(canvas: HTMLCanvasElement, o: WheelOpts): WheelScene 
   scene.add(key, rimLight);
 
   // ── Шина
-  const { g: tireGeo, v0, v1 } = tireGeometry(small ? 480 : 720);
+  const { g: tireGeo, v0, v1 } = tireGeometry(small ? 420 : 640);
   const sideCanvas = document.createElement("canvas");
   sideCanvas.width = small ? 2048 : 4096;
   sideCanvas.height = small ? 512 : 1024;
@@ -212,14 +212,14 @@ export function mountWheel(canvas: HTMLCanvasElement, o: WheelOpts): WheelScene 
   const pocket = new THREE.MeshPhysicalMaterial({ color: 0x24272c, metalness: 0.75, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08 });
   const polished = new THREE.MeshPhysicalMaterial({ color: 0xf2f4f7, metalness: 1, roughness: 0.08 });
   const wheel = new THREE.Group();
-  const faceMesh = new THREE.Mesh(rimFaceGeometry(), [face, pocket]);
+  const faceMesh = new THREE.Mesh(rimFaceGeometry(small ? 56 : 112), [face, pocket]);
   faceMesh.position.z = 0.2;
   const barrelPts = [[0.66, -0.335], [0.61, -0.32], [0.59, -0.22], [0.585, 0.12], [0.6, 0.2], [0.645, 0.27], [0.69, 0.3], [0.705, 0.325], [0.7, 0.345], [0.675, 0.35]].map(([r, y]) => new THREE.Vector2(r, y));
   const barrelMat = pocket.clone();
   barrelMat.side = THREE.DoubleSide;
-  const barrel = new THREE.Mesh(new THREE.LatheGeometry(barrelPts, 240), barrelMat);
+  const barrel = new THREE.Mesh(new THREE.LatheGeometry(barrelPts, small ? 120 : 200), barrelMat);
   barrel.rotation.x = Math.PI / 2;
-  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.69, 0.012, 16, 240), polished);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.69, 0.012, 12, small ? 120 : 200), polished);
   lip.position.z = 0.335;
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.05, 64), polished);
   cap.rotation.x = Math.PI / 2;
@@ -248,7 +248,7 @@ export function mountWheel(canvas: HTMLCanvasElement, o: WheelOpts): WheelScene 
   });
   discTex.colorSpace = THREE.SRGBColorSpace;
   const discFace = new THREE.MeshStandardMaterial({ map: discTex, metalness: 0.9, roughness: 0.42 });
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.05, 128), [new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.8, roughness: 0.5 }), discFace, discFace]);
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.05, small ? 64 : 112), [new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.8, roughness: 0.5 }), discFace, discFace]);
   disc.rotation.x = Math.PI / 2;
   disc.position.z = -0.06;
   wheel.add(disc);
@@ -273,7 +273,7 @@ export function mountWheel(canvas: HTMLCanvasElement, o: WheelOpts): WheelScene 
 
   // ── Пол: глянцевое отражение под тёмной плёнкой, к краям уходит в фон
   const floorY = -1.0;
-  let mirror: Reflector | null = new Reflector(new THREE.CircleGeometry(8, 64), { textureWidth: 512, textureHeight: 512, color: 0x6a6a6a, clipBias: 0.002 });
+  let mirror: Reflector | null = new Reflector(new THREE.CircleGeometry(8, 64), { textureWidth: small ? 256 : 512, textureHeight: small ? 256 : 512, color: 0x6a6a6a, clipBias: 0.002 });
   mirror.rotation.x = -Math.PI / 2;
   mirror.position.y = floorY;
   scene.add(mirror);
@@ -337,14 +337,21 @@ export function mountWheel(canvas: HTMLCanvasElement, o: WheelOpts): WheelScene 
 
   const still = o.reduced || o.frozenT !== undefined;
   const stillT = o.frozenT ?? 10;
+  const start = o.startAt ?? 0;
   const onResize = () => { resize(); if (still) frame(stillT); };
   window.addEventListener("resize", onResize);
-  const stop = still
-    ? (frame(stillT), () => {})
-    : runLoop(canvas, frame, () => {
+  let stop = () => {}, dead = false;
+  // Шейдеры собираются в фоне (где браузер умеет), чтобы страница не замирала; до этого на месте сцены картинка
+  renderer.compileAsync(scene, cam).catch(() => undefined).then(() => {
+    if (dead) return;
+    if (still) frame(stillT);
+    else
+      stop = runLoop(canvas, (t) => frame(t + start), () => {
         if (dpr > 0.85) { dpr -= 0.25; renderer.setPixelRatio(dpr); resize(); }
         else if (mirror) { scene.remove(mirror); mirror.dispose(); mirror = null; }
       });
+    o.onReady?.();
+  });
 
   return {
     setMarks(m: string) {
@@ -354,6 +361,7 @@ export function mountWheel(canvas: HTMLCanvasElement, o: WheelOpts): WheelScene 
       if (still) frame(stillT);
     },
     destroy() {
+      dead = true;
       stop();
       drag.off();
       window.removeEventListener("resize", onResize);

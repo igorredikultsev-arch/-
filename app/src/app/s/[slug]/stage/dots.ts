@@ -19,8 +19,11 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
   if (!g) return null;
   const small = Math.min(window.innerWidth, window.innerHeight) < 700;
   const P: Dot[] = [];
-  const add = (x: number, y: number, z: number, kind: number) =>
-    P.push({ x, y, z, kind, sx: (Math.random() - 0.5) * 7, sy: (Math.random() - 0.5) * 5, sz: (Math.random() - 0.5) * 6, d: Math.random() * 0.6, ox: 0, oy: 0, vx: 0, vy: 0 });
+  // начало: облако в круге вокруг шины (а не в прямоугольнике холста), края гасит маска в стилях
+  const add = (x: number, y: number, z: number, kind: number) => {
+    const a = Math.random() * TAU, r = 0.4 + 2.4 * Math.sqrt(Math.random());
+    P.push({ x, y, z, kind, sx: Math.cos(a) * r, sy: Math.sin(a) * r * 0.8, sz: (Math.random() - 0.5) * 3, d: Math.random() * 0.6, ox: 0, oy: 0, vx: 0, vy: 0 });
+  };
 
   // протектор: точки на беговой дорожке, кроме канавок
   const N = 60, nA = small ? 170 : 240;
@@ -73,8 +76,9 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
   };
 
   const A = hex(o.accent), B: [number, number, number] = [255, 184, 41];
-  let W = 0, H = 0, dpr = 1, maxDpr = 1.5;
-  const fit = () => { const r = cv.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, maxDpr); W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); };
+  // центр шины по ширине холста: из --cx в стилях (на компьютере холст на весь первый экран, шина справа)
+  let W = 0, H = 0, dpr = 1, maxDpr = 1.5, cx = 0.56;
+  const fit = () => { const r = cv.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, maxDpr); cx = parseFloat(getComputedStyle(cv).getPropertyValue("--cx")) || 0.56; W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); };
   fit();
   let px = -1e4, py = -1e4;
   const host = cv.parentElement ?? cv;
@@ -90,7 +94,7 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
     g.globalCompositeOperation = "lighter";
     const yaw = 0.62 + 0.16 * Math.sin(t * 0.22), pitch = -0.14, spin = t * 0.09;
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), cs = Math.cos(spin), ss = Math.sin(spin);
-    const scale = Math.min(W, H) * (W > 700 ? 0.42 : 0.4), cx0 = W * 0.56, cy0 = H * 0.5;
+    const scale = Math.min(W, H) * (W > 700 ? 0.42 : 0.4), cx0 = W * cx, cy0 = H * 0.5;
     for (const p of P) {
       const k = o.reduced ? 1 : ease((t - p.d) / 2.2);
       let x = p.x * cs - p.y * ss, y = p.x * ss + p.y * cs, z = p.z;

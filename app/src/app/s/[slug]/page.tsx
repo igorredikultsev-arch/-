@@ -21,7 +21,9 @@ import { ServicesList } from "./services-list";
 import { DemoBeacon } from "./demo-beacon";
 import { ThemeSwitch } from "./theme-switch";
 import { TireArt } from "./tire-art";
-import { CarStage, DotsStage, WheelStage } from "./stage/stages";
+import { CarStage } from "./stage/car-stage";
+import { DotsStage } from "./stage/dots-stage";
+import { WheelStage } from "./stage/wheel-stage";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ theme?: string }> };
 
@@ -275,7 +277,7 @@ export default async function SitePage({ params, searchParams }: Props) {
       theme === "tire" ? (
         <WheelStage text={ring} initial={initial} fallback={<TireArt text={ring} />} />
       ) : theme === "scan" ? (
-        <CarStage initial={initial} poster={{ mobile: "/3d/car-m.webp", desktop: "/3d/car-d.webp" }} />
+        <CarStage initial={initial} />
       ) : (
         <DotsStage text={biz.name.toUpperCase()} marks={[biz.city, radii.length ? `R${radii[0]}-R${radii[radii.length - 1]}` : ""].filter(Boolean).join(" • ").toUpperCase()} />
       );

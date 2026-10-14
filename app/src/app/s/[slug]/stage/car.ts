@@ -152,10 +152,14 @@ export function mountCar(canvas: HTMLCanvasElement, overlay: HTMLElement, o: Car
       for (const n of ["WheelRearL", "WheelRearR"]) tags.push({ node: node(n), el: mkTag(), rear: true });
       writeTags();
       resize();
-      ready = true;
-      startT = now();
-      o.onReady();
-      if (still) frame(stillT);
+      // шейдеры собираются в фоне, страница не замирает; скан начинается после этого
+      renderer.compileAsync(scene, cam).catch(() => undefined).then(() => {
+        if (dead) return;
+        ready = true;
+        startT = now();
+        o.onReady();
+        if (still) frame(stillT);
+      });
     },
     undefined,
     () => { if (!dead) o.onFail(); },
