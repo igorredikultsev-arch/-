@@ -1,9 +1,11 @@
-/* Сайт автосервиса. Три темы из утверждённых макетов: «Боковина», «План», «Такси».
+/* Сайт автосервиса. Пять тем: три тёмные с 3D-сценой в первом экране («Колесо» tire, «Сканер» scan, «Частицы» dots,
+   общая раскладка — класс .show) и две прежние: «Светлый» (plan), «Чёрно-белый» (taxi).
    Каждая тема — набор токенов на корневом .site; акцент приходит из настроек сервиса.
    Общие блоки (услуги, запись, отзывы, контакты) берут цвета и шрифты из токенов,
    отличия тем — в конце файла. Сначала телефон, компьютер — от 960px. */
 .site {
   --font-unbounded: "Unbounded Variable"; --font-sofia: "Sofia Sans Variable"; --font-sofia-cond: "Sofia Sans Extra Condensed Variable";
+  --font-manrope: "Manrope Variable"; --font-onest: "Onest Variable"; --font-geologica: "Geologica Variable"; --font-mono: "JetBrains Mono Variable";
   min-height: 100dvh; background: var(--s-bg); color: var(--s-fg); font-family: var(--s-body);
   font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
 }
@@ -18,18 +20,37 @@
 :where(.site) button { font: inherit; color: inherit; }
 .site :focus-visible { outline: 2px solid var(--focus, var(--s-fg)); outline-offset: 2px; }
 
-/* =================  ТЕМА «БОКОВИНА»  =================
-   Резина #25282a, текст #eeede7, мел #f1efe8 на главных кнопках, жёлтая метка балансировки — акцент.
-   Unbounded (широкий, как надписи на шине) в заголовках, Golos Text в тексте.
-   Смелость в одном месте: шина в шапке с надписью по кругу. */
+/* =================  ТЕМЫ С 3D-СЦЕНОЙ  =================
+   Почти чёрный фон, один «экспонат» под светом в первом экране, один цвет — акцент сервиса.
+   «Колесо»: 3D-колесо собирается из деталей, Manrope, белые кнопки, синий суппорт.
+   «Сканер»: 3D-машина на стенде, луч и сетка скана, Onest + JetBrains Mono в подписях, красный.
+   «Частицы»: шина из светящихся точек, Geologica, фиолетовый. */
 .t-tire {
-  --s-bg: #25282a; --s-card: #2f3235; --s-card-2: #383c3f; --s-line: #3d4144;
-  --s-fg: #eeede7; --s-muted: #a3a8aa; --accent: #f2c230; --on-accent: #1f2224;
-  --s-head: var(--font-unbounded), var(--font-golos), sans-serif; --s-body: var(--font-golos), sans-serif;
-  --btn-bg: #f1efe8; --btn-fg: #1f2224; --alt-bg: var(--s-card-2); --alt-fg: var(--s-fg);
+  --s-bg: #060607; --s-card: #0f0f11; --s-card-2: #1a1a1d; --s-line: #26262b;
+  --s-fg: #f2f2f0; --s-muted: #a4a4ab; --accent: #2f7bff; --on-accent: #ffffff;
+  --s-head: var(--font-manrope), var(--font-golos), sans-serif; --s-body: var(--font-manrope), var(--font-golos), sans-serif; --s-label: var(--s-body);
+  --btn-bg: #f2f2f0; --btn-fg: #0b0b0c; --alt-bg: var(--s-card-2); --alt-fg: var(--s-fg);
   --sel-bg: var(--s-fg); --sel-fg: var(--s-bg); --slot-sel: var(--accent); --slot-sel-fg: var(--on-accent);
-  --focus: var(--accent); --err: #ff8a80;
-  --r: 18px; --r-ctl: 14px; --r-pill: 999px;
+  --focus: var(--accent); --err: #ff8a80; --glow: rgb(225 232 255 / .13);
+  --r: 22px; --r-ctl: 14px; --r-pill: 999px; --r-btn: 999px;
+}
+.t-scan {
+  --s-bg: #09090a; --s-card: #111113; --s-card-2: #1b1b1e; --s-line: #29292d;
+  --s-fg: #f1f1ee; --s-muted: #a2a2a8; --accent: #ff3b30; --on-accent: #ffffff;
+  --s-head: var(--font-onest), var(--font-golos), sans-serif; --s-body: var(--font-onest), var(--font-golos), sans-serif; --s-label: var(--font-mono), ui-monospace, monospace;
+  --btn-bg: var(--accent); --btn-fg: var(--on-accent); --alt-bg: var(--s-card-2); --alt-fg: var(--s-fg);
+  --sel-bg: var(--s-fg); --sel-fg: var(--s-bg); --slot-sel: var(--accent); --slot-sel-fg: var(--on-accent);
+  --focus: var(--accent); --err: #ff8a80; --glow: transparent;
+  --r: 14px; --r-ctl: 10px; --r-pill: 999px; --r-btn: 12px;
+}
+.t-dots {
+  --s-bg: #050507; --s-card: #0e0d13; --s-card-2: #18171f; --s-line: #26242f;
+  --s-fg: #f4f2f7; --s-muted: #a7a3b3; --accent: #7c5cff; --on-accent: #ffffff;
+  --s-head: var(--font-geologica), var(--font-golos), sans-serif; --s-body: var(--font-geologica), var(--font-golos), sans-serif; --s-label: var(--s-body);
+  --btn-bg: var(--accent); --btn-fg: var(--on-accent); --alt-bg: var(--s-card-2); --alt-fg: var(--s-fg);
+  --sel-bg: var(--s-fg); --sel-fg: var(--s-bg); --slot-sel: var(--accent); --slot-sel-fg: var(--on-accent);
+  --focus: var(--accent); --err: #ff8a80; --glow: color-mix(in srgb, var(--accent) 16%, transparent);
+  --r: 22px; --r-ctl: 14px; --r-pill: 999px; --r-btn: 999px;
 }
 /* =================  ТЕМА «ПЛАН»  =================
    Стена #eeefea, бетон пола #d6d8d1, чернила #1f2326, разметка жёлтой краской — акцент.
@@ -205,8 +226,10 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .switch { background: var(--s-fg); color: var(--s-bg); padding: 10px 12px 12px; display: grid; gap: 8px; position: relative; z-index: 3; }
 .switch-note { margin: 0; font-size: 12.5px; opacity: .78; text-align: center; }
 .switch-row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
-.switch-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--s-bg) 14%, transparent); }
-.switch-tabs a { min-height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; color: inherit; }
+.switch-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--s-bg) 14%, transparent); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.switch-tabs::-webkit-scrollbar { display: none; }
+.switch > *, .switch-tabs { min-width: 0; }
+.switch-tabs a { flex: none; min-height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; text-decoration: none; color: inherit; }
 .switch-tabs a[aria-current="page"] { background: var(--s-bg); color: var(--s-fg); }
 .switch-go { appearance: none; border: 0; cursor: pointer; min-height: 44px; padding: 9px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font: 700 14px var(--s-body); }
 .switch-go[disabled] { opacity: .7; }
@@ -246,43 +269,81 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .closed-note { padding: 40px 20px; text-align: center; color: var(--s-muted); }
 .closed-note a { white-space: nowrap; }
 
-/* =================  «БОКОВИНА»: отличия  ================= */
-.t-tire .h4 { font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
-/* Телефон и планшет: шина целиком справа от рейтинга, чтобы надпись по кругу читалась (на компьютере — большая справа) */
-.t-tire .hero { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 0 16px 12px; }
-.t-tire .top { grid-column: 1 / -1; position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; padding-top: 18px; }
-.t-tire .who b { font: 700 14px/1.3 var(--s-head); }
-.t-tire .tire { grid-column: 2; grid-row: 3; width: clamp(104px, calc(100vw - 216px), 210px); aspect-ratio: 1; pointer-events: none; }
+/* =================  3D-СТИЛИ: ОБЩАЯ РАСКЛАДКА  =================
+   Телефон: шапка, сцена во всю ширину, заголовок, кнопка записи; у «Сканера» заголовок над машиной. */
+.show .h4 { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.show .hero { position: relative; display: flex; flex-direction: column; padding: 0 16px 6px; overflow: hidden; }
+.show .top { order: 0; position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; padding-top: 16px; }
+.show .who b { font-size: 15px; letter-spacing: -.01em; }
+.show .call { background: color-mix(in srgb, var(--s-fg) 7%, transparent); border: 1px solid var(--s-line); color: var(--s-fg); }
+.show .stage { order: 1; position: relative; height: min(98vw, 430px); margin: 0 -16px; }
+.show .stage::before { content: ""; position: absolute; inset: 0 0 12%; pointer-events: none;
+  background: radial-gradient(46% 70% at 50% 6%, var(--glow), transparent 74%); -webkit-mask-image: linear-gradient(transparent, #000 22%); mask-image: linear-gradient(transparent, #000 22%); }
+.show .stage canvas, .show .stage .poster { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.show .stage .poster { object-fit: cover; transition: opacity .6s; pointer-events: none; }
+.show .stage .poster.off { opacity: 0; }
+.show .stage .tire { position: absolute; inset: 8%; }
+/* низ сцены (пол с отражением) плавно уходит в фон страницы */
+.t-tire .stage :is(canvas, .poster) { -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent); }
+.show .hero-text { order: 2; position: relative; z-index: 2; }
+.show .hero h1 { font: 800 clamp(36px, 10.2vw, 46px)/1.02 var(--s-head); letter-spacing: -.045em; margin: 0 0 12px; max-width: 13ch; text-wrap: balance; }
+.show .sub { font-size: 15px; gap: 4px 16px; color: color-mix(in srgb, var(--s-fg) 78%, transparent); }
+.show .hero-cta { order: 3; margin-top: 18px; width: 100%; border-radius: var(--r-btn); font-weight: 700; gap: 12px; }
+.show .hero-cta .ic { width: 30px; height: 30px; padding: 6px; margin-right: -10px; border-radius: 50%; background: color-mix(in srgb, currentColor 14%, transparent); font-size: 18px; }
 @media (prefers-reduced-motion: no-preference) {
-  .t-tire .tire svg { animation: roll 1.3s cubic-bezier(.2,.8,.2,1) both; }
-  @keyframes roll { from { transform: translateX(46%) rotate(140deg); } to { transform: none; } }
+  .show .hero-cta .ic { transition: transform .4s cubic-bezier(.22, 1, .36, 1); }
+  .show .hero-cta:hover .ic { transform: translateX(3px); }
+  .show .hero-text, .show .hero-cta { animation: show-up 1s cubic-bezier(.22, 1, .36, 1) both; animation-delay: 1.2s; }
+  .show .hero-cta { animation-delay: 1.35s; }
+  @keyframes show-up { from { opacity: 0; transform: translateY(16px); } }
 }
-.t-tire .hero-text { display: contents; }
-.t-tire .hero h1 { grid-column: 1 / -1; grid-row: 2; padding-top: 32px; max-width: 520px; font: 800 31px/1.08 var(--s-head); letter-spacing: -.02em; margin: 0 0 4px; text-wrap: balance; }
-.t-tire .sub { grid-column: 1; grid-row: 3; align-self: center; display: grid; gap: 4px; }
-.t-tire .layout { padding: 0 16px; }
-.t-tire .layout > .block { padding-left: 0; padding-right: 0; }
-.t-tire .size { margin-top: 26px; }
-.t-tire .size h2 { font: 700 15px var(--s-head); margin: 0 0 12px; }
-.t-tire .radii { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; }
-.t-tire .rad { appearance: none; flex: none; min-width: 60px; height: 52px; border-radius: var(--r-ctl); border: 1.5px solid var(--s-line); background: transparent; font: 700 15px var(--s-head); cursor: pointer; }
-.t-tire .rad[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.t-tire .quote { margin-top: 10px; background: var(--s-card); border-radius: var(--r); padding: 18px 16px 16px; }
-.t-tire .quote .line1 { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
-.t-tire .quote .n { font-weight: 600; font-size: 16.5px; }
-.t-tire .quote .p { font: 700 22px var(--s-head); white-space: nowrap; letter-spacing: -.02em; }
-.t-tire .quote .p small { font: 400 14px var(--s-body); color: var(--s-muted); margin-right: 4px; }
-.t-tire .quote .d { color: var(--s-muted); font-size: 14px; margin: 2px 0 14px; }
-.t-tire .btn { font: 700 15px var(--s-head); letter-spacing: .01em; }
-.t-tire .btn.alt { font: 600 16px var(--s-body); }
-.t-tire .season { margin-top: 24px; padding: 14px 16px; border-radius: var(--r); border: 1.5px dashed var(--s-line); }
-.t-tire .book-col { margin-top: 26px; }
-.t-tire .slot { position: relative; }
-.t-tire .slot:not(:disabled)::after { content: ""; position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.t-tire .slot[aria-pressed="true"]::after { background: var(--on-accent); }
-.t-tire .svc .p { font: 700 16px var(--s-head); }
-.t-tire .score b { font-weight: 800; font-size: 56px; letter-spacing: -.04em; }
-.t-tire .stars { color: var(--accent); }
+.show .layout { padding: 0 16px; }
+.show .layout > .block { padding-left: 0; padding-right: 0; }
+.show .size { margin-top: 30px; }
+.show .size h2 { font: 700 18px var(--s-head); letter-spacing: -.01em; margin: 0 0 12px; }
+.show .radii { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 4px; }
+.show .radii::-webkit-scrollbar { display: none; }
+.show .rad { appearance: none; flex: none; min-width: 58px; height: 50px; border-radius: var(--r-ctl); border: 1px solid var(--s-line); background: transparent; font: 700 15px var(--s-label); cursor: pointer; }
+.show .rad[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.show .quote { margin-top: 10px; background: var(--s-card); border: 1px solid var(--s-line); border-radius: var(--r); padding: 18px 16px 16px; box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
+.show .quote .line1 { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.show .quote .n { font-weight: 600; font-size: 16.5px; }
+.show .quote .p { font: 700 22px var(--s-head); white-space: nowrap; letter-spacing: -.02em; }
+.show .quote .p small { font: 400 14px var(--s-body); color: var(--s-muted); margin-right: 5px; }
+.show .quote .d { color: var(--s-muted); font-size: 14px; margin: 4px 0 14px; }
+.show .btn { border-radius: var(--r-btn); font-weight: 700; }
+.show .btn.alt { font-weight: 600; border: 1px solid var(--s-line); }
+.show .season { margin-top: 24px; padding: 14px 16px; border-radius: var(--r); border: 1px solid var(--s-line); }
+.show .book-col { margin-top: 28px; }
+.show .book { border: 1px solid var(--s-line); box-shadow: inset 0 1px 0 rgb(255 255 255 / .05); }
+.show .steps div::before { height: 3px; }
+.show .day, .show .slot, .show .field input, .show .field textarea, .show .svc-pick button { border-width: 1px; }
+.show .svc .p { font: 700 16px var(--s-head); }
+.show .score b { font-weight: 800; font-size: 56px; letter-spacing: -.04em; }
+.show .stars { color: var(--accent); }
+
+/* «Сканер»: заголовок над машиной; рамки на колёсах; подписи моноширинным шрифтом */
+.t-scan .hero-text { order: 1; padding-top: 22px; }
+.t-scan .stage { order: 2; height: min(96vw, 420px); -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent); }
+.t-scan .hero h1 { font-size: clamp(34px, 9.4vw, 44px); letter-spacing: -.035em; }
+/* у «Сканера» заголовок над машиной — появляется сразу, не ждёт сцену */
+.t-scan .hero-text { animation-delay: .15s; }
+/* пока грузится модель — затемнённый кадр той же сцены, из темноты потом начинается скан */
+.t-scan .stage .poster { filter: brightness(.35); }
+.t-scan .tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.t-scan .wtag { position: absolute; left: 0; top: 0; border: 1px solid var(--accent); opacity: 0; }
+.t-scan .wtag i { position: absolute; width: 7px; height: 7px; background: #fff; border: 1px solid var(--accent); }
+.t-scan .wtag i:nth-child(1) { left: -4px; top: -4px; } .t-scan .wtag i:nth-child(2) { right: -4px; top: -4px; }
+.t-scan .wtag i:nth-child(3) { left: -4px; bottom: -4px; } .t-scan .wtag i:nth-child(4) { right: -4px; bottom: -4px; }
+.t-scan .wtag span { position: absolute; left: -1px; bottom: 100%; margin-bottom: 3px; font: 700 10.5px/1 var(--s-label); letter-spacing: .02em; color: var(--on-accent); background: var(--accent); padding: 5px 7px 4px; border-radius: 3px; white-space: nowrap; }
+.t-scan .size h2, .t-scan .slot-head, .t-scan .steps div { font-family: var(--s-label); }
+.t-scan .size h2 { font-size: 13px; font-weight: 600; color: var(--s-muted); letter-spacing: .02em; }
+.t-scan .slot, .t-scan .day b { font-family: var(--s-label); }
+
+/* «Частицы»: тонкий крупный шрифт; точки без видимых краёв холста */
+.t-dots .stage canvas { -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 80%, transparent); mask-image: linear-gradient(transparent, #000 14%, #000 80%, transparent); }
+.t-dots .hero h1 { font-weight: 400; font-size: clamp(40px, 11vw, 50px); letter-spacing: -.055em; line-height: .98; }
+.t-dots .hero { touch-action: pan-y; }
 
 /* =================  «ПЛАН»: отличия  ================= */
 .t-plan .h4, .t-plan .book .h4 { font: 800 32px/1 var(--s-head); text-transform: uppercase; }
@@ -449,19 +510,31 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
   .layout > * { grid-column: 1; }
   .layout > .book-col { grid-column: 2; grid-row: 1 / span 6; position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r); }
 
-  /* Боковина */
-  .t-tire .hero { display: block; min-height: 620px; padding: 0 var(--gutter); }
-  .t-tire .top { padding-top: 28px; }
-  /* Узкий ноутбук: шина уменьшается, чтобы заголовок (до 560px) не наезжал на надпись по кругу */
-  .t-tire .tire { position: absolute; z-index: 0; width: clamp(340px, calc(100% - 616px), 540px); right: calc(var(--gutter) - 40px); top: 74px; }
-  .t-tire .hero-text { display: block; position: relative; z-index: 1; max-width: 560px; padding-top: 110px; }
-  .t-tire .hero h1 { max-width: none; padding-top: 0; font-size: 60px; line-height: 1.04; margin-bottom: 22px; }
-  .t-tire .sub { grid-auto-flow: column; justify-content: start; gap: 24px; font-size: 16px; }
-  .t-tire .layout { padding: 0 var(--gutter); }
-  .t-tire .size { margin-top: 0; }
-  .t-tire .radii { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); margin: 0; padding: 0; }
-  .t-tire .rad { min-width: 0; font-size: 14px; }
-  .t-tire .book-col { margin-top: 0; }
+  /* 3D-стили: слева текст и кнопка, справа сцена */
+  .show .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top top" "text stage" "cta stage"; grid-template-rows: auto 1fr auto;
+    column-gap: 32px; min-height: 660px; padding: 0 var(--gutter) 8px; overflow: visible; }
+  .show .top { grid-area: top; padding-top: 28px; }
+  .show .hero-text { grid-area: text; align-self: end; }
+  .show .hero-cta { grid-area: cta; align-self: start; justify-self: start; width: auto; min-height: 58px; padding: 0 28px; font-size: 17px; margin-top: 30px; }
+  .show .stage { grid-area: stage; height: 620px; margin: 0 calc(-1 * var(--gutter) + 8px) 0 0; }
+  .show .hero h1 { font-size: 72px; margin-bottom: 20px; }
+  .show .sub { font-size: 16px; }
+  .show .layout { padding: 0 var(--gutter); margin-top: 24px; }
+  .show .size { margin-top: 0; }
+  .show .radii { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); margin: 0; padding: 0; }
+  .show .rad { min-width: 0; font-size: 14px; }
+  .show .book-col { margin-top: 0; }
+  .t-scan .hero { grid-template-columns: 380px minmax(0, 1fr); grid-template-areas: "top top" "text stage" "cta stage"; }
+  .t-scan .hero-text { align-self: end; padding-top: 0; }
+  .t-scan .hero h1 { font-size: 60px; }
+  .t-scan .stage { height: 600px; -webkit-mask-image: radial-gradient(farthest-side, #000 70%, transparent); mask-image: radial-gradient(farthest-side, #000 70%, transparent); }
+  .t-scan .wtag span { font-size: 12.5px; padding: 6px 9px 5px; }
+  .t-dots .hero h1 { font-size: 84px; }
+  /* точки на весь первый экран, шина справа; текст и кнопка поверх */
+  .t-dots .stage { grid-area: auto; position: absolute; z-index: 0; top: 0; bottom: 0; left: 0; right: 0; height: auto; margin: 0; --cx: .7; }
+  .t-dots .stage canvas { -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 84%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 84%, transparent); }
+  .t-dots .hero-cta, .t-dots .top { position: relative; z-index: 2; }
+  .t-dots .hero { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
 
   /* План */
   .t-plan .top { padding: 26px var(--gutter) 0; }

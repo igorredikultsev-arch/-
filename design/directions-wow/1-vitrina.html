@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Витрина: Шиномонтаж «Колесо»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* «Витрина»: настоящее 3D-колесо в студийном свете. В начале детали стоят по оси и сами собираются в колесо. */
+:root{
+  --bg:#060607;--fg:#f2f2f0;--muted:#8d8d93;--line:rgba(255,255,255,.09);--card:#0e0e10;--card-2:#17171a;
+  --accent:#2f7bff;--on-accent:#fff;--accent-text:#6aa1ff;--btn-bg:#f2f2f0;--btn-fg:#0b0b0c;
+  --f-body:"Manrope",system-ui,sans-serif;--r:24px;--r-ctl:14px;--r-btn:999px;
+  --btn-font:700 16px/1 var(--f-body);--chip-font:700 15px/1 var(--f-body);--price-font:700 21px/1 var(--f-body);
+  --h2-font:700 23px/1.15 var(--f-body);--h2-track:-.02em;--score-font:700 54px/1 var(--f-body);
+}
+.top{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:16px 16px 0}
+.who{flex:1;min-width:0}.who b{display:block;font-weight:700;font-size:15px;letter-spacing:-.01em}.who span{color:var(--muted);font-size:13px}
+.call{display:grid;place-items:center;width:46px;height:46px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);text-decoration:none}
+.call .num{display:none}
+.hero{position:relative;padding:0 16px 8px}
+.stage{position:relative;height:min(104vw,440px);margin:0 -16px}
+.stage::before{content:"";position:absolute;inset:0 0 10%;background:radial-gradient(46% 70% at 50% 6%,rgba(225,232,255,.13),rgba(225,232,255,.04) 48%,transparent 74%);-webkit-mask-image:linear-gradient(transparent,#000 22%);mask-image:linear-gradient(transparent,#000 22%);pointer-events:none}
+.poster,#wheel{position:absolute;inset:0;width:100%;height:100%;display:block}
+.poster{object-fit:contain;transition:opacity .8s cubic-bezier(.22,1,.36,1)}
+.poster.off{opacity:0}
+#wheel{-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
+.hint{position:absolute;right:16px;bottom:8px;font-size:12.5px;color:var(--muted);opacity:0;transition:opacity .8s;display:flex;gap:6px;align-items:center;pointer-events:none}
+.hero-copy{position:relative;z-index:2;margin-top:-4px}
+.hero h1{font:800 clamp(38px,10.4vw,46px)/1.02 var(--f-body);letter-spacing:-.045em;margin:0 0 12px;max-width:12ch}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:14.5px;margin:0 0 18px}
+.meta .r{color:var(--fg);font-weight:700}.meta .r i{color:var(--accent-text);font-style:normal}.meta .open{color:#8fe3a8}
+.hero .btn.primary{width:100%}
+@media (prefers-reduced-motion:no-preference){
+  .hero-copy>*{opacity:0;transform:translateY(18px);animation:up 1s cubic-bezier(.22,1,.36,1) forwards}
+  .hero-copy>:nth-child(1){animation-delay:1.2s}.hero-copy>:nth-child(2){animation-delay:1.35s}.hero-copy>:nth-child(3){animation-delay:1.5s}
+}
+@keyframes up{to{opacity:1;transform:none}}
+.quote,.book,.season{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.book{background:linear-gradient(#111114,#0c0c0e)}
+@media (min-width:960px){
+  .top{max-width:1200px;margin:0 auto;padding:26px 40px 0}
+  .call{width:auto;padding:0 18px;gap:10px;display:inline-flex;align-items:center;height:48px;font-weight:600}.call .num{display:inline}
+  .hero{max-width:1200px;margin:0 auto;padding:0 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:center;min-height:660px}
+  .stage{order:2;height:640px;margin:0 -40px 0 0}
+  .hero-copy{margin:0}
+  .hero h1{font-size:76px;margin-bottom:20px}
+  .meta{font-size:16px;margin-bottom:30px}
+  .hero .btn.primary{width:auto;min-height:58px;padding:0 26px;font-size:17px}
+  .hint{right:40px;bottom:18px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="who"><b>Шиномонтаж «Колесо»</b><span>Пермь, ул. Примерная, 12</span></div>
+  <a class="call" href="#" aria-label="Позвонить +7 (342) 254-18-73"><i class="ph ph-phone"></i><span class="num">+7 (342) 254-18-73</span></a>
+</header>
+<section class="hero">
+  <div class="stage">
+        <canvas id="wheel" aria-label="Колесо в 3D, можно покрутить" role="img"></canvas>
+    <span class="hint">Колесо можно покрутить</span>
+  </div>
+  <div class="hero-copy">
+    <h1>Шиномонтаж без очереди</h1>
+    <p class="meta"><span class="r"><i>★</i> 4,8</span><span>126 отзывов на картах</span><span class="open">Открыто до 20:00</span></p>
+    <a class="btn primary" href="#book">Записаться онлайн<span class="btn-ic"><i class="ph ph-arrow-right"></i></span></a>
+  </div>
+</section>
+<main class="rest" id="rest"></main>
+
+<script src="common.js"></script>
+<script>AS.render(document.getElementById("rest"));</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+<script type="module">
+import { mountWheel } from "./wheel3d.js";
+const cv = document.getElementById("wheel");
+const q = new URLSearchParams(location.search), T = parseFloat(q.get("t"));
+// Размер шины на боковине меняется вместе с выбранным радиусом
+const SIZE = { 13: "175/70", 14: "185/65", 15: "195/65", 16: "205/55", 17: "225/45", 18: "235/40", 19: "245/40", 20: "255/35", 21: "265/35", 22: "275/35" };
+const NAME = "ШИНОМОНТАЖ «КОЛЕСО» • ПЕРМЬ";
+const fitRefl = () => cv.style.setProperty("--refl", `${-Math.round(cv.clientHeight * 0.1)}px`);
+fitRefl(); addEventListener("resize", fitRefl);
+const w = mountWheel(cv, { text: NAME, marks: "205/55 R16 • ЗИМА", accent: "#2f7bff", frozenT: isNaN(T) ? undefined : T, reduced: AS.reduced() });
+if (w) {
+  // картинка-заглушка уходит, когда колесо нарисовано
+  addEventListener("as:radius", (e) => w.setMarks(NAME, `${SIZE[e.detail.r]} R${e.detail.r} • ЗИМА`));
+  setTimeout(() => (document.querySelector(".hint").style.opacity = 0.75), 3600);
+  cv.addEventListener("pointerdown", () => (document.querySelector(".hint").style.opacity = 0), { once: true });
+}
+document.fonts.ready.then(() => setTimeout(() => (window.done = true), 400));
+</script>
+</body>
+</html>

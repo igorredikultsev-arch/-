@@ -1,15 +1,20 @@
 import "@fontsource-variable/sofia-sans";
 import "@fontsource-variable/sofia-sans-extra-condensed";
 import "@fontsource-variable/unbounded";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/onest";
+import "@fontsource-variable/geologica";
+import "@fontsource-variable/jetbrains-mono";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getSiteBusiness, isExampleSlug, decodeKey } from "@/lib/business";
 import { onAccent } from "@/lib/color";
 import { formatPhone } from "@/lib/phone";
-import { isThemeKey, THEME_HEADER, themeAccent } from "@/lib/themes";
+import { isShowroom, isThemeKey, THEME_HEADER, themeAccent } from "@/lib/themes";
 import "../site.css";
 
-// Шрифты тем: «Боковина» — Unbounded, «План» — Sofia Sans в двух ширинах, «Такси» — Golos Text из корневого макета.
+// Шрифты тем: «Колесо» — Manrope (и Unbounded для надписи на шине), «Сканер» — Onest и JetBrains Mono, «Частицы» — Geologica,
+// «План» — Sofia Sans в двух ширинах, «Такси» — Golos Text из корневого макета.
 // Лежат в проекте (fontsource), имена — в переменных --font-* в site.css
 
 export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ slug: string }> }) {
@@ -41,7 +46,7 @@ export default async function SiteLayout({ children, params }: { children: React
   const accent = theme === biz.theme ? biz.accent : themeAccent(theme);
   return (
     <div
-      className={`site t-${theme}`}
+      className={`site t-${theme}${isShowroom(theme) ? " show" : ""}`}
       style={{ "--accent": accent, "--on-accent": onAccent(accent) } as React.CSSProperties}
     >
       <main className="page">

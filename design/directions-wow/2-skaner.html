@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Сканер: Шиномонтаж «Колесо»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<style>
+/* «Сканер»: машина в 3D на диагностическом стенде. Луч проходит от носа к корме, за ним сетка скана,
+   потом зажигается свет. Машину можно крутить, рамки с радиусом и временем держатся на колёсах. */
+:root{
+  --bg:#09090a;--fg:#f1f1ee;--muted:#8b8b90;--line:rgba(255,255,255,.1);--card:#101011;--card-2:#18181a;
+  --accent:#ff3b30;--on-accent:#fff;--accent-text:#ff6a60;
+  --f-body:"Onest",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,monospace;
+  --r:14px;--r-ctl:10px;--r-btn:12px;
+  --btn-font:600 16px/1 var(--f-body);--chip-font:700 14px/1 var(--f-mono);--price-font:700 20px/1 var(--f-body);
+  --h2-font:700 22px/1.15 var(--f-body);--score-font:800 52px/1 var(--f-body);
+}
+.top{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:16px 16px 0}
+.who{flex:1;min-width:0}.who b{display:block;font-weight:700;font-size:15px}.who span{color:var(--muted);font-size:13px}
+.call{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--card);text-decoration:none}
+.call .num{display:none}
+.hero{padding:18px 16px 0}
+.hero h1{font:800 clamp(34px,9.2vw,44px)/1.02 var(--f-body);letter-spacing:-.035em;margin:0 0 10px;max-width:13ch}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:14px;margin:0}
+.meta .r{color:var(--fg);font-weight:700}.meta .r i{color:var(--accent-text);font-style:normal}.meta .open{color:#8fe3a8}
+
+/* Стенд с машиной */
+.bay{position:relative;margin:8px -16px 0;height:min(100vw,430px);overflow:hidden;background:var(--bg);-webkit-mask-image:linear-gradient(transparent,#000 10%,#000 92%,transparent);mask-image:linear-gradient(transparent,#000 10%,#000 92%,transparent)}
+.bay canvas,.poster{position:absolute;inset:0;width:100%;height:100%;display:block}
+.poster{object-fit:cover;transition:opacity .8s cubic-bezier(.22,1,.36,1)}.poster.off{opacity:0;pointer-events:none}
+.ov{position:absolute;inset:0;pointer-events:none}
+.wtag{position:absolute;left:0;top:0;border:1px solid var(--accent);opacity:0;will-change:transform}
+.wtag i{position:absolute;width:7px;height:7px;background:#fff;border:1px solid var(--accent)}
+.wtag i:nth-child(1){left:-4px;top:-4px}.wtag i:nth-child(2){right:-4px;top:-4px}.wtag i:nth-child(3){left:-4px;bottom:-4px}.wtag i:nth-child(4){right:-4px;bottom:-4px}
+.wtag span{position:absolute;left:-1px;bottom:100%;margin-bottom:3px;font:700 10.5px/1 var(--f-mono);letter-spacing:.02em;color:#fff;background:var(--accent);padding:5px 7px 4px;border-radius:3px;white-space:nowrap}
+.hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font:500 12px/1 var(--f-mono);color:var(--muted);opacity:0;transition:opacity .8s;white-space:nowrap;pointer-events:none}
+.load{position:absolute;left:16px;right:16px;bottom:12px;height:2px;background:var(--line);overflow:hidden;transition:opacity .5s}
+.load b{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+
+/* Выбор радиуса под машиной */
+.ctrl{padding:4px 0 0}
+.ctrl h2{font:600 14px/1 var(--f-body);color:var(--muted);margin:0 0 10px}
+.ctrl .radii{margin:0 -16px;padding:0 16px 4px}
+.readout{margin-top:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);padding:14px}
+.ro{display:grid;grid-template-columns:repeat(3,auto);justify-content:space-between;gap:10px;margin-bottom:14px}
+.ro div{display:grid;gap:4px}
+.ro small{font:500 11px/1 var(--f-mono);color:var(--muted);letter-spacing:.04em}
+.ro b{font:700 19px/1.1 var(--f-body);letter-spacing:-.01em}
+.credit{font-size:11.5px}
+@media (min-width:960px){
+  .top{max-width:1200px;margin:0 auto;padding:26px 40px 0}
+  .call{width:auto;padding:0 18px;gap:10px;display:inline-flex;align-items:center;height:48px;font-weight:600}.call .num{display:inline}
+  .hero{max-width:1200px;margin:0 auto;padding:36px 40px 10px;display:grid;grid-template-columns:380px minmax(0,1fr);grid-template-areas:"copy bay" "ctrl bay";column-gap:32px;align-items:start}
+  .copy{grid-area:copy}.ctrl{grid-area:ctrl;padding-top:28px}
+  .bay{grid-area:bay;margin:0 -40px 0 0;height:620px;border-radius:0;-webkit-mask-image:radial-gradient(farthest-side,#000 70%,transparent);mask-image:radial-gradient(farthest-side,#000 70%,transparent)}
+  .hero h1{font-size:60px}
+  .meta{font-size:15.5px}
+  .ctrl .radii{display:grid;grid-template-columns:repeat(5,1fr);margin:0;padding:0}
+  .wtag span{font-size:12.5px;padding:6px 9px 5px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="who"><b>Шиномонтаж «Колесо»</b><span>Пермь, ул. Примерная, 12</span></div>
+  <a class="call" href="#" aria-label="Позвонить +7 (342) 254-18-73"><i class="ph ph-phone"></i><span class="num">+7 (342) 254-18-73</span></a>
+</header>
+<section class="hero" id="hero">
+  <div class="copy">
+    <h1>Шиномонтаж без очереди</h1>
+    <p class="meta"><span class="r"><i>★</i> 4,8</span><span>126 отзывов на картах</span><span class="open">Открыто до 20:00</span></p>
+  </div>
+  <div class="bay">
+    <picture><source media="(min-width:960px)" srcset="shots/web/poster-car-d.webp"><img class="poster" src="shots/web/poster-car-m.webp" alt="" aria-hidden="true"></picture>
+    <canvas id="car" role="img" aria-label="Машина в 3D, можно покрутить"></canvas>
+    <div class="ov" id="ov"></div>
+    <span class="hint">← покрутите машину →</span>
+    <div class="load" aria-hidden="true"><b></b></div>
+  </div>
+  <div class="ctrl">
+    <h2 id="rad-h">Радиус ваших колёс</h2>
+    <div class="radii" role="group" aria-labelledby="rad-h"></div>
+    <div class="readout" aria-live="polite">
+      <div class="ro">
+        <div><small>УСЛУГА</small><b>Смена колёс</b></div>
+        <div><small>ВРЕМЯ</small><b id="roT">40 мин</b></div>
+        <div><small>ЦЕНА</small><b id="roP">от 1 600 ₽</b></div>
+      </div>
+      <a class="btn primary wide" href="#book">Выбрать время<span class="btn-ic"><i class="ph ph-arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+<main class="rest" id="rest"></main>
+
+<script src="common.js"></script>
+<script>
+// Радиусы под машиной; запись ниже — общая для всех макетов
+const RR = document.querySelector(".ctrl .radii");
+RR.innerHTML = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22].map((r) => `<button type="button" class="rad" data-r="${r}" aria-pressed="${r === 16}">R${r}</button>`).join("");
+AS.render(document.getElementById("rest"), { pick: false });
+document.querySelector(".foot").insertAdjacentHTML("beforeend", '<br><span class="credit">3D-модель автомобиля: Eric Chadwick, Darmstadt Graphics Group, лицензия CC BY 4.0</span>');
+const sel = RR.querySelector('[aria-pressed="true"]'); RR.scrollLeft = sel.offsetLeft - RR.clientWidth / 2 + sel.clientWidth / 2;
+</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+<script type="module">
+import { mountCar } from "./car3d.js";
+const q = new URLSearchParams(location.search), T = parseFloat(q.get("t"));
+const poster = document.querySelector(".poster"), load = document.querySelector(".load"), hint = document.querySelector(".hint");
+const car = mountCar(document.getElementById("car"), document.getElementById("ov"), {
+  url: ["../../app/public/3d/car.glb", "models/car-glb.wasm"], accent: "#ff3b30", frozenT: isNaN(T) ? undefined : T, reduced: AS.reduced(),
+  tagFront: "R16 · 4 КОЛЕСА", tagRear: "≈ 40 МИН",
+  onProgress: (p) => (load.firstElementChild.style.width = `${Math.round(p * 100)}%`),
+  onReady: () => { poster.classList.add("off"); load.style.opacity = 0; setTimeout(() => (hint.style.opacity = 0.8), 3800); requestAnimationFrame(() => (window.done = true)); },
+  onFail: () => { load.style.opacity = 0; window.done = true; },
+});
+document.getElementById("car").addEventListener("pointerdown", () => (hint.style.opacity = 0), { once: true });
+RR.addEventListener("click", (e) => {
+  const t = e.target.closest(".rad"); if (!t) return;
+  const r = +t.dataset.r, b = AS.band(r);
+  RR.querySelectorAll(".rad").forEach((x) => x.setAttribute("aria-pressed", String(x === t)));
+  document.getElementById("roT").textContent = b.min >= 60 ? "около часа" : `${b.min} мин`;
+  document.getElementById("roP").textContent = `от ${AS.rub(b.price)}`;
+  AS.setR(r);
+  car?.setTags(`R${r} · 4 КОЛЕСА`, `≈ ${b.min} МИН`); car?.rescan();
+});
+</script>
+</body>
+</html>

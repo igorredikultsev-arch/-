@@ -7,7 +7,7 @@
 import { MONTHLY_PRICE, rub, SETUP_PRICE, EARLY_CLIENTS } from "./pricing";
 import { toLocal } from "./time";
 
-export const STYLES = "Сверху можно переключить оформление, там три варианта.";
+export const STYLES = "Сверху можно переключить оформление, там пять вариантов.";
 
 type Biz = {
   name: string;

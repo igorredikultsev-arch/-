@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { THEMES, type ThemeKey } from "@/lib/themes";
 
-/** Только в демо: владелец смотрит сайт в трёх стилях и выбирает свой. Выбор сохраняется, его видно в админке. */
+/** Только в демо: владелец смотрит сайт в разных стилях и выбирает свой. Выбор сохраняется, его видно в админке. */
 /** example — пример с главной avtoslot.ru: стили смотреть можно, выбирать нельзя (его открывают все посетители). */
 export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath, example = false }: { shown: ThemeKey; saved: ThemeKey; chosen: boolean; apiBase: string; pagePath: string; example?: boolean }) {
   const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
@@ -20,7 +20,7 @@ export function ThemeSwitch({ shown, saved, chosen, apiBase, pagePath, example =
 
   return (
     <div className="switch" role="region" aria-label="Выбор стиля сайта">
-      <p className="switch-note">Пример сайта от Автослота, не официальный сайт сервиса. Посмотрите три стиля {example ? "оформления" : "и выберите свой"}</p>
+      <p className="switch-note">Пример сайта от Автослота, не официальный сайт сервиса. Посмотрите стили {example ? "оформления" : "и выберите свой"}</p>
       <div className="switch-row">
         <nav className="switch-tabs" aria-label="Стиль сайта">
           {THEMES.map((t) => (

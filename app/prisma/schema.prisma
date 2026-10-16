@@ -19,9 +19,11 @@ enum BusinessStatus {
 }
 
 enum Theme {
-  tire // «Боковина»
-  plan // «План»
-  taxi // «Такси»
+  tire // «Колесо» (до 14.10.2026 — «Тёмный», «Боковина»)
+  plan // «Светлый», «План»
+  taxi // «Чёрно-белый», «Такси»
+  scan // «Сканер»
+  dots // «Частицы»
 }
 
 enum BookingSource {
@@ -75,8 +77,8 @@ model Business {
 
   headline    String?
   facts       Json? // [{ value: "2 поста", label: "можно приехать вдвоём" }]
-  theme         Theme     @default(taxi)
-  accent        String    @default("#1f9d55")
+  theme         Theme     @default(dots)
+  accent        String    @default("#7c5cff")
   themeChosenAt DateTime? // владелец сам выбрал стиль в демо
   // Логотип загружает владелец в кабинете; сама картинка — в BusinessLogo, здесь время загрузки для адреса без кеша
   logoAt      DateTime?
