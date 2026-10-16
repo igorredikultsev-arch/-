@@ -10,8 +10,8 @@ import { BusinessList } from "./business-list";
 import { QUESTION_NAMES } from "@/lib/outreach";
 import { LEAD_LABEL } from "./labels";
 
-// С 13 октября первое сообщение — вопрос без ссылки («Написали»), демо отправляем после ответа.
-// У лидов до 13 октября демо ушло первым сообщением, без этапа «Написали»: воронка накопительная, они считаются и в нём
+// Первым сообщением уходит демо («Демо отправлено»); с 13 по 16 октября первым был вопрос без ссылки (этап asked).
+// Воронка накопительная: «Написали» — все, кому писали, и вопросом, и сразу демо
 const FUNNEL = ["asked", "demo_sent", "replied", "interested", "trial", "paid"] as const;
 const GOT_DEMO = FUNNEL.slice(1);
 const ended = (d: Date) => d.getTime() < Date.now();
@@ -109,17 +109,17 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           ))}
         </div>
         <p className="text-[13px] text-zinc-500">
-          Отказов: {n("refused")}. Ещё не писали: {n("new")}. Ждут ответа на первое сообщение: {n("asked")}. Если на вопрос мало кто отвечает, меняйте первое сообщение; если смотрят демо, но не платят, меняйте предложение.
+          Отказов: {n("refused")}. Ещё не писали: {n("new")}. Получили вопрос без ссылки и ждут: {n("asked")}, им вторым сообщением уходит демо. Если на демо мало кто отвечает, меняйте первое сообщение; если смотрят, но не платят, меняйте предложение.
         </p>
         {variants.some((v) => v.sent > 0) && (
           <div className="grid gap-1.5 rounded-2xl bg-white p-4 text-[14px] ring-1 ring-zinc-200">
-            <h2 className="font-bold">Какое первое сообщение лучше</h2>
+            <h2 className="font-bold">Сообщения-вопросы (13–16 октября)</h2>
             {variants.map((v) => (
               <p key={v.name}>
                 «{v.name}»: написали {v.sent}, ответили {v.replied}{v.sent ? ` (${Math.round((v.replied / v.sent) * 100)}%)` : ""}{v.refused ? `, из них отказ ${v.refused}` : ""}
               </p>
             ))}
-            <p className="text-[13px] text-zinc-500">Выводы делайте, когда у каждого варианта наберётся хотя бы 20 отправленных. Потом оставьте лучший.</p>
+            <p className="text-[13px] text-zinc-500">С 16 октября первым сообщением снова уходит демо: на вопросы почти не отвечали.</p>
           </div>
         )}
       </section>

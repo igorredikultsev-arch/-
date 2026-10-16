@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { earlyPrice } from "@/lib/business";
-import { afterDemo, demoMessage, emailSubject, FOLLOW_UP_DAYS, followUps, priceText, question, QUESTION_NAMES, questionVariant, REPLIES } from "@/lib/outreach";
+import { afterDemo, demoFollowUps, demoMessage, demoReply, emailSubject, FOLLOW_UP_DAYS, followUps, priceText, REPLIES } from "@/lib/outreach";
 import { deviceText, summaryText, timesText, viewSummaries, whenText, type ViewSummary } from "@/lib/demo-views";
 import { formatPhone } from "@/lib/phone";
 import { connectFirst, operatorMissing, TERMINATE_AFTER_DAYS, terminationDue } from "@/lib/readiness";
@@ -62,16 +62,18 @@ function nextStep(b: Biz, views?: ViewSummary): { text: string; tab: Tab; tone: 
   if (b.status === "archived") return { text: "Сервис в архиве. Вернуть его можно во вкладке «Управление».", tab: "manage", tone: "wait" };
   if (b.status === "suspended") return { text: "Сайт приостановлен. Когда владелец оплатит, запишите оплату — сайт включится.", tab: "pay", tone: "bad" };
   if (b.status === "demo") {
-    if (lead === "new") return { text: "Проверьте демо и отправьте владельцу первое сообщение: вопрос без ссылки и цены. Потом поставьте этап «Написали, ждём ответа».", tab: "work", tone: "do" };
+    if (lead === "new") return { text: "Проверьте демо и отправьте владельцу сообщение с демо. Потом поставьте этап «Демо отправлено».", tab: "work", tone: "do" };
+    // Молчат: через 3 дня второе сообщение, через неделю последнее. Отсчёт от первого сообщения
+    const days = b.lead?.contactedAt ? Math.floor((Date.now() - b.lead.contactedAt.getTime()) / 86400000) : 0;
+    const silent = `Написали ${days} дн. назад, ответа нет. Отправьте следующее сообщение из блока «Если молчат».`;
     if (lead === "asked") {
-      // Молчат: через 3 дня второе сообщение, через неделю последнее
-      const days = b.lead?.contactedAt ? Math.floor((Date.now() - b.lead.contactedAt.getTime()) / 86400000) : 0;
-      if (days >= FOLLOW_UP_DAYS[0]) return { text: `Написали ${days} дн. назад, ответа нет. Отправьте ${days >= FOLLOW_UP_DAYS[1] ? "последнее" : "второе"} сообщение из блока «Если молчат».`, tab: "work", tone: "do" };
-      return { text: "Ждём ответа. Ответили — отправьте сообщение с демо и поставьте «Демо отправлено». Ответили «нет» — поставьте «Отказ».", tab: "work", tone: "wait" };
+      if (days >= FOLLOW_UP_DAYS[0]) return { text: silent, tab: "work", tone: "do" };
+      return { text: "Ждём ответа на вопрос. Ответили — отправьте сообщение с демо и поставьте «Демо отправлено». Ответили «нет» — поставьте «Отказ».", tab: "work", tone: "wait" };
     }
     if (lead === "refused") return { text: "Владелец отказался. Можно отправить в архив.", tab: "manage", tone: "wait" };
     // Открыл, но молчит: самое время написать второе сообщение
-    if (lead === "demo_sent" && views) return { text: `Владелец открыл демо ${summaryText(views)}, но пока не ответил. Напишите ему: спросите, какой стиль понравился, или предложите подключить.`, tab: "work", tone: "do" };
+    if (lead === "demo_sent" && views) return { text: `Владелец открыл демо ${summaryText(views)}, но пока не ответил. Спросите, что не подошло, сообщение есть в блоке «Если молчат».`, tab: "work", tone: "do" };
+    if (lead === "demo_sent" && days >= FOLLOW_UP_DAYS[0]) return { text: silent, tab: "work", tone: "do" };
     if (operatorMissing({ ...b, status: "active" })) return { text: "Ждём ответа. Чтобы подключить, понадобятся ФИО или название ИП и ИНН владельца.", tab: "info", tone: "wait" };
     return { text: "Владелец согласен? Создайте ему вход и подключите сервис.", tab: "connect", tone: "do" };
   }
@@ -160,35 +162,38 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           {tab === "work" && (
             <>
               {b.status === "demo" && lead === "new" && (
-                <Card title="Первое сообщение: вопрос">
-                  <CopyBox label={`Вариант «${QUESTION_NAMES[questionVariant(b.slug)]}». Без ссылки и цены: их пришлёте, когда ответят`} rows={8} text={question(b)} />
+                <Card title="Первое сообщение: демо">
+                  <CopyBox label="Ссылка отдельной строкой и цена одной фразой. Поправьте под сервис, если нужно" rows={8} text={demoMessage(b.lead?.firstMessage, b, siteUrl)} />
                   {/@/.test(b.lead?.contact ?? "") && <CopyBox label="Тема письма" rows={1} text={emailSubject()} />}
                   <p className="text-[13px] text-zinc-500">
-                    Пишите на официальный номер, почту или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Написали, ждём ответа»: так админка запомнит вариант и подскажет, когда написать ещё раз.
+                    Пишите на официальный номер, почту или в сообщество сервиса, а не на личную страницу владельца. После отправки поставьте этап «Демо отправлено»: админка подскажет, когда написать ещё раз.
                   </p>
                 </Card>
               )}
-              {b.status === "demo" && lead !== "new" && lead !== "refused" && (
-                <Card title={lead === "asked" ? "Ответили: отправьте демо" : "Сообщение с демо"}>
-                  <CopyBox label="Сообщение со ссылкой. Если ответили на вопрос подробно, начните с ответа на их слова" rows={10} text={demoMessage(b.lead?.firstMessage, b, siteUrl)} />
-                  <CopyBox label="Если спросят цену или посмотрели демо" rows={8} text={priceText({ early })} />
-                  {lead !== "asked" && <CopyBox label="Если получили демо и молчат пару дней" rows={5} text={afterDemo()} />}
-                  {lead === "asked" && (
-                    <>
-                      <h3 className="mt-2 text-[15px] font-bold">Если ответили без «да»</h3>
-                      <p className="text-[13px] text-zinc-500">Не спорьте и не обещайте, что все начнут записываться онлайн. Согласитесь и скажите про тех, кого сервис сейчас теряет.</p>
-                      {REPLIES.map((r) => <CopyBox key={r.when} label={`Ответили ${r.when}`} rows={r.text.length > 250 ? 11 : 7} text={r.text} />)}
-                    </>
-                  )}
+              {b.status === "demo" && lead === "asked" && (
+                <Card title="Ответили на вопрос: отправьте демо">
+                  <CopyBox label="Сообщение со ссылкой. Если ответили подробно, начните с ответа на их слова" rows={10} text={demoReply(b, siteUrl)} />
+                  <CopyBox label="Если спросят цену" rows={8} text={priceText({ early })} />
+                  <h3 className="mt-2 text-[15px] font-bold">Если ответили без «да»</h3>
+                  <p className="text-[13px] text-zinc-500">Не спорьте и не обещайте, что все начнут записываться онлайн. Согласитесь и скажите про тех, кого сервис сейчас теряет.</p>
+                  {REPLIES.map((r) => <CopyBox key={r.when} label={`Ответили ${r.when}`} rows={r.text.length > 250 ? 11 : 7} text={r.text} />)}
                   <p className="text-[13px] text-zinc-500">Ответили «нет» — поставьте «Отказ» и больше не пишите.</p>
                 </Card>
               )}
-              {b.status === "demo" && lead === "asked" && (
+              {b.status === "demo" && lead !== "new" && lead !== "asked" && lead !== "refused" && (
+                <Card title="Демо отправлено">
+                  <CopyBox label="Если спросят цену" rows={8} text={priceText({ early })} />
+                  {views && <CopyBox label="Если открыли демо и молчат" rows={5} text={afterDemo()} />}
+                  <CopyBox label="Сообщение с демо, если нужно отправить ещё раз" rows={8} text={demoMessage(b.lead?.firstMessage, b, siteUrl)} />
+                  <p className="text-[13px] text-zinc-500">Ответили «нет» — поставьте «Отказ» и больше не пишите.</p>
+                </Card>
+              )}
+              {b.status === "demo" && (lead === "asked" || lead === "demo_sent") && (
                 <Card title="Если молчат">
-                  {followUps(b).map((text, i) => (
+                  {(lead === "asked" ? followUps(b, siteUrl) : demoFollowUps(b)).map((text, i) => (
                     <CopyBox key={i} label={`${i ? "Последнее" : "Второе"} сообщение, через ${FOLLOW_UP_DAYS[i] === 7 ? "неделю" : `${FOLLOW_UP_DAYS[i]} дня`} после первого${b.lead?.contactedAt ? `, с ${day(new Date(b.lead.contactedAt.getTime() + FOLLOW_UP_DAYS[i] * 86400000))}` : ""}`} rows={i ? 5 : 7} text={text} />
                   ))}
-                  <p className="text-[13px] text-zinc-500">После последнего больше не пишите. Если позже ответят сами, отправьте демо.</p>
+                  <p className="text-[13px] text-zinc-500">После последнего больше не пишите. Если позже ответят сами, продолжайте разговор.</p>
                 </Card>
               )}
               {(viewLog.length > 0 || b.status === "demo") && (

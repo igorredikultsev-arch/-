@@ -15,8 +15,8 @@ const STATUS: Record<ImportRow["status"], { label: string; cls: string }> = {
 /** Таблица результата для Excel: точка с запятой и BOM, чтобы кириллица открылась без настройки. */
 function downloadCsv(rows: ImportRow[]) {
   const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Строка", "Название", "Итог", "Ссылка на демо", "Первое сообщение", "Тема письма", "Сообщение с демо (после ответа)", "Канал связи", "Контакт", "Причина"];
-  const body = rows.map((r) => [r.line, r.name, STATUS[r.status].label, r.url, r.message, r.subject, r.demo, r.channel, r.contact, r.reason].map(q).join(";"));
+  const head = ["Строка", "Название", "Итог", "Ссылка на демо", "Сообщение с демо", "Тема письма", "Канал связи", "Контакт", "Причина"];
+  const body = rows.map((r) => [r.line, r.name, STATUS[r.status].label, r.url, r.message, r.subject, r.channel, r.contact, r.reason].map(q).join(";"));
   const blob = new Blob(["﻿" + [head.map(q).join(";"), ...body].join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -25,7 +25,7 @@ function downloadCsv(rows: ImportRow[]) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function Copy({ text, label = "Скопировать первое сообщение" }: { text: string; label?: string }) {
+function Copy({ text, label = "Скопировать сообщение" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
@@ -88,7 +88,7 @@ export function ImportForm() {
               За раз обрабатываются первые 300 строк. Ещё {state.cut} не вошли: удалите из таблицы уже загруженные и загрузите файл ещё раз.
             </p>
           )}
-          <p className="text-[13px] text-zinc-500">Откройте демо и проверьте. Первое сообщение — вопрос без ссылки и цены: отправьте его и поставьте в карточке этап «Написали, ждём ответа». Ссылку на демо пришлёте, когда владелец ответит: текст для этого и повторные сообщения — в карточке сервиса.</p>
+          <p className="text-[13px] text-zinc-500">Откройте демо и проверьте. Потом отправьте владельцу сообщение с демо и поставьте в карточке этап «Демо отправлено». Повторные сообщения, если промолчит, — в карточке сервиса.</p>
           <ul className="grid gap-2">
             {rows.map((r) => (
               <li key={`${r.line}-${r.name}`} className="grid gap-2 rounded-2xl bg-white p-4 ring-1 ring-zinc-200">

@@ -13,7 +13,7 @@ import { isHexColor } from "@/lib/color";
 import { THEME_KEYS } from "@/lib/themes";
 import { db } from "@/lib/db";
 import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
-import { demoMessage, emailSubject, outreach, question, questionVariant, withLink } from "@/lib/outreach";
+import { demoMessage, emailSubject, outreach, questionVariant, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
@@ -137,7 +137,7 @@ export async function createDemo(_prev: AdminResult, f: FormData): Promise<Admin
   redirect(`/admin/b/${biz.id}?created=1`);
 }
 
-export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; demo?: string; subject?: string; channel?: string | null; contact?: string | null };
+export type ImportRow = { line: number; name: string; status: "created" | "exists" | "skipped"; reason?: string; id?: string; url?: string; message?: string; subject?: string; channel?: string | null; contact?: string | null };
 export type ImportResult = { error?: string; sheet?: string; rows?: ImportRow[]; cut?: number } | null;
 
 // Запрос к серверному действию ограничен 1 МБ (настройка Next.js по умолчанию), таблица на сотню строк весит десятки КБ
@@ -183,7 +183,7 @@ export async function importDemos(_prev: ImportResult, f: FormData): Promise<Imp
       if (own) await db.lead.update({ where: { businessId: biz.id }, data: { firstMessage: own } });
       await audit("admin.demo_create", { userId: admin.id, businessId: biz.id, details: { import: true } });
     }
-    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message: question(biz), demo, subject: emailSubject(), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
+    rows.push({ line: r.line, name: biz.name, status: existing ? "exists" : "created", id: biz.id, url, message: demo, subject: emailSubject(), channel: existing?.lead?.channel ?? d.channel, contact: existing?.lead?.contact ?? d.contact });
   }
   revalidatePath("/admin");
   return { sheet: parsed.sheet, rows, cut: parsed.cut };

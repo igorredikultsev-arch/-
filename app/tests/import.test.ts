@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDemoRows } from "@/lib/demo-import";
-import { afterDemo, REPLIES, demoMessage, followUps, outreach, priceText, question, QUESTION_NAMES, questionVariant, reviewsText, withLink } from "@/lib/outreach";
+import { afterDemo, REPLIES, demoFollowUps, demoMessage, demoReply, followUps, outreach, priceText, question, QUESTION_NAMES, questionVariant, reviewsText, withLink } from "@/lib/outreach";
 import { readCsv, readTable } from "@/lib/sheet";
 
 describe("импорт демо из таблицы", () => {
@@ -76,22 +76,37 @@ describe("импорт демо из таблицы", () => {
     expect(question(b, { now: oct })).toBe(question(b, { now: oct, variant: questionVariant("os") }));
   });
 
-  it("второе сообщение — демо со ссылкой, цена отдельно, повторные без ссылки", () => {
+  it("первое сообщение — короткое демо: ссылка отдельной строкой и цена, без двоеточий, тире и подписи", () => {
     const b = { name: "Ось", slug: "os", rating: null, yandexMapsUrl: null, status: "demo" };
-    const demo = outreach(b, "https://avtoslot.ru/s/os");
-    expect(demo).toContain("https://avtoslot.ru/s/os");
-    expect(demo).toContain("оформление");
-    expect(demo).not.toMatch(/₽/);
-    expect(outreach({ ...b, status: "active" }, "https://x")).not.toMatch(/оформлени/);
+    const first = outreach(b, "https://avtoslot.ru/s/os");
+    expect(first.split("\n")).toContain("https://avtoslot.ru/s/os");
+    expect(first).toMatch(/3\s500\s₽.*990\s₽/s);
+    expect(first).not.toMatch(/[:—–]\s/);
+    expect(first).not.toMatch(/Игорь|Автослот/);
+    expect(first.split(/\s+/).length).toBeLessThanOrEqual(40);
+    // Повторные после демо: без ссылки, второе с вопросом, последнее прощается
+    const [again, last] = demoFollowUps(b, { now: Date.UTC(2026, 9, 6) });
+    expect(again).not.toMatch(/https?:/);
+    expect(again).toMatch(/\?/);
+    expect(last).toMatch(/Последний раз/);
+  });
+
+  it("тем, кому ушёл вопрос, вторым сообщением — демо; ответившим — демо без цены, цена отдельно", () => {
+    const b = { name: "Ось", slug: "os", rating: null, yandexMapsUrl: null, status: "demo" };
+    const reply = demoReply(b, "https://avtoslot.ru/s/os");
+    expect(reply).toContain("https://avtoslot.ru/s/os");
+    expect(reply).toContain("оформление");
+    expect(reply).not.toMatch(/₽/);
+    expect(demoReply({ ...b, status: "active" }, "https://x")).not.toMatch(/оформлени/);
     expect(priceText({ early: true })).toMatch(/3\s500\s₽.*990\s₽.*первых 10.*верну/s);
     expect(priceText()).not.toMatch(/первых/);
-    const [second, last] = followUps(b, { now: Date.UTC(2026, 9, 6) });
-    expect(second).not.toMatch(/https?:/);
-    expect(second).toMatch(/\?$/);
+    const [second, last] = followUps(b, "https://avtoslot.ru/s/os", { now: Date.UTC(2026, 9, 6) });
+    expect(second.split("\n")).toContain("https://avtoslot.ru/s/os");
+    expect(second).toMatch(/3\s500\s₽/);
     expect(last).toMatch(/Последний раз/);
     expect(last).toMatch(/сезона/);
-    expect(followUps(b, { now: Date.UTC(2026, 6, 1) })[1]).not.toMatch(/сезон/);
-    for (const m of [demo, priceText({ early: true }), second, last, afterDemo(), ...REPLIES.map((r) => r.text)]) expect(m).not.toMatch(/[—–]/);
+    expect(followUps(b, "https://x", { now: Date.UTC(2026, 6, 1) })[1]).not.toMatch(/сезон/);
+    for (const m of [reply, priceText({ early: true }), second, last, afterDemo(), ...demoFollowUps(b), ...REPLIES.map((r) => r.text)]) expect(m).not.toMatch(/[—–]/);
     // Ответы на возражения без ссылок и без обещаний, что все начнут записываться
     for (const r of REPLIES) expect(r.text).not.toMatch(/https?:|все (начнут|будут)/);
   });
