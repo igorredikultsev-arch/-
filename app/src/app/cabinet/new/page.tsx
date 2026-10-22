@@ -16,9 +16,9 @@ export default async function NewBookingPage({ searchParams }: { searchParams: P
   return (
     <>
       <PageHead title="Новая запись">
-        <p className="mt-1 text-[14px] text-zinc-600">Для клиента, который позвонил. Время сразу станет занятым на сайте.</p>
+        <p className="mt-1 text-[14px] text-zinc-600">Для клиента, который позвонил или приехал. Время сразу станет занятым на сайте.</p>
       </PageHead>
-      <NewBookingForm services={services} today={today} initialDate={q && isDateString(q) && q >= today ? q : today} />
+      <NewBookingForm services={services} standPosts={business.standPosts} today={today} initialDate={q && isDateString(q) && q >= today ? q : today} />
     </>
   );
 }

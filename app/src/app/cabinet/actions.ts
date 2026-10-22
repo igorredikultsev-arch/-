@@ -94,10 +94,13 @@ export async function erasePersonalData(id: string) {
   revalidatePath("/cabinet", "layout");
 }
 
-export async function ownerDaySlots(date: string, serviceId: string) {
+/** Окна дня для записи владельцем: по услуге из списка или по своей записи (длительность и стенд). */
+export async function ownerDaySlots(date: string, serviceId: string | null, custom?: { durationMin: number; onStand?: boolean }) {
   const { business } = await requireOwner();
   if (!isDateString(date)) return [];
-  const service = await db.service.findFirst({ where: { id: serviceId, businessId: business.id } });
+  const service = serviceId
+    ? await db.service.findFirst({ where: { id: serviceId, businessId: business.id } })
+    : custom && custom.durationMin >= 10 && custom.durationMin <= 600 ? { durationMin: custom.durationMin, onStand: !!custom.onStand } : null;
   if (!service) return [];
   const biz = await db.business.findUniqueOrThrow({ where: { id: business.id }, select: businessForSlotsSelect });
   // Владельцу показываем весь день, без «запаса» на подготовку и без ограничения горизонта
@@ -107,7 +110,11 @@ export async function ownerDaySlots(date: string, serviceId: string) {
 }
 
 const NewBooking = z.object({
-  serviceId: z.string().min(1, "Выберите услугу"),
+  serviceId: z.string().optional(),
+  // Своя запись без услуги: что делаем, сколько длится, на стенде ли
+  title: z.string().trim().max(80).optional(),
+  durationMin: z.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов").optional(),
+  onStand: z.boolean().optional(),
   date: z.string().refine(isDateString, "Выберите день"),
   time: z.string().refine((t) => parseHhmm(t) != null, "Выберите время"),
   name: z.string().max(60).optional(),
@@ -120,6 +127,9 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
   const { user, business } = await requireOwner();
   const p = NewBooking.safeParse(input);
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
+  const custom = p.data.serviceId ? undefined : { title: p.data.title ?? "", durationMin: p.data.durationMin ?? 0, onStand: p.data.onStand };
+  if (custom && custom.title.length < 2) return { error: "Напишите, что делаем" };
+  if (custom && !custom.durationMin) return { error: "Выберите, сколько займёт" };
   let phone: string | null = null;
   if (p.data.phone && p.data.phone.replace(/\D/g, "").length > 1) {
     phone = normalizePhone(p.data.phone);
@@ -130,6 +140,7 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
     res = await createOwnerBooking({
       businessId: business.id,
       serviceId: p.data.serviceId,
+      custom,
       date: p.data.date,
       startMin: parseHhmm(p.data.time)!,
       clientName: p.data.name?.trim(),

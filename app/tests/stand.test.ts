@@ -52,3 +52,19 @@ describe("стенд развал-схождения", () => {
     expect(forced.booking?.onStand).toBe(true);
   });
 });
+
+describe("своя запись текстом, без услуги", () => {
+  it("занимает пост на выбранное время, а с отметкой «на стенде» — стенд", async () => {
+    const { biz, tire, align } = await withStand();
+    const own = await createOwnerBooking({ businessId: biz.id, custom: { title: "Колодки и ходовая, Андрей", durationMin: 120 }, date: DATE, startMin: 600 });
+    expect(own.booking).toMatchObject({ serviceId: null, serviceName: "Колодки и ходовая, Андрей", priceFrom: null, onStand: false, source: "owner" });
+    expect(own.booking!.endAt.getTime() - own.booking!.startAt.getTime()).toBe(120 * 60000);
+    const onStand = await createOwnerBooking({ businessId: biz.id, custom: { title: "Развал, Сергей", durationMin: 60, onStand: true }, date: DATE, startMin: 600 });
+    expect(onStand.booking?.onStand).toBe(true);
+    const b = await db.business.findUniqueOrThrow({ where: { id: biz.id }, select: businessForSlotsSelect });
+    expect((await getDaySlots(b, DATE, align, NOW)).find((s) => s.time === "10:00")!.free).toBe(false);
+    // Пост занят своей записью: под шиномонтаж на 10:00 остаётся 4 из 5
+    const left = await Promise.allSettled(Array.from({ length: 6 }, (_, i) => createSiteBooking(site(biz.id, tire.id, 30 + i))));
+    expect(left.filter((r) => r.status === "fulfilled")).toHaveLength(4);
+  });
+});

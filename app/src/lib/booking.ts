@@ -255,7 +255,9 @@ export async function createSiteBooking(input: SiteBookingInput) {
 
 export type OwnerBookingInput = {
   businessId: string;
-  serviceId: string;
+  /** Услуга из списка или своя запись текстом (custom): что делаем, сколько длится, на стенде ли развала */
+  serviceId?: string;
+  custom?: { title: string; durationMin: number; onStand?: boolean };
   date: string;
   startMin: number;
   clientName?: string;
@@ -301,7 +303,10 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
   return db.$transaction(async (tx) => {
     await lockBusiness(tx, input.businessId);
     const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
-    const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId } });
+    // Своя запись без услуги: название, длительность и стенд вписал владелец (как событие в календаре)
+    const service = input.custom
+      ? { id: null, name: input.custom.title, priceFrom: null, durationMin: input.custom.durationMin, onStand: !!input.custom.onStand }
+      : await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId } });
     if (!biz || !service) throw new BookingError("not_found", "Услуга не найдена");
     const start = localToUtc(input.date, input.startMin, biz.timezone);
     const slot = { start, end: start + service.durationMin * 60000 };
