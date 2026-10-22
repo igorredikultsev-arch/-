@@ -8,7 +8,8 @@ import { ownerCreateBooking, ownerDaySlots } from "../actions";
 import { DatePick, TimeSelect } from "../pickers";
 import { btnPrimary, Field, inputCls, Notice } from "../ui";
 
-type Svc = { id: string; name: string; durationMin: number };
+type Svc = { id: string; name: string; durationMin: number; onStand?: boolean };
+type Master = { id: string; name: string; color: string; onStand: boolean };
 
 const dur = (m: number) => (m < 60 ? `${m} мин` : m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч`);
 /** Длительность своей записи: от получаса до рабочего дня */
@@ -27,18 +28,21 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-export function NewBookingForm({ services, standPosts = 0, today, initialDate }: { services: Svc[]; standPosts?: number; today: string; initialDate: string }) {
+export function NewBookingForm({ services, staff = [], standPosts = 0, today, initialDate, initialTime = "", initialStaff = "", back }: {
+  services: Svc[]; staff?: Master[]; standPosts?: number; today: string; initialDate: string; initialTime?: string; initialStaff?: string; back?: string;
+}) {
   const router = useRouter();
   // Своя запись текстом, как событие в календаре (по умолчанию), или услуга из списка
   const [custom, setCustomMode] = useState(true);
   const [title, setTitle] = useState("");
   const [length, setLength] = useState(60);
-  const [onStand, setOnStand] = useState(false);
+  const [staffId, setStaffId] = useState(staff.some((m) => m.id === initialStaff) ? initialStaff : "");
+  const [onStand, setOnStand] = useState(staff.find((m) => m.id === initialStaff)?.onStand ?? false);
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [date, setDate] = useState(initialDate);
   const [otherDay, setOtherDay] = useState(false);
   const [slots, setSlots] = useState<{ time: string; free: boolean }[] | null>(null);
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(initialTime);
   const [otherTime, setOtherTime] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -63,6 +67,8 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
   // Предупреждение относится к выбранному времени: сменили время, услугу или день — проверяем заново
   useEffect(() => setWarning(null), [custom, serviceId, length, onStand, date, time]);
 
+  // Время не из сетки окон (выбрано вручную или нажатием в календаре) показывается в «Другое время»
+  const offGrid = otherTime || (!!time && !!slots && !slots.some((s) => s.time === time));
   const pickDay = (d: string) => { setDate(d); setTime(""); setOtherTime(false); };
   const ready = !!time && (custom ? title.trim().length >= 2 : !!serviceId);
 
@@ -71,10 +77,11 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
     start(async () => {
       // Сбой сети или сервера: введённое остаётся в форме, можно нажать ещё раз
       const what = custom ? { title, durationMin: length, onStand } : { serviceId };
-      const r = await ownerCreateBooking({ ...what, date, time, name, phone, comment, force }).catch(() => ({ error: "Не получилось сохранить. Проверьте интернет и нажмите ещё раз", warning: undefined, id: undefined }));
+      const who = staffId ? { staffId } : {};
+      const r = await ownerCreateBooking({ ...what, ...who, date, time, name, phone, comment, force }).catch(() => ({ error: "Не получилось сохранить. Проверьте интернет и нажмите ещё раз", warning: undefined, id: undefined }));
       if (r.error) setError(r.error);
       else if (r.warning) setWarning(r.warning);
-      else router.push(`/cabinet?date=${date}`);
+      else router.push(back ? `${back}${back.includes("?") ? "&" : "?"}date=${date}` : `/cabinet?date=${date}`);
     });
   }
 
@@ -84,7 +91,7 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
         {services.length > 0 && (
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-200/70 p-1" role="group" aria-label="Как записать">
             {[{ v: true, l: "Написать текстом" }, { v: false, l: "Из списка услуг" }].map((o) => (
-              <button key={o.l} type="button" aria-pressed={custom === o.v} onClick={() => { setCustomMode(o.v); setTime(""); }}
+              <button key={o.l} type="button" aria-pressed={custom === o.v} onClick={() => setCustomMode(o.v)}
                 className={`h-10 rounded-lg text-[14.5px] font-semibold ${custom === o.v ? "bg-white shadow-sm" : "text-zinc-600"}`}>
                 {o.l}
               </button>
@@ -100,7 +107,7 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
               <span className="text-[14.5px] font-semibold">Сколько займёт</span>
               <div className="flex flex-wrap gap-1.5">
                 {DURATIONS.map((m) => (
-                  <button key={m} type="button" aria-pressed={length === m} onClick={() => { setLength(m); setTime(""); }}
+                  <button key={m} type="button" aria-pressed={length === m} onClick={() => setLength(m)}
                     className={`h-10 rounded-xl px-3.5 text-[14.5px] font-semibold ${length === m ? "bg-ink text-white" : "bg-white ring-1 ring-zinc-200"}`}>
                     {dur(m)}
                   </button>
@@ -109,7 +116,7 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
             </div>
             {standPosts > 0 && (
               <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl bg-white px-3 ring-1 ring-zinc-200">
-                <input type="checkbox" checked={onStand} onChange={(e) => { setOnStand(e.target.checked); setTime(""); }} className="size-5 accent-accent" />
+                <input type="checkbox" checked={onStand} onChange={(e) => setOnStand(e.target.checked)} className="size-5 accent-accent" />
                 <span className="text-[15px]">На стенде развала</span>
               </label>
             )}
@@ -119,7 +126,7 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
           {services.map((s) => {
             const on = s.id === serviceId;
             return (
-              <button key={s.id} type="button" aria-pressed={on} onClick={() => { setServiceId(s.id); setTime(""); }}
+              <button key={s.id} type="button" aria-pressed={on} onClick={() => setServiceId(s.id)}
                 className={`flex min-h-13 w-full items-center gap-3 px-4 py-2.5 text-left ${on ? "bg-orange-50" : "hover:bg-zinc-50"}`}>
                 <span className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-accent bg-accent text-white" : "border-zinc-300"}`}>
                   {on && <Check size={14} weight="bold" />}
@@ -130,6 +137,21 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
             );
           })}
         </div>
+        )}
+        {staff.length > 0 && (
+          <div className="grid gap-2">
+            <span className="text-[14.5px] font-semibold">Кто делает</span>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Кто делает">
+              {[{ id: "", name: "Любой свободный", color: "" }, ...staff].map((m) => (
+                <button key={m.id || "any"} type="button" aria-pressed={staffId === m.id}
+                  onClick={() => { setStaffId(m.id); const st = staff.find((x) => x.id === m.id); if (st && custom) setOnStand(st.onStand); }}
+                  className={`inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-[14.5px] font-semibold ${staffId === m.id ? "bg-ink text-white" : "bg-white ring-1 ring-zinc-200"}`}>
+                  {m.color && <i className="size-3 rounded-full" style={{ background: m.color }} />}
+                  {m.name}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </Step>
 
@@ -177,7 +199,7 @@ export function NewBookingForm({ services, standPosts = 0, today, initialDate }:
           <div className="flex items-center gap-3">
             <span className="shrink-0 text-[14.5px] text-zinc-600">Другое время</span>
             <div className="w-32">
-              <TimeSelect value={otherTime ? time : ""} onChange={(v) => { setTime(v); setOtherTime(true); }} label="Другое время" />
+              <TimeSelect value={offGrid ? time : ""} onChange={(v) => { setTime(v); setOtherTime(true); }} label="Другое время" />
             </div>
           </div>
         </Step>

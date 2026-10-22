@@ -6,7 +6,7 @@ import { ArrowSquareOut, CalendarDots, ChartBar, Clock, List, PencilSimple, Plus
 
 const tabs = [
   { href: "/cabinet", label: "Сегодня", icon: Clock },
-  { href: "/cabinet/week", label: "Неделя", icon: CalendarDots },
+  { href: "/cabinet/week", label: "Календарь", icon: CalendarDots },
   { href: "/cabinet/new", label: "Запись", icon: Plus, fab: true },
   { href: "/cabinet/site", label: "Сайт", icon: PencilSimple },
   { href: "/cabinet/more", label: "Ещё", icon: List },

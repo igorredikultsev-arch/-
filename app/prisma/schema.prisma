@@ -66,73 +66,89 @@ model Business {
   city     String @default("Пермь")
   timezone String @default("Asia/Yekaterinburg")
 
-  address        String
-  addressNote    String?
-  phone          String
-  yandexMapsUrl  String?
-  twoGisUrl      String?
-  rating         Decimal? @db.Decimal(2, 1)
-  reviewsYandex  Int?
-  reviews2gis    Int?
+  address       String
+  addressNote   String?
+  phone         String
+  yandexMapsUrl String?
+  twoGisUrl     String?
+  rating        Decimal? @db.Decimal(2, 1)
+  reviewsYandex Int?
+  reviews2gis   Int?
 
-  headline    String?
-  facts       Json? // [{ value: "2 поста", label: "можно приехать вдвоём" }]
+  headline      String?
+  facts         Json? // [{ value: "2 поста", label: "можно приехать вдвоём" }]
   theme         Theme     @default(dots)
   accent        String    @default("#7c5cff")
   themeChosenAt DateTime? // владелец сам выбрал стиль в демо
   // Логотип загружает владелец в кабинете; сама картинка — в BusinessLogo, здесь время загрузки для адреса без кеша
-  logoAt      DateTime?
+  logoAt        DateTime?
 
   // Настройки расписания (раздел 4.1)
-  posts        Int @default(1)
+  posts       Int @default(1)
   /// Сколько постов отдано под запись с сайта (остальные — живая очередь и звонки, их в кабинет вносить не нужно)
-  onlinePosts  Int @default(1)
+  onlinePosts Int @default(1)
   /// Стенды развал-схождения, отдельно от постов: услуги с отметкой onStand записываются только на них, остальные — только на посты
-  standPosts   Int @default(0)
-  slotStepMin  Int @default(30)
-  minLeadMin   Int @default(120)
-  horizonDays  Int @default(14)
-  cancelHours  Int @default(0) // за сколько часов до визита клиент ещё может отменить онлайн; 0 — до начала
+  standPosts  Int @default(0)
+  slotStepMin Int @default(30)
+  minLeadMin  Int @default(120)
+  horizonDays Int @default(14)
+  cancelHours Int @default(0) // за сколько часов до визита клиент ещё может отменить онлайн; 0 — до начала
 
   // Оператор персональных данных — сам автосервис (раздел 6.3)
-  operatorName String?
-  operatorInn  String?
+  operatorName    String?
+  operatorInn     String?
   // Уведомление сервиса в Роскомнадзор об обработке данных клиентов: когда подано и номер (отмечает администратор)
-  rknFiledAt   DateTime?
-  rknNumber    String?
+  rknFiledAt      DateTime?
+  rknNumber       String?
   // Принятие оферты владельцем в кабинете (галочка при первом входе): когда и какая редакция
   offerAcceptedAt DateTime?
   offerVersion    String?
   // Утренняя сводка владельцу (push в 8:00 по времени сервиса): можно выключить в кабинете.
   // digestSentOn — местная дата последней сводки, чтобы при повторном запуске расписания не прислать вторую
-  digestEnabled Boolean @default(true)
-  digestSentOn  String?
+  digestEnabled   Boolean   @default(true)
+  digestSentOn    String?
 
-  status         BusinessStatus @default(demo)
-  demoExpiresAt  DateTime?
-  trialEndsAt    DateTime?
-  paidUntil      DateTime?
+  status        BusinessStatus @default(demo)
+  demoExpiresAt DateTime?
+  trialEndsAt   DateTime?
+  paidUntil     DateTime?
   // Когда сайт приостановили (нет оплаты или вручную). Через 60 дней приостановки договор расторгнут (оферта, п. 4.2),
   // и в админке появляется напоминание удалить данные (п. 7.7). При возобновлении стирается
-  suspendedAt    DateTime?
-  customDomain   String?        @unique
-  addonTelegram  Boolean        @default(false)
-  addonSms       Boolean        @default(false)
+  suspendedAt   DateTime?
+  customDomain  String?        @unique
+  addonTelegram Boolean        @default(false)
+  addonSms      Boolean        @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  services     Service[]
-  hours        WorkingHours[]
-  exceptions   DayException[]
-  bookings     Booking[]
-  blocks       Block[]
-  users        User[]
-  lead         Lead?
-  payments     Payment[]
-  pushSubs     PushSubscription[]
-  logo         BusinessLogo?
-  demoViews    DemoView[]
+  services   Service[]
+  hours      WorkingHours[]
+  exceptions DayException[]
+  bookings   Booking[]
+  blocks     Block[]
+  users      User[]
+  lead       Lead?
+  payments   Payment[]
+  pushSubs   PushSubscription[]
+  logo       BusinessLogo?
+  demoViews  DemoView[]
+  staff      Staff[]
+}
+
+/// Сотрудник (у «Конкурента» один сотрудник на пост) или стенд развала: колонка в календаре кабинета со своим цветом.
+/// Записи с сайта сами встают к первому свободному; владелец выбирает сам. Без сотрудников календарь показывает «Пост 1…N».
+model Staff {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  color      String
+  onStand    Boolean   @default(false)
+  sortOrder  Int       @default(0)
+  bookings   Booking[]
+
+  @@index([businessId, sortOrder])
 }
 
 /// Картинка логотипа отдельно от Business: сервис читается на каждой странице, а картинка нужна только сайту.
@@ -146,19 +162,19 @@ model BusinessLogo {
 }
 
 model Service {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   businessId   String
-  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   category     String
   name         String
   description  String?
   priceFrom    Int
   durationMin  Int
-  isDiagnostic Boolean  @default(false)
+  isDiagnostic Boolean   @default(false)
   /// Делается на стенде развал-схождения (Business.standPosts), а не на обычном посту
-  onStand      Boolean  @default(false)
-  sortOrder    Int      @default(0)
-  active       Boolean  @default(true)
+  onStand      Boolean   @default(false)
+  sortOrder    Int       @default(0)
+  active       Boolean   @default(true)
   bookings     Booking[]
 
   @@index([businessId, sortOrder])
@@ -166,13 +182,13 @@ model Service {
 
 /// Часы работы по дню недели: 1 — понедельник … 7 — воскресенье. Минуты от полуночи по местному времени.
 model WorkingHours {
-  id         String   @id @default(cuid())
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  weekday    Int
-  closed     Boolean  @default(false)
-  openMin    Int      @default(540)
-  closeMin   Int      @default(1200)
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  weekday      Int
+  closed       Boolean  @default(false)
+  openMin      Int      @default(540)
+  closeMin     Int      @default(1200)
   // Обед или другой ежедневный перерыв (минуты от полуночи). Пусто — без перерыва
   breakFromMin Int?
   breakToMin   Int?
@@ -203,6 +219,12 @@ model Booking {
   priceFrom   Int?
   /// Занимает стенд развала, а не пост: копия Service.onStand на момент записи
   onStand     Boolean       @default(false)
+  /// К какому сотруднику (колонке календаря) стоит запись
+  staffId     String?
+  staff       Staff?        @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  /// Кто внёс запись в кабинете (у каждого сотрудника свой вход); у записей с сайта пусто
+  createdById String?
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
   startAt     DateTime
   endAt       DateTime
   source      BookingSource
@@ -229,6 +251,8 @@ model Booking {
   @@index([businessId, status, startAt])
   // Удаление услуги обнуляет serviceId у её записей: без индекса это просмотр всех записей всех сервисов
   @@index([serviceId])
+  @@index([staffId])
+  @@index([createdById])
 }
 
 model Block {
@@ -245,17 +269,18 @@ model Block {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  phone        String    @unique
+  id           String             @id @default(cuid())
+  phone        String             @unique
   passwordHash String
-  role         Role      @default(owner)
+  role         Role               @default(owner)
   name         String?
   businessId   String?
-  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  createdAt    DateTime  @default(now())
+  business     Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
   lastLoginAt  DateTime?
   sessions     Session[]
   pushSubs     PushSubscription[]
+  bookings     Booking[]
 }
 
 /// Подписка телефона или компьютера владельца на уведомления кабинета (Web Push). В уведомлении нет имени и телефона клиента
@@ -291,17 +316,17 @@ model Session {
 
 /// Мини-CRM рассылки (раздел 2.3)
 model Lead {
-  id          String     @id @default(cuid())
-  businessId  String     @unique
-  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  status      LeadStatus @default(new)
-  channel     String?
-  contact     String?
-  notes       String?
+  id           String     @id @default(cuid())
+  businessId   String     @unique
+  business     Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  status       LeadStatus @default(new)
+  channel      String?
+  contact      String?
+  notes        String?
   firstMessage String? // сообщение с демо (после ответа «да») из таблицы при импорте, ссылка уже подставлена
-  askVariant  Int? // какой вариант первого сообщения-вопроса отправили (QUESTION_NAMES в lib/outreach.ts), с 13 октября 2026
-  contactedAt DateTime?
-  updatedAt   DateTime   @updatedAt
+  askVariant   Int? // какой вариант первого сообщения-вопроса отправили (QUESTION_NAMES в lib/outreach.ts), с 13 октября 2026
+  contactedAt  DateTime?
+  updatedAt    DateTime   @updatedAt
 }
 
 /// Владелец открыл демо по ссылке из сообщения (или переключил в нём стиль). Видно в админке: кто смотрел и сколько раз.

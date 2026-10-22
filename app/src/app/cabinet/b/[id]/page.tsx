@@ -8,22 +8,32 @@ import { formatPhone } from "@/lib/phone";
 import { formatDateTime, toLocal } from "@/lib/time";
 import { Card, Notice, Tag } from "../../ui";
 import { BookingActions } from "./booking-actions";
+import { StaffSelect } from "./staff-select";
 
 const STATUS = { active: "Активна", cancelled: "Отменена", no_show: "Не приехал", done: "Выполнена" } as const;
 
 export default async function BookingCard({ params }: { params: Promise<{ id: string }> }) {
   const { business } = await requireOwner();
-  const b = await db.booking.findFirst({ where: { id: (await params).id, businessId: business.id } });
+  const b = await db.booking.findFirst({
+    where: { id: (await params).id, businessId: business.id },
+    include: { createdBy: { select: { name: true, phone: true } } },
+  });
   if (!b) notFound();
   const tz = business.timezone;
   const date = toLocal(b.startAt.getTime(), tz).date;
-  const noShows = b.clientPhone ? await noShowCount(db, business.id, b.clientPhone) : 0;
+  const [noShows, staff] = await Promise.all([
+    b.clientPhone ? noShowCount(db, business.id, b.clientPhone) : 0,
+    db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } }),
+  ]);
+  // Кто внёс запись: клиент сам через сайт или кто-то из кабинета (у старых записей автора нет)
+  const author = b.source === "site" ? "Клиент сам, через сайт" : b.createdBy ? b.createdBy.name || formatPhone(b.createdBy.phone) : "Из кабинета";
   const rows: [string, string | null][] = [
     ["Услуга", b.serviceName],
     ["Машина", b.car],
     ["Комментарий", b.comment],
     ["Стоимость", b.priceFrom ? `от ${b.priceFrom.toLocaleString("ru-RU")} ₽` : null],
     ["Статус", b.status === "cancelled" && b.cancelledBy ? `${STATUS[b.status]} ${b.cancelledBy === "client" ? "клиентом" : "вами"}` : STATUS[b.status]],
+    ["Внёс", author],
     ["Создана", formatDateTime(b.createdAt.getTime(), tz)],
   ];
   return (
@@ -43,6 +53,12 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
         </a>
       )}
       <Card className="divide-y divide-zinc-100 px-4">
+        {staff.length > 0 && (
+          <div className="grid grid-cols-[104px_1fr] items-center gap-3 py-3 text-[14px]">
+            <span className="text-zinc-500">Кто делает</span>
+            <StaffSelect id={b.id} value={b.staffId && staff.some((s) => s.id === b.staffId) ? b.staffId : ""} staff={staff} />
+          </div>
+        )}
         {rows.filter(([, v]) => v).map(([k, v]) => (
           <div key={k} className="grid grid-cols-[104px_1fr] gap-3 py-3 text-[14px]">
             <span className="text-zinc-500">{k}</span>

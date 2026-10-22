@@ -127,3 +127,27 @@ export async function loadWeek(business: Business, startDate: string) {
     return { date, isWorkday: !!resolveDayWindow(date, hours, exceptions), bookings: list, fromSite: list.filter((b) => b.source === "site").length };
   });
 }
+
+/** Календарь: записи (без отменённых), закрытое время, часы работы и сотрудники за несколько дней. */
+export async function loadCalendar(business: Business, dates: string[]) {
+  const tz = business.timezone;
+  const from = dayBounds(dates[0], tz).start;
+  const to = dayBounds(dates[dates.length - 1], tz).end;
+  const [bookings, blocks, hours, exceptions, staff] = await Promise.all([
+    db.booking.findMany({
+      where: { businessId: business.id, status: { in: ["active", "done", "no_show"] }, startAt: { gte: new Date(from - 86400000), lt: new Date(to) }, endAt: { gt: new Date(from) } },
+      orderBy: { startAt: "asc" },
+      select: { id: true, startAt: true, endAt: true, status: true, source: true, serviceName: true, clientName: true, car: true, staffId: true, onStand: true },
+    }),
+    db.block.findMany({ where: { businessId: business.id, startAt: { gte: new Date(from - 86400000), lt: new Date(to) }, endAt: { gt: new Date(from) } } }),
+    db.workingHours.findMany({ where: { businessId: business.id } }),
+    db.dayException.findMany({ where: { businessId: business.id, date: { in: dates } } }),
+    db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, color: true, onStand: true } }),
+  ]);
+  const days = dates.map((date) => {
+    const win = resolveDayWindow(date, hours, exceptions);
+    const start = dayBounds(date, tz).start;
+    return { date, start, win };
+  });
+  return { bookings, blocks, days, staff };
+}

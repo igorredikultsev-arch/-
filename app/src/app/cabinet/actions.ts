@@ -115,6 +115,7 @@ const NewBooking = z.object({
   title: z.string().trim().max(80).optional(),
   durationMin: z.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов").optional(),
   onStand: z.boolean().optional(),
+  staffId: z.string().optional(),
   date: z.string().refine(isDateString, "Выберите день"),
   time: z.string().refine((t) => parseHhmm(t) != null, "Выберите время"),
   name: z.string().max(60).optional(),
@@ -130,6 +131,7 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
   const custom = p.data.serviceId ? undefined : { title: p.data.title ?? "", durationMin: p.data.durationMin ?? 0, onStand: p.data.onStand };
   if (custom && custom.title.length < 2) return { error: "Напишите, что делаем" };
   if (custom && !custom.durationMin) return { error: "Выберите, сколько займёт" };
+  const staffId = p.data.staffId ? (await db.staff.findFirst({ where: { id: p.data.staffId, businessId: business.id }, select: { id: true } }))?.id : undefined;
   let phone: string | null = null;
   if (p.data.phone && p.data.phone.replace(/\D/g, "").length > 1) {
     phone = normalizePhone(p.data.phone);
@@ -141,6 +143,8 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
       businessId: business.id,
       serviceId: p.data.serviceId,
       custom,
+      staffId,
+      createdById: user.id,
       date: p.data.date,
       startMin: parseHhmm(p.data.time)!,
       clientName: p.data.name?.trim(),
@@ -160,6 +164,48 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
   await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: res.booking.id } });
   revalidatePath("/cabinet", "layout");
   return { id: res.booking.id };
+}
+
+/** Переставить запись к другому сотруднику (колонке календаря). */
+export async function setBookingStaff(id: string, staffId: string | null) {
+  const { user, business } = await requireOwner();
+  const staff = staffId ? await db.staff.findFirst({ where: { id: staffId, businessId: business.id }, select: { id: true } }) : null;
+  if (staffId && !staff) return { error: "Сотрудник не найден" };
+  await db.booking.updateMany({ where: { id, businessId: business.id }, data: { staffId: staff?.id ?? null } });
+  await audit("booking.staff", { userId: user.id, businessId: business.id, details: { id } });
+  revalidatePath("/cabinet", "layout");
+  return { ok: true };
+}
+
+/* ---------- сотрудники (колонки календаря) ---------- */
+
+const StaffRows = z
+  .array(z.object({
+    id: z.string().max(40).optional(),
+    name: z.string().trim().min(1, "Напишите имя сотрудника").max(30, "Имя не длиннее 30 знаков"),
+    color: z.string().regex(/^#[0-9a-f]{6}$/i),
+    onStand: z.boolean(),
+  }))
+  .max(30);
+
+/** Сохраняет список сотрудников целиком: порядок как в списке, удалённые из списка удаляются (их записи остаются без сотрудника). */
+export async function saveStaff(rows: z.input<typeof StaffRows>): Promise<ActionResult> {
+  const { user, business } = await requireOwner();
+  const p = StaffRows.safeParse(rows);
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
+  const existing = await db.staff.findMany({ where: { businessId: business.id }, select: { id: true } });
+  const keep = new Set(p.data.map((r) => r.id).filter(Boolean));
+  await db.$transaction([
+    db.staff.deleteMany({ where: { businessId: business.id, id: { in: existing.map((e) => e.id).filter((id) => !keep.has(id)) } } }),
+    ...p.data.map((r, i) =>
+      r.id && existing.some((e) => e.id === r.id)
+        ? db.staff.update({ where: { id: r.id }, data: { name: r.name, color: r.color, onStand: r.onStand, sortOrder: i } })
+        : db.staff.create({ data: { businessId: business.id, name: r.name, color: r.color, onStand: r.onStand, sortOrder: i } }),
+    ),
+  ]);
+  await audit("settings.save", { userId: user.id, businessId: business.id, details: { part: "staff" } });
+  revalidatePath("/cabinet", "layout");
+  return { ok: true, message: "Сохранено" };
 }
 
 /* ---------- закрытое время ---------- */

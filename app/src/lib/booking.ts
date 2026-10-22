@@ -2,6 +2,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "./db";
 import { breakIntervals, dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, splitStand, unionSpans, type Busy, type Interval, type LaneSpan, type Slot } from "./slots";
+import { OCCUPYING } from "./booking-status";
+import { freeStaff } from "./staff";
 import { newToken } from "./tokens";
 import { localToUtc, toLocal } from "./time";
 
@@ -10,7 +12,7 @@ type Tx = Prisma.TransactionClient | PrismaClient;
 export const CONSENT_VERSION = "2026-10-v3"; // v3: состав данных, напоминания, история для претензий, «уничтожаются» (юр. проверка 5 октября)
 
 /** Записи, которые занимают пост: активные и уже выполненные (отмена и «не приехал» время освобождают). */
-export const OCCUPYING = ["active", "done"] as const;
+export { OCCUPYING };
 
 /** Сколько ждать очереди к базе при наплыве записей, прежде чем ответить «попробуйте ещё раз». */
 const TX_OPTIONS = { maxWait: 10000, timeout: 15000 };
@@ -236,6 +238,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
+        staffId: await freeStaff(tx, input.businessId, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts),
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "site",
@@ -258,6 +261,10 @@ export type OwnerBookingInput = {
   /** Услуга из списка или своя запись текстом (custom): что делаем, сколько длится, на стенде ли развала */
   serviceId?: string;
   custom?: { title: string; durationMin: number; onStand?: boolean };
+  /** К какому сотруднику; не задан — к первому свободному */
+  staffId?: string;
+  /** Кто внёс запись в кабинете */
+  createdById?: string;
   date: string;
   startMin: number;
   clientName?: string;
@@ -321,6 +328,8 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
+        staffId: input.staffId ?? (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts)),
+        createdById: input.createdById ?? null,
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "owner",
