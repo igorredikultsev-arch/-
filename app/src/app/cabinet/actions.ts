@@ -297,7 +297,7 @@ export async function setBookingStaff(id: string, staffId: string | null) {
 const StaffRows = z
   .array(z.object({
     id: z.string().max(40).optional(),
-    name: z.string().trim().min(1, "Напишите название поста").max(30, "Название не длиннее 30 знаков"),
+    name: z.string().trim().min(1, "Напишите название поста").max(40, "Название не длиннее 40 знаков"),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
     onStand: z.boolean(),
   }))

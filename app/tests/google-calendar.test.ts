@@ -3,7 +3,7 @@ import { deflateRawSync } from "node:zlib";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createOwnerBooking, moveBooking } from "@/lib/booking";
 import { googleLayout } from "@/lib/calendar";
-import { importCalendars, readCalendars } from "@/lib/calendar-import";
+import { importCalendars, matchStaff, readCalendars } from "@/lib/calendar-import";
 import { db } from "@/lib/db";
 import { parseIcs } from "@/lib/ics";
 import { localToUtc } from "@/lib/time";
@@ -119,6 +119,24 @@ describe("разбор экспорта Google Календаря", () => {
     ]);
     expect(unzip(zip).map((f) => f.name)).toEqual(["Андронов_abc@group.calendar.google.com.ics", "Дни рождения.ics"]);
     expect(readCalendars([{ name: "calendar.zip", data: zip }], "Europe/Moscow").map((c) => c.name)).toEqual(["Андронов", "Дни рождения"]);
+  });
+});
+
+describe("календарь Google — к своему посту", () => {
+  const staff = [
+    { name: "Стенд развала · Хлевной Андрей" }, { name: "Пост 1 · Андронов Александр" }, { name: "Пост 2 · Щелоков Юрий" },
+    { name: "Пост 3 · Ромашов Максим" }, { name: "Пост 4 · Новожилов Алексей" }, { name: "Пост 5 · Шарапов Иван" },
+  ];
+  it("по фамилии, по фамилии с именем, с ё и без", () => {
+    expect(matchStaff(staff, "Андронов")?.name).toBe("Пост 1 · Андронов Александр");
+    expect(matchStaff(staff, "Шарапов Иван")?.name).toBe("Пост 5 · Шарапов Иван");
+    expect(matchStaff(staff, "хлевной")?.name).toBe("Стенд развала · Хлевной Андрей");
+    expect(matchStaff([{ name: "Пост 1 · Семёнов" }], "Семенов")?.name).toBe("Пост 1 · Семёнов");
+  });
+  it("незнакомое или неоднозначное — не угадывает", () => {
+    expect(matchStaff(staff, "Завьялов")).toBeUndefined();
+    expect(matchStaff([{ name: "Пост 1 · Иван" }, { name: "Пост 2 · Иван" }], "Иван")).toBeUndefined();
+    expect(matchStaff(staff, "Пост")).toBeUndefined();
   });
 });
 

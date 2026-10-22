@@ -51,7 +51,7 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
               className="grid size-12 shrink-0 place-items-center rounded-xl ring-1 ring-zinc-200">
               <i className="size-7 rounded-full" style={{ background: r.color }} />
             </button>
-            <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} maxLength={30} placeholder="Например, Пост 1, Андрей"
+            <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} maxLength={40} placeholder="Например, Пост 1 · Андронов Александр"
               aria-label={`Пост ${i + 1}`} className={inputCls} />
             <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Выше" className="grid size-10 shrink-0 place-items-center rounded-lg text-zinc-500 disabled:opacity-25"><ArrowUp size={18} /></button>
             <button type="button" disabled={i === rows.length - 1} onClick={() => move(i, 1)} aria-label="Ниже" className="grid size-10 shrink-0 place-items-center rounded-lg text-zinc-500 disabled:opacity-25"><ArrowDown size={18} /></button>

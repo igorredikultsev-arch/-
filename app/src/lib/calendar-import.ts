@@ -28,6 +28,21 @@ export function readCalendars(files: { name: string; data: Buffer }[], tz: strin
   });
 }
 
+const words = (s: string) => s.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/).filter(Boolean);
+
+/**
+ * Пост для календаря Google: с тем же названием, а если такого нет — единственный, в названии которого есть
+ * все слова календаря. Календарь «Андронов» встаёт к посту «Пост 1 · Андронов Александр».
+ */
+export function matchStaff<T extends { name: string }>(staff: T[], calendar: string): T | undefined {
+  const cal = words(calendar);
+  if (!cal.length) return undefined;
+  const same = staff.find((x) => words(x.name).join(" ") === cal.join(" "));
+  if (same) return same;
+  const found = staff.filter((x) => { const w = words(x.name); return cal.every((c) => w.includes(c)); });
+  return found.length === 1 ? found[0] : undefined;
+}
+
 export async function importCalendars(business: { id: string; timezone: string }, calendars: IcsCalendar[], nowMs = Date.now()): Promise<ImportResult> {
   const tz = business.timezone;
   // С понедельника текущей недели: неделя в календаре выглядит так же, как была в Google
@@ -42,8 +57,8 @@ export async function importCalendars(business: { id: string; timezone: string }
     result.skippedRecurring += events.filter((e) => e.recurring).length;
     const single = events.filter((e) => !e.recurring);
     if (!single.length) continue;
-    const name = cal.name.trim().slice(0, 30) || "Календарь";
-    let s = staff.find((x) => x.name.trim().toLowerCase() === name.toLowerCase());
+    const name = cal.name.trim().slice(0, 40) || "Календарь";
+    let s = matchStaff(staff, name);
     if (!s) {
       const color = GOOGLE_COLORS.find((c) => !staff.some((x) => x.color === c.hex))?.hex ?? GOOGLE_COLORS[staff.length % GOOGLE_COLORS.length].hex;
       s = await db.staff.create({ data: { businessId: business.id, name, color, sortOrder: staff.length } });
