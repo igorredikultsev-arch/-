@@ -16,7 +16,7 @@ import { SETUP_PRICE, UNPAID_GRACE_DAYS, rub } from "@/lib/pricing";
 import { deleteBusiness, extendDemo, openCabinet, setReceiptSent, setStatus } from "../../actions";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
 import { btn2, CopyBox } from "../../ui";
-import { InfoForm, LeadForm, PaymentForm, RknForm, TrialForm } from "./forms";
+import { InfoForm, LeadForm, PaymentForm, RknForm, ServicesImportForm, TrialForm } from "./forms";
 
 const date = (d: Date | null) => (d ? d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) : "");
 
@@ -43,7 +43,7 @@ type Biz = NonNullable<Awaited<ReturnType<typeof load>>>;
 const load = (id: string) =>
   db.business.findUnique({
     where: { id },
-    include: { lead: true, users: true, payments: { orderBy: { createdAt: "desc" } }, _count: { select: { bookings: true } } },
+    include: { lead: true, users: true, payments: { orderBy: { createdAt: "desc" } }, _count: { select: { bookings: true, services: true } } },
   });
 
 const day = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
@@ -306,6 +306,11 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                   timezone: b.timezone, knownCity: isKnownCity(b.city),
                 }}
               />
+            </Card>
+          )}
+          {tab === "info" && (
+            <Card title="Услуги из таблицы">
+              <ServicesImportForm id={b.id} count={b._count.services} />
             </Card>
           )}
 

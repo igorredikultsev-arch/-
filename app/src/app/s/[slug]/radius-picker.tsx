@@ -7,7 +7,7 @@ import type { WidgetService } from "./booking-widget";
 import { PICK_EVENT, RADIUS_EVENT, scrollToBook, type RadiusPick } from "./events";
 
 const duration = aboutDuration;
-const price = (p: number) => (p > 0 ? `${p.toLocaleString("ru-RU")} ₽` : "бесплатно");
+const price = (p: number) => (p > 0 ? `${p.toLocaleString("ru-RU")} ₽` : "после осмотра");
 
 /** Стили с 3D-сценой: сначала радиус, сразу цена подходящей услуги и кнопка к выбору времени. */
 export function RadiusPicker({ services, bands, radii }: { services: WidgetService[]; bands: RadiusBand[]; radii: number[] }) {

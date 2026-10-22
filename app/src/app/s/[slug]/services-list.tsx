@@ -36,7 +36,7 @@ export function ServicesList({ services }: { services: WidgetService[] }) {
             <div className="n">{s.name}</div>
             <div className="m">{[s.description, duration(s.durationMin)].filter(Boolean).map((t) => t!.replace(/^./, (c) => c.toUpperCase())).join(". ")}</div>
             <div className="p">
-              {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : "бесплатно"}
+              {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}
               {s.priceFrom > 0 && <small>от</small>}
             </div>
           </button>

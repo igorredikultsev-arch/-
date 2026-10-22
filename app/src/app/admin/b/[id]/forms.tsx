@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { addPayment, saveInfo, saveLead, saveRkn, startTrial } from "../../actions";
+import { addPayment, importServices, saveInfo, saveLead, saveRkn, startTrial } from "../../actions";
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
 import { keepValues } from "@/lib/keep-form";
@@ -137,6 +137,26 @@ export function RknForm({ id, filedAt, number }: { id: string; filedAt: string; 
       </div>
       <Result state={state} />
       <button disabled={pending} className={btn}>Сохранить</button>
+    </form>
+  );
+}
+
+/** Услуги из таблицы клиента: столбцы «Раздел на сайте, Название, Цена от, Минуты, Пояснение». */
+export function ServicesImportForm({ id, count }: { id: string; count: number }) {
+  const [state, action, pending] = useActionState(importServices.bind(null, id), null);
+  return (
+    <form action={action} className="grid gap-3">
+      <p className="text-[14px] text-zinc-600">
+        Сейчас услуг на сайте: {count}. Таблица со столбцами «Раздел на сайте, Название, Цена от, Минуты, Пояснение», как в файле, который отправляли
+        клиенту. Развал-схождение само встанет на стенд, у диагностики и осмотра клиент напишет, что беспокоит. Цена 0 на сайте — «после осмотра».
+      </p>
+      <input type="file" name="file" accept=".xlsx,.csv" required className="text-[14px]" />
+      <div className="flex flex-wrap gap-4 text-[14px]">
+        <label className="flex items-center gap-2"><input type="radio" name="mode" value="replace" defaultChecked /> Заменить все услуги</label>
+        <label className="flex items-center gap-2"><input type="radio" name="mode" value="append" /> Добавить к имеющимся</label>
+      </div>
+      <Result state={state} />
+      <button disabled={pending} className={btn}>{pending ? "Загружаем…" : "Загрузить услуги"}</button>
     </form>
   );
 }

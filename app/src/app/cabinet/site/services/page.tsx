@@ -29,7 +29,7 @@ export default async function ServicesPage() {
                     <span className="block text-[15.5px] font-semibold leading-tight">{s.name}</span>
                     <span className="text-[13.5px] text-zinc-500">{dur(s.durationMin)}{s.active ? "" : ", скрыта с сайта"}</span>
                   </span>
-                  <span className="whitespace-nowrap text-[15px] font-semibold tabular-nums">{s.priceFrom ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "бесплатно"}</span>
+                  <span className="whitespace-nowrap text-[15px] font-semibold tabular-nums">{s.priceFrom ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
                   <CaretRight size={18} className="shrink-0 text-zinc-400" />
                 </Link>
               ))}

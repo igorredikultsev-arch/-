@@ -299,7 +299,7 @@ export function BookingWidget(p: Props) {
             <button key={s.id} type="button" aria-pressed={s.id === serviceId} onClick={() => chooseService(s.id)}>
               <span className="n">{s.name}</span>
               <span className="m">{s.category}</span>
-              <span className="p">{s.priceFrom > 0 ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "бесплатно"}</span>
+              <span className="p">{s.priceFrom > 0 ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
             </button>
           ))}
         </div>

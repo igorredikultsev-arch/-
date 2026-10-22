@@ -17,6 +17,7 @@ import { demoMessage, emailSubject, outreach, questionVariant, withLink } from "
 import { normalizePhone } from "@/lib/phone";
 import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
+import { parseServices } from "@/lib/services-import";
 import { publicSiteUrl } from "@/lib/site-url";
 import { RESERVED_SLUGS, slugify } from "@/lib/slug";
 import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
@@ -242,6 +243,33 @@ export async function saveInfo(id: string, _prev: AdminResult, f: FormData): Pro
   await audit("admin.info_save", { userId: admin.id, businessId: id });
   revalidatePath(`/admin/b/${id}`);
   return { ok: true, message: "Сохранено" };
+}
+
+/** Услуги сервиса из таблицы клиента (.xlsx или .csv): заменить все или добавить к имеющимся. */
+export async function importServices(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const file = f.get("file");
+  if (!(file instanceof File) || !file.size) return { error: "Выберите файл .xlsx или .csv" };
+  if (file.size > MAX_FILE) return { error: "Файл больше 900 КБ. Оставьте в нём только лист с услугами" };
+  let parsed: ReturnType<typeof parseServices>;
+  try {
+    const sheets = readTable(Buffer.from(await file.arrayBuffer()), file.name);
+    parsed = parseServices(sheets[0]?.rows ?? []);
+  } catch (e) {
+    return { error: e instanceof Error && /xls|zip|повреж/i.test(e.message) ? e.message : "Не получилось прочитать файл. Сохраните его как .xlsx или .csv" };
+  }
+  if (!parsed.rows.length) return { error: parsed.errors.join(". ") || "В таблице нет услуг" };
+  const replace = str(f, "mode") !== "append";
+  const start = replace ? 0 : await db.service.count({ where: { businessId: id } });
+  await db.$transaction([
+    // Записи с удалёнными услугами остаются: название услуги хранится в самой записи
+    ...(replace ? [db.service.deleteMany({ where: { businessId: id } })] : []),
+    db.service.createMany({ data: parsed.rows.map((r, i) => ({ businessId: id, ...r, sortOrder: start + i })) }),
+  ]);
+  await audit("admin.services_import", { userId: admin.id, businessId: id, details: { count: parsed.rows.length, replace } });
+  revalidatePath(`/admin/b/${id}`);
+  const skipped = parsed.errors.length ? ` Пропущено: ${parsed.errors.join("; ")}.` : "";
+  return { ok: true, message: `${replace ? "Услуги заменены" : "Услуги добавлены"}: ${parsed.rows.length}.${skipped}` };
 }
 
 const LeadForm = z.object({
