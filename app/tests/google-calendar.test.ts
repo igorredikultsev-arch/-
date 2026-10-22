@@ -18,31 +18,35 @@ describe("раскладка как в Google", () => {
     expect(googleLayout([ev("a", 540, 600)]).get("a")).toMatchObject({ left: 0, width: 1 });
   });
 
-  it("начались одновременно — рядом, левая чуть заходит под правую", () => {
+  it("начались одновременно — рядом, левая заходит под правую, правая сверху", () => {
     const l = googleLayout([ev("a", 540, 1140), ev("b", 540, 720)]);
-    // Две колонки делят ширину на три доли, каждая плашка в две доли, правая лежит сверху
-    expect(l.get("a")!.left).toBe(0);
-    expect(l.get("a")!.width).toBeCloseTo(2 / 3);
-    expect(l.get("b")!.left).toBeCloseTo(1 / 3);
-    expect(l.get("b")!.width).toBeCloseTo(2 / 3);
+    expect(l.get("a")).toMatchObject({ left: 0, width: 0.85 });
+    expect(l.get("b")).toMatchObject({ left: 0.5, width: 0.5 });
     expect(l.get("b")!.z).toBeGreaterThan(l.get("a")!.z);
   });
 
-  it("началась позже — поверх со сдвигом и до правого края", () => {
+  it("началась позже — внутрь идущей со сдвигом и до правого края", () => {
     const l = googleLayout([ev("long", 540, 1140), ev("later", 660, 720)]);
     expect(l.get("long")).toMatchObject({ left: 0, width: 1 });
-    expect(l.get("later")!.left).toBeCloseTo(0.05);
+    expect(l.get("later")!.left).toBeCloseTo(0.049);
     expect(l.get("later")!.left + l.get("later")!.width).toBeCloseTo(1);
     expect(l.get("later")!.z).toBeGreaterThan(l.get("long")!.z);
   });
 
-  it("пять записей в 9:00, как у клиента: шесть долей, правая широкая; освободившуюся колонку занимает следующая", () => {
-    const l = googleLayout([ev("a", 540, 1140), ev("b", 540, 1065), ev("c", 540, 720), ev("d", 540, 660), ev("e", 540, 600), ev("f", 600, 690)]);
-    expect([..."abcde"].map((k) => +l.get(k)!.left.toFixed(3))).toEqual([0, 0.167, 0.333, 0.5, 0.667]);
-    expect(l.get("a")!.width).toBeCloseTo(1 / 3);
-    expect(l.get("e")!.width).toBeCloseTo(1 / 3);
-    // В 10:00 колонка «e» свободна: новая запись встаёт в неё и тянется до края
-    expect(l.get("f")).toMatchObject({ left: l.get("e")!.left });
+  it("день клиента из Google (17 записей): места и ширина как на его скриншоте", () => {
+    const h = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
+    // название, начало, конец, левый край и ширина у Google (доли колонки; NaN — край не виден)
+    const day: [string, string, string, number, number][] = [
+      ["грета", "09:00", "19:00", 0, NaN], ["к252ае", "09:00", "17:45", 0.168, NaN], ["туарег", "09:00", "12:00", 0.333, NaN], ["Солярис", "09:00", "11:00", 0.5, NaN],
+      ["ламода", "09:00", "10:00", 0.667, 0.33], ["Спортаж", "10:00", "11:30", 0.607, 0.39], ["Гранта", "11:00", "14:00", 0.411, 0.33], ["ламодаШ", "11:00", "12:00", 0.804, 0.19],
+      ["ЛОГАН", "11:30", "12:30", 0.607, NaN], ["L200", "12:00", "19:00", 0.217, 0.33], ["Калина", "12:00", "14:00", 0.804, 0.19], ["калина1", "14:00", "16:00", 0.266, NaN],
+      ["йЗО", "14:00", "15:30", 0.509, 0.49], ["МЛ", "15:30", "16:30", 0.511, 0.41], ["Форд", "16:00", "17:30", 0.264, 0.41], ["Спортейдж", "16:00", "17:00", 0.755, 0.24], ["Рапид", "17:30", "18:30", 0.266, 0.73],
+    ];
+    const l = googleLayout(day.map(([id, a, b]) => ev(id, h(a), h(b))));
+    for (const [id, , , left, width] of day) {
+      expect(Math.abs(l.get(id)!.left - left), `${id}: левый край`).toBeLessThan(0.02);
+      if (!Number.isNaN(width)) expect(Math.abs(l.get(id)!.width - width), `${id}: ширина`).toBeLessThan(0.07);
+    }
   });
 
   it("не пересекаются — каждая во всю ширину", () => {

@@ -50,7 +50,11 @@ const prevMonth = (d: string) => `${addDays(`${d.slice(0, 8)}01`, -1).slice(0, 8
 const snap = (m: number) => Math.round(m / SNAP) * SNAP;
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 /** Прошедшие записи бледнее, как в Google («Уменьшить яркость прошедших мероприятий»). */
-const pastBg = (c: string) => `color-mix(in srgb, ${c} 38%, white)`;
+const pastBg = (c: string) => `color-mix(in srgb, ${c} 34%, white)`;
+/** Будущие чуть приглушены: на сетке с десятком записей полные цвета Google режут глаз. */
+const calmBg = (c: string) => `color-mix(in srgb, ${c} 86%, white)`;
+/** Шрифт как в Google Календаре: тоньше и спокойнее шрифта кабинета. */
+const GOOGLE_FONT = 'Roboto, "Google Sans", "Segoe UI", Arial, sans-serif';
 
 type Preview = { id: string | null; date: string; start: number; dur: number };
 type Create = { date: string; start: number; dur: number; allDay: boolean; staffId: string; title: string; anchor: Anchor | null };
@@ -341,7 +345,7 @@ export function Calendar(p: Props) {
   const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); go(p.view, d); }} />;
 
   return (
-    <div className="flex h-[calc(100dvh-84px-env(safe-area-inset-bottom,0px))] flex-col bg-[#f8fafd] text-[#1f1f1f] lg:h-dvh">
+    <div className="flex h-[calc(100dvh-84px-env(safe-area-inset-bottom,0px))] flex-col bg-[#f8fafd] text-[#1f1f1f] lg:h-dvh" style={{ fontFamily: GOOGLE_FONT }}>
       {/* Верхняя строка: меню, «Сегодня», стрелки, месяц, вид */}
       <header className="flex h-16 shrink-0 items-center gap-1 px-2 sm:gap-2 sm:px-3">
         <button type="button" aria-label="Главное меню" onClick={() => {
@@ -433,8 +437,8 @@ export function Calendar(p: Props) {
                       onClick={(e) => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); openCreate(d, 540, 60, true, { left: r.left, right: r.right, top: r.top, bottom: r.bottom }); } }}>
                       {list.map((n) => (
                         <button key={n.id} type="button" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setCreate(null); setPop({ kind: "note", id: n.id, anchor: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } }); }}
-                          className="mb-0.5 block h-[22px] w-full truncate rounded-[4px] px-2 text-left text-[12px] font-medium"
-                          style={{ background: color(n.staffId), color: textOn(color(n.staffId)) }}>
+                          className="mb-0.5 block h-[22px] w-full truncate rounded-[4px] px-2 text-left text-[12px]"
+                          style={{ background: calmBg(color(n.staffId)), color: textOn(color(n.staffId)) }}>
                           {n.title}
                         </button>
                       ))}
@@ -560,8 +564,8 @@ function DayColumn({ date, p, bookings, color, now, preview, create, staffById, 
         const dur = e - s;
         const past = b.end <= now && !dragging;
         const c = color(b.staffId);
-        const bg = past ? pastBg(c) : c;
-        const fg = past ? "#1f1f1f" : textOn(c);
+        const bg = past ? pastBg(c) : calmBg(c);
+        const fg = past ? "#3c4043" : textOn(c);
         const top = (s / 60) * HOUR, height = Math.max(16, (dur / 60) * HOUR - 1);
         const t1 = hhmm(Math.round(s)), t2 = hhmm(Math.round(e));
         const short = dur < 45;
@@ -573,13 +577,13 @@ function DayColumn({ date, p, bookings, color, now, preview, create, staffById, 
             className={`absolute cursor-pointer select-none overflow-hidden rounded-[5px] border border-white px-1.5 text-[12px] leading-[15px] outline-none focus-visible:ring-2 focus-visible:ring-[#0b57d0] [touch-action:pan-y] ${short ? "py-px" : "py-0.5"} ${dragging ? "shadow-[0_6px_10px_rgba(60,64,67,.3)] opacity-90" : ""} ${b.status === "no_show" ? "line-through" : ""}`}
             style={{ top, height, left: `calc((100% - 10px) * ${pos.left})`, width: `calc((100% - 10px) * ${pos.width})`, zIndex: dragging ? 30 : pos.z, background: bg, color: fg }}>
             {short ? (
-              <div className="truncate">{b.site && <Globe size={10} weight="bold" className="mr-0.5 inline align-[-1px]" />}<span className="font-medium">{b.title || "(Без названия)"}</span>, {t1}</div>
+              <div className="truncate">{b.site && <Globe size={10} weight="bold" className="mr-0.5 inline align-[-1px]" />}<span>{b.title || "(Без названия)"}</span>, {t1}</div>
             ) : (
               <>
-                <div className="overflow-hidden font-medium" style={{ maxHeight: lines * 15 }}>
+                <div className="overflow-hidden" style={{ maxHeight: lines * 15 }}>
                   {b.site && <Globe size={10} weight="bold" className="mr-0.5 inline align-[-1px]" />}{b.title || "(Без названия)"}
                 </div>
-                <div className="truncate">{t1}–{t2}</div>
+                <div className="truncate opacity-90">{t1}–{t2}</div>
               </>
             )}
             {!b.id.startsWith("tmp-") && (
@@ -637,14 +641,14 @@ function MonthGrid({ p, bookings, notes, color, now, onDay, onEvent, onNote, onC
               <div className="min-w-0 px-1 pb-1" onClick={(e) => { if (e.target === e.currentTarget) onCreate(d, e.currentTarget.parentElement!); }}>
                 {all.slice(0, MAX).map((x) => x.kind === "note" ? (
                   <button key={x.n.id} type="button" onClick={(e) => onNote(x.n.id, e.currentTarget)}
-                    className="mb-px block h-5 w-full truncate rounded-[4px] px-1.5 text-left text-[12px] font-medium"
-                    style={{ background: color(x.n.staffId), color: textOn(color(x.n.staffId)) }}>{x.n.title}</button>
+                    className="mb-px block h-5 w-full truncate rounded-[4px] px-1.5 text-left text-[12px]"
+                    style={{ background: calmBg(color(x.n.staffId)), color: textOn(color(x.n.staffId)) }}>{x.n.title}</button>
                 ) : (
                   <button key={x.b.id} type="button" onClick={(e) => onEvent(x.b.id, e.currentTarget)}
                     className={`mb-px flex h-5 w-full min-w-0 items-center gap-1 rounded-[4px] px-1 text-left text-[12px] hover:bg-[#f1f3f4] ${x.b.end <= now ? "opacity-60" : ""} ${x.b.status === "no_show" ? "line-through" : ""}`}>
                     <i className="size-2 shrink-0 rounded-full" style={{ background: color(x.b.staffId) }} />
                     <span className="shrink-0 text-[#444746]">{hhmm(Math.round((x.b.start - ds) / 60000))}</span>
-                    <span className="truncate font-medium">{x.b.title}</span>
+                    <span className="truncate">{x.b.title}</span>
                   </button>
                 ))}
                 {all.length > MAX && (
