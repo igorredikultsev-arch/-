@@ -1,6 +1,6 @@
 // Telegram Автослота для связи: главная, вход, кабинет. Меняется здесь, а не в .env —
 // так новый адрес попадает на сервер обычным обновлением
-export const CONTACT_TELEGRAM = "avtoslot1";
+export const CONTACT_TELEGRAM = "zappwork1";
 
 // Контакты и ссылки для главной страницы avtoslot.ru. Почта и пример демо задаются в .env.
 export function brandContacts() {

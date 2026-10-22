@@ -244,11 +244,11 @@ describe("решения после аудита: оплата после под
 });
 
 describe("Telegram для связи", () => {
-  it("на сайте @avtoslot1, даже если на сервере в .env остался старый адрес", () => {
+  it("на сайте @zappwork1, даже если на сервере в .env остался старый адрес", () => {
     const old = process.env.CONTACT_TELEGRAM;
     process.env.CONTACT_TELEGRAM = "old_account";
     try {
-      expect(brandContacts()).toMatchObject({ telegram: "https://t.me/avtoslot1", telegramName: "@avtoslot1" });
+      expect(brandContacts()).toMatchObject({ telegram: "https://t.me/zappwork1", telegramName: "@zappwork1" });
     } finally {
       process.env.CONTACT_TELEGRAM = old;
     }
