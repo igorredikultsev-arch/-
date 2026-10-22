@@ -2,6 +2,7 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensureStaff } from "@/lib/staff";
 import { SubHead } from "../../ui";
+import { ImportForm } from "./import-form";
 import { StaffForm } from "./staff-form";
 
 export default async function StaffPage() {
@@ -19,6 +20,7 @@ export default async function StaffPage() {
       </SubHead>
       <div className="px-[18px] lg:max-w-2xl lg:px-0">
         <StaffForm initial={staff} posts={business.posts} standPosts={business.standPosts} />
+        <ImportForm />
       </div>
     </>
   );

@@ -53,6 +53,29 @@ const sideTabs = [...tabs.filter((t) => !t.fab && t.href !== "/cabinet/more"), {
 /** Боковое меню на компьютере вместо нижней панели. */
 export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
   const path = usePathname();
+  // В календаре меню кабинета — узкая полоска со значками: место отдаётся сетке, как в Google
+  if (path === "/cabinet/week") {
+    return (
+      <aside className="sticky top-0 hidden h-dvh w-[72px] shrink-0 flex-col items-center border-r border-zinc-200 bg-white py-3 lg:flex">
+        <span className="grid size-10 place-items-center rounded-xl bg-accent text-[17px] font-bold text-white" title={name}>А</span>
+        <nav aria-label="Разделы кабинета" className="mt-4 grid gap-1">
+          {sideTabs.map((t) => {
+            const on = isOn(t.href, path) && !(t.href === "/cabinet/more" && path.startsWith("/cabinet/stats"));
+            const Icon = t.icon;
+            return (
+              <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} title={t.label}
+                className={`grid w-16 justify-items-center gap-0.5 rounded-xl py-2 text-[10.5px] ${on ? "bg-paper font-semibold text-ink" : "text-zinc-600 hover:bg-zinc-50 hover:text-ink"}`}>
+                <Icon size={22} weight={on ? "bold" : "regular"} /> {t.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <a href={siteUrl} target="_blank" rel="noopener noreferrer" title="Открыть мой сайт" className="mt-auto grid w-16 justify-items-center gap-0.5 rounded-xl py-2 text-[10.5px] text-zinc-600 hover:bg-zinc-50">
+          <ArrowSquareOut size={20} /> Мой сайт
+        </a>
+      </aside>
+    );
+  }
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-zinc-200 bg-white px-4 py-6 lg:flex">
       <div className="flex items-center gap-2.5 px-2">
@@ -88,5 +111,5 @@ export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
 /** Основная колонка кабинета. Календарь на компьютере — на всю ширину экрана, остальные экраны — узкой колонкой. */
 export function Main({ children }: { children: React.ReactNode }) {
   const wide = usePathname() === "/cabinet/week";
-  return <main className={`mx-auto pb-32 lg:px-10 lg:pb-16 ${wide ? "max-w-none" : "max-w-md lg:max-w-4xl"}`}>{children}</main>;
+  return <main className={wide ? "" : "mx-auto max-w-md pb-32 lg:max-w-4xl lg:px-10 lg:pb-16"}>{children}</main>;
 }

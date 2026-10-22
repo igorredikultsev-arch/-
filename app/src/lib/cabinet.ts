@@ -133,21 +133,29 @@ export async function loadCalendar(business: Business, dates: string[]) {
   const tz = business.timezone;
   const from = dayBounds(dates[0], tz).start;
   const to = dayBounds(dates[dates.length - 1], tz).end;
-  const [bookings, blocks, hours, exceptions, staff] = await Promise.all([
+  const [bookings, blocks, hours, exceptions, staff, notes] = await Promise.all([
     db.booking.findMany({
       where: { businessId: business.id, status: { in: ["active", "done", "no_show"] }, startAt: { gte: new Date(from - 86400000), lt: new Date(to) }, endAt: { gt: new Date(from) } },
       orderBy: { startAt: "asc" },
-      select: { id: true, startAt: true, endAt: true, status: true, source: true, serviceName: true, clientName: true, car: true, staffId: true, onStand: true },
+      select: {
+        id: true, startAt: true, endAt: true, status: true, source: true, serviceName: true, clientName: true, car: true, clientPhone: true,
+        staffId: true, onStand: true, externalId: true, createdBy: { select: { name: true, phone: true } },
+      },
     }),
     db.block.findMany({ where: { businessId: business.id, startAt: { gte: new Date(from - 86400000), lt: new Date(to) }, endAt: { gt: new Date(from) } } }),
     db.workingHours.findMany({ where: { businessId: business.id } }),
     db.dayException.findMany({ where: { businessId: business.id, date: { in: dates } } }),
     db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, color: true, onStand: true } }),
+    db.calendarNote.findMany({
+      where: { businessId: business.id, startDate: { lte: dates[dates.length - 1] }, endDate: { gte: dates[0] } },
+      orderBy: [{ startDate: "asc" }, { createdAt: "asc" }],
+      select: { id: true, title: true, startDate: true, endDate: true, staffId: true },
+    }),
   ]);
   const days = dates.map((date) => {
     const win = resolveDayWindow(date, hours, exceptions);
     const start = dayBounds(date, tz).start;
     return { date, start, win };
   });
-  return { bookings, blocks, days, staff };
+  return { bookings, blocks, days, staff, notes };
 }

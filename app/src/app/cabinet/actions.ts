@@ -7,7 +7,7 @@ import { firstIssue } from "@/lib/zod-ru";
 import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
 import { hit } from "@/lib/ratelimit";
 import { Prisma } from "@prisma/client";
-import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, updateOwnerBooking, type OwnerWarning } from "@/lib/booking";
+import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, updateOwnerBooking, moveBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
@@ -197,6 +197,88 @@ export async function ownerUpdateBooking(id: string, input: z.input<typeof NewBo
   await audit("booking.update_owner", { userId: user.id, businessId: business.id, details: { id } });
   revalidatePath("/cabinet", "layout");
   return { id };
+}
+
+/* ---------- календарь как Google: быстрая запись, перетаскивание, записи на весь день ---------- */
+
+const CalCreate = z.object({
+  title: z.string().trim().min(1, "Напишите, кого записываем").max(400, "Запись не длиннее 400 знаков"),
+  date: z.string().refine(isDateString, "Выберите день"),
+  startMin: z.number().int().min(0).max(1439),
+  durationMin: z.number().int().min(15, "Не меньше 15 минут").max(1440, "Не больше суток"),
+  staffId: z.string().max(40).nullable(),
+  allDay: z.boolean(),
+  endDate: z.string().refine(isDateString).optional(),
+});
+
+/** Быстрая запись из календаря: текст, время, пост. Как в Google — без предупреждений о занятых постах. */
+export async function calendarCreate(input: z.input<typeof CalCreate>): Promise<{ error?: string; id?: string }> {
+  const { user, business } = await requireOwner();
+  const p = CalCreate.safeParse(input);
+  if (!p.success) return { error: firstIssue(p.error, LABELS) };
+  const d = p.data;
+  const staff = d.staffId ? await db.staff.findFirst({ where: { id: d.staffId, businessId: business.id }, select: { id: true, onStand: true } }) : null;
+  if (d.allDay) {
+    const note = await db.calendarNote.create({
+      data: { businessId: business.id, staffId: staff?.id ?? null, title: d.title.slice(0, 200), startDate: d.date, endDate: d.endDate && d.endDate >= d.date ? d.endDate : d.date },
+    });
+    await audit("note.create", { userId: user.id, businessId: business.id, details: { id: note.id } });
+    revalidatePath("/cabinet", "layout");
+    return { id: note.id };
+  }
+  try {
+    const r = await createOwnerBooking({
+      businessId: business.id,
+      custom: { title: d.title, durationMin: d.durationMin, onStand: staff?.onStand ?? false },
+      staffId: staff?.id,
+      createdById: user.id,
+      date: d.date,
+      startMin: d.startMin,
+      clientPhone: findPhone(d.title) ?? undefined,
+      force: true,
+    });
+    await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: r.booking!.id, from: "calendar" } });
+    revalidatePath("/cabinet", "layout");
+    return { id: r.booking!.id };
+  } catch (e) {
+    return bookingError(e);
+  }
+}
+
+/** Перетащили запись мышью или пальцем: новый день, время, длительность. */
+export async function calendarMove(id: string, date: string, startMin: number, durationMin: number): Promise<{ error?: string }> {
+  const { user, business } = await requireOwner();
+  if (!isDateString(date) || !Number.isInteger(startMin) || !Number.isInteger(durationMin) || startMin < 0 || startMin > 1439 || durationMin < 15 || durationMin > 1440) {
+    return { error: "Не получилось перенести запись" };
+  }
+  const start = localToUtc(date, startMin, business.timezone);
+  try {
+    await moveBooking(business.id, id, start, start + durationMin * 60000);
+  } catch (e) {
+    return bookingError(e);
+  }
+  await audit("booking.move", { userId: user.id, businessId: business.id, details: { id } });
+  revalidatePath("/cabinet", "layout");
+  return {};
+}
+
+/** Удалить запись на весь день или поменять её текст и пост. */
+export async function noteUpdate(id: string, data: { title: string; staffId: string | null; date: string; endDate: string } | null): Promise<{ error?: string }> {
+  const { user, business } = await requireOwner();
+  if (!data) {
+    await db.calendarNote.deleteMany({ where: { id, businessId: business.id } });
+  } else {
+    const title = data.title.trim().slice(0, 200);
+    if (!title || !isDateString(data.date) || !isDateString(data.endDate)) return { error: "Напишите текст" };
+    const staff = data.staffId ? await db.staff.findFirst({ where: { id: data.staffId, businessId: business.id }, select: { id: true } }) : null;
+    await db.calendarNote.updateMany({
+      where: { id, businessId: business.id },
+      data: { title, staffId: staff?.id ?? null, startDate: data.date, endDate: data.endDate < data.date ? data.date : data.endDate },
+    });
+  }
+  await audit(data ? "note.update" : "note.delete", { userId: user.id, businessId: business.id, details: { id } });
+  revalidatePath("/cabinet", "layout");
+  return {};
 }
 
 /** Переставить запись к другому сотруднику (колонке календаря). */

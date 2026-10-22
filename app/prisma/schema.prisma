@@ -134,6 +134,7 @@ model Business {
   logo       BusinessLogo?
   demoViews  DemoView[]
   staff      Staff[]
+  notes      CalendarNote[]
 }
 
 /// Сотрудник (у «Конкурента» один сотрудник на пост) или стенд развала: колонка в календаре кабинета со своим цветом.
@@ -147,8 +148,29 @@ model Staff {
   onStand    Boolean   @default(false)
   sortOrder  Int       @default(0)
   bookings   Booking[]
+  notes      CalendarNote[]
 
   @@index([businessId, sortOrder])
+}
+
+/// Запись на весь день в календаре кабинета («108 до 17»): заметка без времени, посты не занимает
+model CalendarNote {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId    String?
+  staff      Staff?   @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  title      String
+  /// Местные даты ГГГГ-ММ-ДД, конец включительно
+  startDate  String
+  endDate    String
+  /// UID события из Google Календаря при переносе: повторный перенос не создаёт копий
+  externalId String?
+  createdAt  DateTime @default(now())
+
+  @@unique([businessId, externalId])
+  @@index([businessId, startDate])
+  @@index([staffId])
 }
 
 /// Картинка логотипа отдельно от Business: сервис читается на каждой странице, а картинка нужна только сайту.
@@ -225,6 +247,8 @@ model Booking {
   /// Кто внёс запись в кабинете (у каждого сотрудника свой вход); у записей с сайта пусто
   createdById String?
   createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  /// UID события из Google Календаря при переносе: повторный перенос не создаёт копий
+  externalId  String?
   startAt     DateTime
   endAt       DateTime
   source      BookingSource
@@ -253,6 +277,7 @@ model Booking {
   @@index([serviceId])
   @@index([staffId])
   @@index([createdById])
+  @@unique([businessId, externalId])
 }
 
 model Block {

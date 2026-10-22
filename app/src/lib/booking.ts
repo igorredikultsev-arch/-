@@ -389,6 +389,18 @@ export async function updateOwnerBooking(input: OwnerBookingInput & { id: string
 }
 
 /**
+ * Перетаскивание в календаре: новое время и длительность, без проверки постов — календарь в свободной форме,
+ * как в Google. Сайт видит новое время сразу: запись занимает пост там, куда её поставили.
+ */
+export async function moveBooking(businessId: string, id: string, start: number, end: number) {
+  return db.$transaction(async (tx) => {
+    await lockBusiness(tx, businessId);
+    const r = await tx.booking.updateMany({ where: { id, businessId }, data: { startAt: new Date(start), endAt: new Date(end) } });
+    if (!r.count) throw new BookingError("not_found", "Запись не найдена");
+  }, TX_OPTIONS);
+}
+
+/**
  * Владелец возвращает отменённую запись в активные. Время могли уже занять, поэтому проверяем посты
  * под той же блокировкой, что и при записи, и без подтверждения (force) не возвращаем.
  */

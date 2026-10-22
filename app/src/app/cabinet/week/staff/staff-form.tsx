@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react";
-import { STAFF_COLORS, type StaffRow } from "@/lib/calendar";
+import { GOOGLE_COLORS, STAFF_COLORS, type StaffRow } from "@/lib/calendar";
 import { saveStaff, type ActionResult } from "../../actions";
 import { Result, SaveBar } from "../../site/result";
 import { btnSecondary, inputCls } from "../../ui";
@@ -20,13 +20,13 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
 
   const patch = (key: string, p: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...p } : r)));
   const move = (i: number, d: number) => setRows((rs) => { const a = [...rs]; [a[i], a[i + d]] = [a[i + d], a[i]]; return a; });
-  const add = (onStand = false) => setRows((rs) => [...rs, { key: `new-${++seq}`, name: "", color: onStand ? "#475569" : nextColor(rs), onStand }]);
+  const add = (onStand = false) => setRows((rs) => [...rs, { key: `new-${++seq}`, name: "", color: onStand ? "#616161" : nextColor(rs), onStand }]);
   // Для начала: по колонке на каждый пост и стенд, имена потом поменять на имена мастеров
   const byPosts = () =>
     setRows(() => {
       const out: Row[] = [];
       for (let i = 0; i < posts; i++) out.push({ key: `new-${++seq}`, name: `Пост ${i + 1}`, color: nextColor(out), onStand: false });
-      for (let i = 0; i < standPosts; i++) out.push({ key: `new-${++seq}`, name: standPosts > 1 ? `Стенд ${i + 1}` : "Стенд развала", color: "#475569", onStand: true });
+      for (let i = 0; i < standPosts; i++) out.push({ key: `new-${++seq}`, name: standPosts > 1 ? `Стенд ${i + 1}` : "Стенд развала", color: "#616161", onStand: true });
       return out;
     });
 
@@ -59,8 +59,8 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
           </div>
           {picking === r.key && (
             <div className="flex flex-wrap gap-2" role="group" aria-label="Цвет">
-              {STAFF_COLORS.map((c) => (
-                <button key={c} type="button" aria-pressed={r.color === c} aria-label={c} onClick={() => { patch(r.key, { color: c }); setPicking(null); }}
+              {GOOGLE_COLORS.map(({ hex: c, name }) => (
+                <button key={c} type="button" aria-pressed={r.color === c} aria-label={name} title={name} onClick={() => { patch(r.key, { color: c }); setPicking(null); }}
                   className={`size-9 rounded-full ${r.color === c ? "ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
               ))}
             </div>
