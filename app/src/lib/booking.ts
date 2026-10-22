@@ -345,6 +345,50 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
 }
 
 /**
+ * Владелец меняет запись: что делаем, день, время, длительность, пост. Проверка постов — как при записи,
+ * без самой этой записи; при перегрузке без подтверждения (force) не меняем.
+ */
+export async function updateOwnerBooking(input: OwnerBookingInput & { id: string }) {
+  return db.$transaction(async (tx) => {
+    await lockBusiness(tx, input.businessId);
+    const b = await tx.booking.findFirst({ where: { id: input.id, businessId: input.businessId } });
+    const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
+    if (!b || !biz) throw new BookingError("not_found", "Запись не найдена");
+    const found = input.serviceId ? await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId } }) : null;
+    // Услугу могли удалить из списка: запись с ней остаётся как была, меняется только время и пост
+    const kept = input.serviceId && !found && input.serviceId === b.serviceId
+      ? { id: b.serviceId, name: b.serviceName, priceFrom: b.priceFrom, durationMin: input.custom?.durationMin ?? (b.endAt.getTime() - b.startAt.getTime()) / 60000, onStand: b.onStand }
+      : null;
+    const service = input.custom && !input.serviceId
+      ? { id: null, name: input.custom.title, priceFrom: null, durationMin: input.custom.durationMin, onStand: !!input.custom.onStand }
+      : found ?? kept;
+    if (!service) throw new BookingError("not_found", "Услуга не найдена");
+    const start = localToUtc(input.date, input.startMin, biz.timezone);
+    const slot = { start, end: start + service.durationMin * 60000 };
+    const warning = b.status === "active" || b.status === "done" ? await checkCapacity(tx, biz, input.date, slot, service.onStand, b.id) : null;
+    if (warning && !input.force) return { booking: null, warning };
+    const booking = await tx.booking.update({
+      where: { id: b.id },
+      data: {
+        serviceId: service.id,
+        serviceName: service.name,
+        priceFrom: service.priceFrom,
+        onStand: service.onStand,
+        staffId: input.staffId ?? (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, b.id)),
+        startAt: new Date(slot.start),
+        endAt: new Date(slot.end),
+        clientName: input.clientName || null,
+        clientPhone: input.clientPhone || null,
+        // Запись одним полем: машина уже в тексте
+        car: input.custom && !input.serviceId ? null : input.car === undefined ? b.car : input.car || null,
+        comment: input.comment || null,
+      },
+    });
+    return { booking, warning: null };
+  }, TX_OPTIONS);
+}
+
+/**
  * Владелец возвращает отменённую запись в активные. Время могли уже занять, поэтому проверяем посты
  * под той же блокировкой, что и при записи, и без подтверждения (force) не возвращаем.
  */

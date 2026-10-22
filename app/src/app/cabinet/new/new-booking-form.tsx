@@ -4,12 +4,14 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, WarningCircle } from "@phosphor-icons/react";
 import { addDays, formatDayShort } from "@/lib/time";
-import { ownerCreateBooking, ownerDaySlots } from "../actions";
+import { ownerCreateBooking, ownerDaySlots, ownerUpdateBooking } from "../actions";
 import { DatePick, TimeSelect } from "../pickers";
 import { btnPrimary, Field, inputCls, Notice } from "../ui";
 
 type Svc = { id: string; name: string; durationMin: number; onStand?: boolean };
 type Master = { id: string; name: string; color: string; onStand: boolean };
+/** Изменение записи: что в ней сейчас. */
+export type EditBooking = { id: string; custom: boolean; title: string; length: number; serviceId: string; staffId: string; name: string; phone: string; comment: string };
 
 const dur = (m: number) => (m < 60 ? `${m} мин` : m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч`);
 /** Длительность своей записи: от получаса до рабочего дня */
@@ -28,29 +30,31 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-export function NewBookingForm({ services, staff = [], standPosts = 0, today, initialDate, initialTime = "", initialStaff = "", back }: {
-  services: Svc[]; staff?: Master[]; standPosts?: number; today: string; initialDate: string; initialTime?: string; initialStaff?: string; back?: string;
+export function NewBookingForm({ services, staff = [], standPosts = 0, today, initialDate, initialTime = "", initialStaff = "", back, edit }: {
+  services: Svc[]; staff?: Master[]; standPosts?: number; today: string; initialDate: string; initialTime?: string; initialStaff?: string; back?: string; edit?: EditBooking;
 }) {
   const router = useRouter();
   // Своя запись текстом, как событие в календаре (по умолчанию), или услуга из списка
-  const [custom, setCustomMode] = useState(true);
-  const [title, setTitle] = useState("");
-  const [length, setLength] = useState(60);
-  const [staffId, setStaffId] = useState(staff.some((m) => m.id === initialStaff) ? initialStaff : "");
-  const [onStand, setOnStand] = useState(staff.find((m) => m.id === initialStaff)?.onStand ?? false);
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const firstStaff = edit?.staffId ?? initialStaff;
+  const [custom, setCustomMode] = useState(edit?.custom ?? true);
+  const [title, setTitle] = useState(edit?.title ?? "");
+  const [length, setLength] = useState(edit?.length ?? 60);
+  const [staffId, setStaffId] = useState(staff.some((m) => m.id === firstStaff) ? firstStaff : "");
+  const [onStand, setOnStand] = useState(staff.find((m) => m.id === firstStaff)?.onStand ?? false);
+  const [serviceId, setServiceId] = useState(edit?.serviceId || services[0]?.id || "");
   const [date, setDate] = useState(initialDate);
   const [otherDay, setOtherDay] = useState(false);
   const [slots, setSlots] = useState<{ time: string; free: boolean }[] | null>(null);
   const [time, setTime] = useState(initialTime);
   const [otherTime, setOtherTime] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [comment, setComment] = useState("");
+  const [name, setName] = useState(edit?.name ?? "");
+  const [phone, setPhone] = useState(edit?.phone ?? "");
+  const [comment, setComment] = useState(edit?.comment ?? "");
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i));
+  const durations = DURATIONS.includes(length) ? DURATIONS : [...DURATIONS, length].sort((a, b) => a - b);
   const service = services.find((s) => s.id === serviceId);
   const f = formatDayShort(date);
 
@@ -78,16 +82,18 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
       // Сбой сети или сервера: введённое остаётся в форме, можно нажать ещё раз
       const what = custom ? { title, durationMin: length, onStand } : { serviceId };
       const who = staffId ? { staffId } : {};
-      const r = await ownerCreateBooking({ ...what, ...who, date, time, name, phone, comment, force }).catch(() => ({ error: "Не получилось сохранить. Проверьте интернет и нажмите ещё раз", warning: undefined, id: undefined }));
+      // Запись одним полем: телефон сервер найдёт в тексте
+      const data = { ...what, ...who, date, time, force, ...(custom ? {} : { name, phone, comment }) };
+      const r = await (edit ? ownerUpdateBooking(edit.id, data) : ownerCreateBooking(data)).catch(() => ({ error: "Не получилось сохранить. Проверьте интернет и нажмите ещё раз", warning: undefined, id: undefined }));
       if (r.error) setError(r.error);
       else if (r.warning) setWarning(r.warning);
-      else router.push(back ? `${back}${back.includes("?") ? "&" : "?"}date=${date}` : `/cabinet?date=${date}`);
+      else router.push(edit ? `/cabinet/b/${edit.id}` : back ? `${back}${back.includes("?") ? "&" : "?"}date=${date}` : `/cabinet?date=${date}`);
     });
   }
 
   return (
     <form className="grid gap-8 px-[18px] lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:px-0" onSubmit={(e) => { e.preventDefault(); submit(false); }}>
-      <Step n={1} title="Что делаем">
+      <Step n={1} title={custom ? "Кого записываем" : "Что делаем"}>
         {services.length > 0 && (
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-200/70 p-1" role="group" aria-label="Как записать">
             {[{ v: true, l: "Написать текстом" }, { v: false, l: "Из списка услуг" }].map((o) => (
@@ -100,13 +106,14 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
         )}
         {custom || !services.length ? (
           <div className="grid gap-4">
-            <Field label="Что делаем" htmlFor="nb-title">
-              <input id="nb-title" className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder="Например, замена колодок и диагностика ходовой" />
+            <Field label="Запись" htmlFor="nb-title" hint="Всё в одном поле: что делаем, клиент, машина. Если есть телефон, в записи будет кнопка «Позвонить».">
+              <textarea id="nb-title" rows={3} className={`${inputCls} h-auto py-3 leading-snug`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={400}
+                placeholder="Например, колодки и ходовая, Андрей, Камри, 8 910 123-45-67" />
             </Field>
             <div className="grid gap-2">
               <span className="text-[14.5px] font-semibold">Сколько займёт</span>
               <div className="flex flex-wrap gap-1.5">
-                {DURATIONS.map((m) => (
+                {durations.map((m) => (
                   <button key={m} type="button" aria-pressed={length === m} onClick={() => setLength(m)}
                     className={`h-10 rounded-xl px-3.5 text-[14.5px] font-semibold ${length === m ? "bg-ink text-white" : "bg-white ring-1 ring-zinc-200"}`}>
                     {dur(m)}
@@ -114,7 +121,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
                 ))}
               </div>
             </div>
-            {standPosts > 0 && (
+            {standPosts > 0 && !staff.length && (
               <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl bg-white px-3 ring-1 ring-zinc-200">
                 <input type="checkbox" checked={onStand} onChange={(e) => setOnStand(e.target.checked)} className="size-5 accent-accent" />
                 <span className="text-[15px]">На стенде развала</span>
@@ -140,8 +147,8 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
         )}
         {staff.length > 0 && (
           <div className="grid gap-2">
-            <span className="text-[14.5px] font-semibold">Кто делает</span>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Кто делает">
+            <span className="text-[14.5px] font-semibold">Пост</span>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Пост">
               {[{ id: "", name: "Любой свободный", color: "" }, ...staff].map((m) => (
                 <button key={m.id || "any"} type="button" aria-pressed={staffId === m.id}
                   onClick={() => { setStaffId(m.id); const st = staff.find((x) => x.id === m.id); if (st && custom) setOnStand(st.onStand); }}
@@ -204,7 +211,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
           </div>
         </Step>
 
-        <Step n={4} title="Клиент">
+        {!custom && <Step n={4} title="Клиент">
           <Field label="Имя и машина, если клиент назвал" htmlFor="nb-name">
             <input id="nb-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, Иван, Камри" maxLength={60} />
           </Field>
@@ -214,7 +221,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
           <Field label="Комментарий" htmlFor="nb-comment">
             <input id="nb-comment" className={inputCls} value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} />
           </Field>
-        </Step>
+        </Step>}
       </div>
 
       <div className="sticky bottom-[calc(84px+env(safe-area-inset-bottom,0px))] z-10 -mx-[18px] grid gap-2 bg-gradient-to-t from-paper from-75% to-transparent px-[18px] pb-2 pt-5 lg:bottom-0 lg:col-span-2 lg:mx-0 lg:px-0 lg:pb-6">
@@ -224,14 +231,14 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
             <span className="flex gap-2"><WarningCircle size={20} className="shrink-0" />{warning}</span>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" className="rounded-xl bg-white py-3 font-semibold" onClick={() => setWarning(null)}>Другое время</button>
-              <button type="button" disabled={pending} className="rounded-xl bg-orange-700 py-3 font-semibold text-white" onClick={() => submit(true)}>Записать</button>
+              <button type="button" disabled={pending} className="rounded-xl bg-orange-700 py-3 font-semibold text-white" onClick={() => submit(true)}>{edit ? "Сохранить" : "Записать"}</button>
             </div>
           </div>
         ) : (
           <button type="submit" disabled={pending || !ready} className={`${btnPrimary} w-full flex-col gap-0 leading-tight`}>
-            <span>{pending ? "Записываем…" : !time ? "Выберите время" : custom && title.trim().length < 2 ? "Напишите, что делаем" : `Записать на ${f.weekday}, ${f.day} ${f.month}, ${time}`}</span>
+            <span>{pending ? (edit ? "Сохраняем…" : "Записываем…") : !time ? "Выберите время" : custom && title.trim().length < 2 ? "Напишите, кого записываем" : `${edit ? "Сохранить" : "Записать"}: ${f.weekday}, ${f.day} ${f.month}, ${time}`}</span>
             {time && !pending && (custom ? title.trim() : service?.name) && (
-              <span className="text-[13px] font-medium opacity-80">{custom ? `${title.trim()}, ${dur(length)}` : service!.name}</span>
+              <span className="line-clamp-1 text-[13px] font-medium opacity-80">{custom ? `${title.trim()}, ${dur(length)}` : service!.name}</span>
             )}
           </button>
         )}

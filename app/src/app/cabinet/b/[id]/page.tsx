@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CaretLeft, Phone } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeft, PencilSimple, Phone } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { NO_SHOW_LIMIT, noShowCount } from "@/lib/booking";
 import { db } from "@/lib/db";
@@ -27,8 +27,10 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
   ]);
   // Кто внёс запись: клиент сам через сайт или кто-то из кабинета (у старых записей автора нет)
   const author = b.source === "site" ? "Клиент сам, через сайт" : b.createdBy ? b.createdBy.name || formatPhone(b.createdBy.phone) : "Из кабинета";
+  // Запись одним полем (без услуги): весь текст — заголовок карточки
+  const free = !b.serviceId && b.source === "owner" && !b.clientName;
   const rows: [string, string | null][] = [
-    ["Услуга", b.serviceName],
+    ["Услуга", free ? null : b.serviceName],
     ["Машина", b.car],
     ["Комментарий", b.comment],
     ["Стоимость", b.priceFrom ? `от ${b.priceFrom.toLocaleString("ru-RU")} ₽` : null],
@@ -44,7 +46,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
       <div>
         <div className="text-[13.5px] text-zinc-500">{formatDateTime(b.startAt.getTime(), tz)}</div>
         <h1 className="mt-1 flex flex-wrap items-center gap-2 text-[28px] font-bold leading-tight tracking-tight">
-          {b.clientName || "Без имени"} <Tag source={b.source} />
+          <span className={free ? "text-[22px] leading-snug" : ""}>{free ? b.serviceName : b.clientName || "Без имени"}</span> <Tag source={b.source} />
         </h1>
       </div>
       {b.clientPhone && (
@@ -55,7 +57,7 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
       <Card className="divide-y divide-zinc-100 px-4">
         {staff.length > 0 && (
           <div className="grid grid-cols-[104px_1fr] items-center gap-3 py-3 text-[14px]">
-            <span className="text-zinc-500">Кто делает</span>
+            <span className="text-zinc-500">Пост</span>
             <StaffSelect id={b.id} value={b.staffId && staff.some((s) => s.id === b.staffId) ? b.staffId : ""} staff={staff} />
           </div>
         )}
@@ -73,6 +75,9 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
             : "С этого номера уже была неявка за последний год. После второй неявки онлайн-запись с этого номера закроется."}
         </Notice>
       )}
+      <Link href={`/cabinet/b/${b.id}/edit`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-[15px] font-semibold ring-1 ring-zinc-200">
+        <PencilSimple size={18} /> Изменить
+      </Link>
       <BookingActions id={b.id} status={b.status} hasPd={!!(b.clientName || b.clientPhone || b.car || b.comment)} started={b.startAt.getTime() <= Date.now()} />
     </div>
   );

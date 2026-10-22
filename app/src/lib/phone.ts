@@ -21,3 +21,12 @@ export function phoneQuery(q: string): string {
   // Начали с 8 или 7 (код страны): без неё часть номера тоже находится в +7…
   return d.length >= 4 && (d[0] === "8" || d[0] === "7") ? d.slice(1) : d;
 }
+
+/**
+ * Телефон из свободного текста записи («Колодки, Андрей, 8 910 123-45-67»): +7XXXXXXXXXX или null.
+ * Ищет номер с +7 или 8 впереди и мобильный из 10 цифр, начинающийся с 9.
+ */
+export function findPhone(text: string): string | null {
+  const m = text.match(/(?:\+7|(?<![\d+])[78])[\s\-–()]*\d{3}[\s\-–()]*\d{3}[\s\-–]*\d{2}[\s\-–]*\d{2}(?!\d)|(?<![\d+])9\d{2}[\s\-–]*\d{3}[\s\-–]*\d{2}[\s\-–]*\d{2}(?!\d)/);
+  return m ? normalizePhone(m[0]) : null;
+}

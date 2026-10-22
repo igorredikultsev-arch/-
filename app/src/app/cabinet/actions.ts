@@ -7,14 +7,14 @@ import { firstIssue } from "@/lib/zod-ru";
 import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
 import { hit } from "@/lib/ratelimit";
 import { Prisma } from "@prisma/client";
-import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, type OwnerWarning } from "@/lib/booking";
+import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, updateOwnerBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { OFFER_VERSION } from "@/lib/legal";
 import { imageMime, LOGO_MAX_BYTES } from "@/lib/logo";
 import { notifyBusiness, pushHostOk } from "@/lib/push";
-import { normalizePhone } from "@/lib/phone";
+import { findPhone, normalizePhone } from "@/lib/phone";
 import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
 export type ActionResult = { ok?: boolean; error?: string; message?: string } | null;
@@ -111,8 +111,8 @@ export async function ownerDaySlots(date: string, serviceId: string | null, cust
 
 const NewBooking = z.object({
   serviceId: z.string().optional(),
-  // Своя запись без услуги: что делаем, сколько длится, на стенде ли
-  title: z.string().trim().max(80).optional(),
+  // Своя запись без услуги одним полем, как в календаре: что делаем, клиент, машина, телефон; сколько длится, на стенде ли
+  title: z.string().trim().max(400, "Запись не длиннее 400 знаков").optional(),
   durationMin: z.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов").optional(),
   onStand: z.boolean().optional(),
   staffId: z.string().optional(),
@@ -124,46 +124,79 @@ const NewBooking = z.object({
   force: z.boolean().optional(),
 });
 
-export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Promise<{ error?: string; warning?: string; id?: string }> {
-  const { user, business } = await requireOwner();
+/** Разбор формы записи: общий для новой записи и изменения. */
+async function parseBooking(input: z.input<typeof NewBooking>, businessId: string) {
   const p = NewBooking.safeParse(input);
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
   const custom = p.data.serviceId ? undefined : { title: p.data.title ?? "", durationMin: p.data.durationMin ?? 0, onStand: p.data.onStand };
-  if (custom && custom.title.length < 2) return { error: "Напишите, что делаем" };
+  if (custom && custom.title.length < 2) return { error: "Напишите, кого и на что записываем" };
   if (custom && !custom.durationMin) return { error: "Выберите, сколько займёт" };
-  const staffId = p.data.staffId ? (await db.staff.findFirst({ where: { id: p.data.staffId, businessId: business.id }, select: { id: true } }))?.id : undefined;
+  const staff = p.data.staffId ? await db.staff.findFirst({ where: { id: p.data.staffId, businessId }, select: { id: true, onStand: true } }) : null;
+  // Пост стенда развала — запись на стенде
+  if (custom && staff) custom.onStand = staff.onStand;
   let phone: string | null = null;
   if (p.data.phone && p.data.phone.replace(/\D/g, "").length > 1) {
     phone = normalizePhone(p.data.phone);
     if (!phone) return { error: "Телефон должен быть из 10 цифр после +7 или пустым" };
   }
-  let res: Awaited<ReturnType<typeof createOwnerBooking>>;
-  try {
-    res = await createOwnerBooking({
-      businessId: business.id,
+  // В записи одним полем телефон ищется в тексте: в карточке будет кнопка «Позвонить»
+  if (custom && !phone) phone = findPhone(custom.title);
+  return {
+    data: {
+      businessId,
       serviceId: p.data.serviceId,
       custom,
-      staffId,
-      createdById: user.id,
+      staffId: staff?.id,
       date: p.data.date,
       startMin: parseHhmm(p.data.time)!,
-      clientName: p.data.name?.trim(),
+      clientName: custom ? undefined : p.data.name?.trim(),
       clientPhone: phone ?? undefined,
-      comment: p.data.comment?.trim(),
+      comment: custom ? undefined : p.data.comment?.trim(),
       force: p.data.force,
-    });
+    },
+  };
+}
+
+function bookingError(e: unknown) {
+  // Понятное сообщение вместо страницы ошибки: введённое остаётся в форме
+  if (e instanceof BookingError) return { error: e.message };
+  if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2028" || e.code === "P2034")) {
+    return { error: "Сейчас много записей одновременно. Нажмите ещё раз" };
+  }
+  throw e;
+}
+
+export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Promise<{ error?: string; warning?: string; id?: string }> {
+  const { user, business } = await requireOwner();
+  const parsed = await parseBooking(input, business.id);
+  if (!parsed.data) return { error: parsed.error };
+  let res: Awaited<ReturnType<typeof createOwnerBooking>>;
+  try {
+    res = await createOwnerBooking({ ...parsed.data, createdById: user.id });
   } catch (e) {
-    // Понятное сообщение вместо страницы ошибки: имя и телефон клиента остаются в форме
-    if (e instanceof BookingError) return { error: e.message };
-    if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2028" || e.code === "P2034")) {
-      return { error: "Сейчас много записей одновременно. Нажмите «Записать» ещё раз" };
-    }
-    throw e;
+    return bookingError(e);
   }
   if (!res.booking) return { warning: warningText(res.warning!) };
   await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: res.booking.id } });
   revalidatePath("/cabinet", "layout");
   return { id: res.booking.id };
+}
+
+/** Изменить запись: текст или услугу, день, время, длительность, пост. */
+export async function ownerUpdateBooking(id: string, input: z.input<typeof NewBooking>): Promise<{ error?: string; warning?: string; id?: string }> {
+  const { user, business } = await requireOwner();
+  const parsed = await parseBooking(input, business.id);
+  if (!parsed.data) return { error: parsed.error };
+  let res: Awaited<ReturnType<typeof updateOwnerBooking>>;
+  try {
+    res = await updateOwnerBooking({ ...parsed.data, id });
+  } catch (e) {
+    return bookingError(e);
+  }
+  if (!res.booking) return { warning: warningText(res.warning!).replace("Всё равно записать?", "Всё равно сохранить?") };
+  await audit("booking.update_owner", { userId: user.id, businessId: business.id, details: { id } });
+  revalidatePath("/cabinet", "layout");
+  return { id };
 }
 
 /** Переставить запись к другому сотруднику (колонке календаря). */
@@ -182,7 +215,7 @@ export async function setBookingStaff(id: string, staffId: string | null) {
 const StaffRows = z
   .array(z.object({
     id: z.string().max(40).optional(),
-    name: z.string().trim().min(1, "Напишите имя сотрудника").max(30, "Имя не длиннее 30 знаков"),
+    name: z.string().trim().min(1, "Напишите название поста").max(30, "Название не длиннее 30 знаков"),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
     onStand: z.boolean(),
   }))

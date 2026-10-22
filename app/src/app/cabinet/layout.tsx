@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/time";
 import { OfferGate } from "./offer-gate";
 import { publicSiteUrl } from "@/lib/site-url";
 import { SupportLink } from "./support";
-import { Sidebar, Tabbar } from "./tabbar";
+import { Main, Sidebar, Tabbar } from "./tabbar";
 
 const DAY = 86400000;
 
@@ -69,7 +69,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
         </main>
       ) : (
         <>
-          <main className="mx-auto max-w-md pb-32 lg:max-w-4xl lg:px-10 lg:pb-16">{children}</main>
+          <Main>{children}</Main>
           <Tabbar />
         </>
       )}

@@ -84,3 +84,9 @@ export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
     </aside>
   );
 }
+
+/** Основная колонка кабинета. Календарь на компьютере — на всю ширину экрана, остальные экраны — узкой колонкой. */
+export function Main({ children }: { children: React.ReactNode }) {
+  const wide = usePathname() === "/cabinet/week";
+  return <main className={`mx-auto pb-32 lg:px-10 lg:pb-16 ${wide ? "max-w-none" : "max-w-md lg:max-w-4xl"}`}>{children}</main>;
+}

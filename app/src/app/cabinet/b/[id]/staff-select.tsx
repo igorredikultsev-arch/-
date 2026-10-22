@@ -11,7 +11,7 @@ export function StaffSelect({ id, value, staff }: { id: string; value: string; s
     <select
       value={v}
       disabled={pending}
-      aria-label="Кто делает"
+      aria-label="Пост"
       onChange={(e) => {
         const next = e.target.value;
         setV(next);
@@ -19,7 +19,7 @@ export function StaffSelect({ id, value, staff }: { id: string; value: string; s
       }}
       className="-my-1 h-10 w-full min-w-0 rounded-lg border border-zinc-300 bg-white px-2 text-[14px] font-medium disabled:opacity-60"
     >
-      <option value="">Не выбран</option>
+      <option value="">Любой свободный</option>
       {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
     </select>
   );

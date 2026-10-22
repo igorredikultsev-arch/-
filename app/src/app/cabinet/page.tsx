@@ -185,11 +185,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                 </Link>
                 <Link href={`/cabinet/b/${b.id}`} className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 text-[15px] font-semibold">
-                    {b.clientName || "Без имени"} <Tag source={b.source} />
+                    {/* Запись одним полем: текст вместо имени */}
+                    {b.clientName || (!b.serviceId && b.source === "owner" ? <span className="line-clamp-2">{b.serviceName}</span> : "Без имени")} <Tag source={b.source} />
                     {b.status !== "active" && <span className="text-[11px] font-semibold text-red-700">{STATUS_LABEL[b.status]}</span>}
                   </div>
                   <div className="mt-0.5 text-[13px] leading-snug text-zinc-500">
-                    {[b.car, b.serviceName].filter(Boolean).join(", ")}
+                    {[b.car, b.clientName || b.serviceId || b.source === "site" ? b.serviceName : null].filter(Boolean).join(", ")}
                     {b.comment ? `. «${b.comment}»` : ""}
                   </div>
                 </Link>

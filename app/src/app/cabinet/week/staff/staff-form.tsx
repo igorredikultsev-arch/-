@@ -40,7 +40,7 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
     >
       {!rows.length && (
         <div className="grid gap-3 rounded-2xl border border-dashed border-zinc-300 bg-white p-4 text-[14px] leading-snug text-zinc-600">
-          Пока календарь показывает колонки «Пост 1…{posts}»{standPosts ? " и стенд" : ""}. Добавьте мастеров, чтобы видеть, кто чем занят.
+          Пока календарь показывает колонки «Пост 1…{posts}»{standPosts ? " и стенд" : ""}. Добавьте посты, чтобы выбирать их в записи.
           <button type="button" onClick={byPosts} className={btnSecondary}>Сделать колонку на каждый пост</button>
         </div>
       )}
@@ -51,8 +51,8 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
               className="grid size-12 shrink-0 place-items-center rounded-xl ring-1 ring-zinc-200">
               <i className="size-7 rounded-full" style={{ background: r.color }} />
             </button>
-            <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} maxLength={30} placeholder="Имя мастера или пост"
-              aria-label={`Сотрудник ${i + 1}`} className={inputCls} />
+            <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} maxLength={30} placeholder="Например, Пост 1, Андрей"
+              aria-label={`Пост ${i + 1}`} className={inputCls} />
             <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Выше" className="grid size-10 shrink-0 place-items-center rounded-lg text-zinc-500 disabled:opacity-25"><ArrowUp size={18} /></button>
             <button type="button" disabled={i === rows.length - 1} onClick={() => move(i, 1)} aria-label="Ниже" className="grid size-10 shrink-0 place-items-center rounded-lg text-zinc-500 disabled:opacity-25"><ArrowDown size={18} /></button>
             <button type="button" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label="Удалить" className="grid size-10 shrink-0 place-items-center rounded-lg text-red-600"><Trash size={18} /></button>
@@ -68,14 +68,14 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
           {standPosts > 0 && (
             <label className="flex items-center gap-2.5 text-[14px] text-zinc-700">
               <input type="checkbox" checked={r.onStand} onChange={(e) => patch(r.key, { onStand: e.target.checked })} className="size-5 accent-accent" />
-              Работает на стенде развала
+              Стенд развала
             </label>
           )}
         </div>
       ))}
-      <button type="button" onClick={() => add()} className={btnSecondary}><Plus size={18} weight="bold" /> Добавить сотрудника</button>
+      <button type="button" onClick={() => add()} className={btnSecondary}><Plus size={18} weight="bold" /> Добавить пост</button>
       <p className="text-[12.5px] leading-snug text-zinc-500">
-        Удалённый сотрудник пропадёт из календаря, его записи останутся и встанут в свободную колонку.
+        Если удалить пост, его записи останутся и встанут на свободный пост.
       </p>
       <Result state={state} />
       <SaveBar pending={pending} label="Сохранить" />

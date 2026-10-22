@@ -1,11 +1,13 @@
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ensureStaff } from "@/lib/staff";
 import { isDateString, parseHhmm, toLocal } from "@/lib/time";
 import { PageHead } from "../ui";
 import { NewBookingForm } from "./new-booking-form";
 
 export default async function NewBookingPage({ searchParams }: { searchParams: Promise<{ date?: string; time?: string; staff?: string; back?: string }> }) {
   const { business } = await requireOwner();
+  await ensureStaff(business);
   const [services, staff] = await Promise.all([
     db.service.findMany({
       where: { businessId: business.id, active: true },

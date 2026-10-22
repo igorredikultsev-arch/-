@@ -1,8 +1,10 @@
 // Календарь кабинета (22 октября): колонки сотрудников, раскладка записей, автоназначение мастера.
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { createOwnerBooking, createSiteBooking } from "@/lib/booking";
+import { createOwnerBooking, createSiteBooking, updateOwnerBooking } from "@/lib/booking";
 import { assignLanes, calendarLanes, sideBySide } from "@/lib/calendar";
 import { db } from "@/lib/db";
+import { findPhone } from "@/lib/phone";
+import { ensureStaff } from "@/lib/staff";
 import { localToUtc } from "@/lib/time";
 import { makeBusiness, resetDb } from "./helpers";
 
@@ -71,5 +73,41 @@ describe("к какому сотруднику встаёт запись", () =>
     await createOwnerBooking({ businessId: biz.id, custom: { title: "Колодки", durationMin: 60 }, date: DATE, startMin: 600, staffId: a.id, createdById: owner.id });
     const r = await createOwnerBooking({ businessId: biz.id, custom: { title: "Масло", durationMin: 60 }, date: DATE, startMin: 600, staffId: a.id, createdById: owner.id });
     expect(r.booking).toMatchObject({ staffId: a.id, createdById: owner.id });
+  });
+});
+
+describe("запись одним полем", () => {
+  it("находит телефон в тексте", () => {
+    expect(findPhone("Колодки, Андрей, Камри, 8 910 123-45-67")).toBe("+79101234567");
+    expect(findPhone("ТО +7(910)1234567 вечером")).toBe("+79101234567");
+    expect(findPhone("Иван 9101234567")).toBe("+79101234567");
+    expect(findPhone("Шиномонтаж R16, 4 колеса, 2500 ₽")).toBeNull();
+    expect(findPhone("заказ 123456789012")).toBeNull();
+  });
+});
+
+describe("посты как колонки календаря", () => {
+  it("без постов создаются «Пост 1…N» и «Стенд развала», второй раз — не дублируются", async () => {
+    const biz = await makeBusiness({ posts: 3, onlinePosts: 3 });
+    await Promise.all([ensureStaff({ ...biz, standPosts: 1 }), ensureStaff({ ...biz, standPosts: 1 })]);
+    const staff = await db.staff.findMany({ where: { businessId: biz.id }, orderBy: { sortOrder: "asc" } });
+    expect(staff.map((s) => [s.name, s.onStand])).toEqual([["Пост 1", false], ["Пост 2", false], ["Пост 3", false], ["Стенд развала", true]]);
+  });
+
+  it("запись меняется: текст, время, длительность, пост; занятость считается без неё самой", async () => {
+    const biz = await makeBusiness({ posts: 1, onlinePosts: 1 });
+    const [p1, p2] = await Promise.all(["Пост 1", "Пост 2"].map((name) => db.staff.create({ data: { businessId: biz.id, name, color: "#2563eb" } })));
+    const made = await createOwnerBooking({ businessId: biz.id, custom: { title: "Колодки", durationMin: 60 }, date: DATE, startMin: 600, staffId: p1.id });
+    const id = made.booking!.id;
+    // Сдвиг на полчаса пересекается только с самой собой: без предупреждения
+    const moved = await updateOwnerBooking({ id, businessId: biz.id, custom: { title: "Колодки и ходовая, Андрей", durationMin: 120 }, date: DATE, startMin: 630, staffId: p2.id, clientPhone: "+79101234567" });
+    expect(moved.warning).toBeNull();
+    expect(moved.booking).toMatchObject({ serviceName: "Колодки и ходовая, Андрей", staffId: p2.id, clientPhone: "+79101234567" });
+    expect(moved.booking!.endAt.getTime() - moved.booking!.startAt.getTime()).toBe(120 * 60000);
+    // Второй записи на единственный пост — предупреждение, пока не подтвердят
+    const other = await createOwnerBooking({ businessId: biz.id, custom: { title: "Масло", durationMin: 60 }, date: DATE, startMin: 900, force: true });
+    const clash = await updateOwnerBooking({ id: other.booking!.id, businessId: biz.id, custom: { title: "Масло", durationMin: 60 }, date: DATE, startMin: 660 });
+    expect(clash.booking).toBeNull();
+    expect(clash.warning).toMatchObject({ load: 1, posts: 1 });
   });
 });
