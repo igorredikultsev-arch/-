@@ -2,6 +2,17 @@
 import { addDays, hhmm, localToUtc, toLocal, weekdayOf } from "./time";
 
 export type Interval = { start: number; end: number }; // мс UTC, [start, end)
+/** Запись: stand — занимает стенд развал-схождения, а не пост. */
+export type Busy = Interval & { stand?: boolean };
+
+/**
+ * Делит записи на занимающие посты и стенды. Без стендов (standPosts 0) все записи на постах,
+ * даже отмеченные как «на стенде»: так было до появления стендов, и так сервис без стенда и работает.
+ */
+export function splitStand<T extends Busy>(bookings: T[], standPosts: number | undefined): { posts: T[]; stand: T[] } {
+  if (!standPosts) return { posts: bookings, stand: [] };
+  return { posts: bookings.filter((b) => !b.stand), stand: bookings.filter((b) => b.stand) };
+}
 
 export type HoursRow = { weekday: number; closed: boolean; openMin: number; closeMin: number; breakFromMin?: number | null; breakToMin?: number | null };
 export type ExceptionRow = { date: string; closed: boolean; openMin: number | null; closeMin: number | null };
@@ -66,13 +77,17 @@ export type SlotInput = {
   durationMin: number;
   stepMin: number;
   posts: number;
-  bookings: Interval[]; // активные записи (каждая занимает один пост)
+  bookings: Busy[]; // активные записи (каждая занимает один пост или стенд)
   blocksAll: Interval[]; // закрыт весь сервис
   blocksOnePost: Interval[]; // закрыт один пост
   /** Постов под запись с сайта; не задано или не меньше posts — под запись все посты. */
   onlinePosts?: number;
   /** Записи с сайта: только они занимают посты под онлайн-запись (звонки и живая очередь идут на остальные). */
-  siteBookings?: Interval[];
+  siteBookings?: Busy[];
+  /** Стенды развал-схождения, отдельно от постов. Под запись с сайта — все стенды. */
+  standPosts?: number;
+  /** Услуга делается на стенде: окно свободно, если свободен стенд, посты не важны. */
+  onStand?: boolean;
   nowMs: number;
   minLeadMin: number;
 };
@@ -81,14 +96,19 @@ export type Slot = { time: string; start: number; end: number; free: boolean };
 
 /** Все окна дня по сетке с признаком «свободно». Время раньше «сейчас + запас» не показывается. */
 export function daySlots(input: SlotInput): Slot[] {
-  const { date, tz, window, durationMin, stepMin, posts } = input;
+  const { date, tz, window, durationMin, stepMin } = input;
+  const stands = input.standPosts ?? 0;
+  // На стенде: занятость считается только по записям на стенде, «закрыт один пост» стенд не закрывает
+  const onStand = !!input.onStand && stands > 0;
+  const posts = onStand ? stands : input.posts;
   if (!window || durationMin <= 0 || stepMin <= 0 || posts <= 0) return [];
   const earliest = input.nowMs + input.minLeadMin * 60000;
-  const occupied = [...input.bookings, ...input.blocksOnePost];
+  const split = splitStand(input.bookings, stands);
+  const occupied = onStand ? split.stand : [...split.posts, ...input.blocksOnePost];
   // Посты под онлайн-запись: их занимают записи с сайта и «закрыт один пост» (владелец мог закрыть именно его).
   // Общее число постов проверяется тоже: если владелец всё же внёс звонки, перебора не будет
-  const online = Math.min(input.onlinePosts ?? posts, posts);
-  const onlineLane = online < posts ? [...(input.siteBookings ?? []), ...input.blocksOnePost] : null;
+  const online = onStand ? posts : Math.min(input.onlinePosts ?? posts, posts);
+  const onlineLane = online < posts ? [...splitStand(input.siteBookings ?? [], stands).posts, ...input.blocksOnePost] : null;
   const lunch = breakIntervals(date, tz, window);
   const slots: Slot[] = [];
   for (let m = window.openMin; m + durationMin <= window.closeMin; m += stepMin) {

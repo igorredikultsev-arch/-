@@ -38,11 +38,11 @@ export function ExceptionForm({ today }: { today: string }) {
   );
 }
 
-type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; durationMin: number; isDiagnostic: boolean; active: boolean };
+type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; durationMin: number; isDiagnostic: boolean; onStand: boolean; active: boolean };
 
 const DURATIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 
-export function ServiceForm({ service, categories }: { service: Svc | null; categories: string[] }) {
+export function ServiceForm({ service, categories, standPosts = 0 }: { service: Svc | null; categories: string[]; standPosts?: number }) {
   const [state, action, pending] = useActionState(saveService.bind(null, service?.id ?? null), null);
   const dur = service?.durationMin ?? 60;
   return (
@@ -74,6 +74,15 @@ export function ServiceForm({ service, categories }: { service: Svc | null; cate
           <input type="checkbox" name="isDiagnostic" defaultChecked={service?.isDiagnostic} className="mt-0.5 size-5 accent-accent" />
           <span className="text-[15px] leading-snug">Диагностика: клиент обязательно описывает, что случилось</span>
         </label>
+        {(standPosts > 0 || service?.onStand) && (
+          <label className="flex min-h-13 cursor-pointer items-start gap-3 rounded-xl px-3 py-3 hover:bg-zinc-50">
+            <input type="checkbox" name="onStand" defaultChecked={service?.onStand} className="mt-0.5 size-5 accent-accent" />
+            <span className="text-[15px] leading-snug">
+              Делается на стенде развала
+              <span className="block text-[13px] text-zinc-500">Записывается только на стенд, не занимает обычные посты</span>
+            </span>
+          </label>
+        )}
       </div>
       <Result state={state} />
       <SaveBar pending={pending} label={service ? "Сохранить услугу" : "Добавить услугу"} />
@@ -133,13 +142,14 @@ const withValue = (opts: { value: number; label: string }[], v: number, label: (
   opts.some((o) => o.value === v) ? opts : [...opts, { value: v, label: label(v) }].sort((a, b) => a.value - b.value);
 const hours = (m: number) => (m % 60 ? `${m} мин` : `${m / 60} ч`);
 
-type Rules = { posts: number; onlinePosts: number; cancelHours: number; horizonDays: number; minLeadMin: number; slotStepMin: number };
+type Rules = { posts: number; onlinePosts: number; standPosts: number; cancelHours: number; horizonDays: number; minLeadMin: number; slotStepMin: number };
 
 /** Правила записи кнопками вместо чисел. Необычные значения, выставленные раньше, остаются в списке. */
 export function RulesForm({ r }: { r: Rules }) {
   const [state, action, pending] = useActionState(saveRules, null);
   const [posts, setPosts] = useState(r.posts);
   const [online, setOnline] = useState(Math.min(r.onlinePosts, r.posts));
+  const [stands, setStands] = useState(r.standPosts);
   const shown = Math.min(online, posts);
   return (
     <form onSubmit={keepValues(action)} className="grid gap-7">
@@ -169,6 +179,20 @@ export function RulesForm({ r }: { r: Rules }) {
         </fieldset>
       )}
       <input type="hidden" name="onlinePosts" value={shown} />
+      <fieldset className="grid gap-2">
+        <legend className="mb-2 text-[15px] font-semibold">Стенды развал-схождения</legend>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setStands((v) => Math.max(0, v - 1))} aria-label="Меньше стендов" className="grid size-12 place-items-center rounded-xl border border-zinc-300 bg-white"><Minus size={20} /></button>
+          <output className="min-w-12 text-center text-[28px] font-bold tabular-nums" aria-live="polite">{stands}</output>
+          <button type="button" onClick={() => setStands((v) => Math.min(10, v + 1))} aria-label="Больше стендов" className="grid size-12 place-items-center rounded-xl border border-zinc-300 bg-white"><Plus size={20} /></button>
+          <input type="hidden" name="standPosts" value={stands} />
+        </div>
+        <p className="text-[13px] leading-snug text-zinc-500">
+          {stands > 0
+            ? `Отдельно от постов. Услуги с отметкой «Делается на стенде развала» записываются только на ${stands === 1 ? "стенд" : "стенды"}, ${stands === 1 ? "по одной машине" : `не больше ${stands} машин`} за раз, и не занимают посты. Отметку ставьте в настройках услуги.`
+            : "Если развал-схождение делается на отдельном стенде, укажите, сколько их. Иначе сайт может записать на развал несколько машин в одно время."}
+        </p>
+      </fieldset>
       <Choice
         name="slotStepMin"
         legend="Через сколько начинаются записи"

@@ -1,7 +1,7 @@
 // Запись: расчёт окон по данным из базы и создание записи без двойного бронирования (раздел 4.3).
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "./db";
-import { breakIntervals, dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, unionSpans, type Interval, type LaneSpan, type Slot } from "./slots";
+import { breakIntervals, dayBounds, dayLanes, daySlots, fullBusy, horizonDates, inHorizon, peakLoad, resolveDayWindow, splitStand, unionSpans, type Busy, type Interval, type LaneSpan, type Slot } from "./slots";
 import { newToken } from "./tokens";
 import { localToUtc, toLocal } from "./time";
 
@@ -42,7 +42,7 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
       // Нижняя граница по началу: без неё запрос перебирал бы всю историю записей сервиса. Запись не длиннее 10 часов,
       // закрытие — не длиннее суток, а from уже взят с запасом в сутки, поэтому ничего пересекающееся не теряется
       where: { businessId, status: { in: [...OCCUPYING] }, startAt: { gte: from, lt: to }, endAt: { gt: from } },
-      select: { startAt: true, endAt: true, source: true },
+      select: { startAt: true, endAt: true, source: true, onStand: true },
     }),
     tx.block.findMany({
       where: { businessId, startAt: { gte: from, lt: to }, endAt: { gt: from } },
@@ -50,9 +50,10 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
     }),
   ]);
   const iv = (r: { startAt: Date; endAt: Date }): Interval => ({ start: r.startAt.getTime(), end: r.endAt.getTime() });
+  const busy = (r: { startAt: Date; endAt: Date; onStand: boolean }): Busy => ({ ...iv(r), stand: r.onStand });
   return {
-    bookings: bookings.map(iv),
-    siteBookings: bookings.filter((b) => b.source === "site").map(iv),
+    bookings: bookings.map(busy),
+    siteBookings: bookings.filter((b) => b.source === "site").map(busy),
     blocksAll: blocks.filter((b) => b.scope === "all").map(iv),
     blocksOnePost: blocks.filter((b) => b.scope === "one_post").map(iv),
   };
@@ -63,6 +64,7 @@ type BusinessForSlots = {
   timezone: string;
   posts: number;
   onlinePosts: number;
+  standPosts: number;
   slotStepMin: number;
   minLeadMin: number;
   horizonDays: number;
@@ -75,6 +77,7 @@ export const businessForSlotsSelect = {
   timezone: true,
   posts: true,
   onlinePosts: true,
+  standPosts: true,
   slotStepMin: true,
   minLeadMin: true,
   horizonDays: true,
@@ -82,13 +85,18 @@ export const businessForSlotsSelect = {
   exceptions: true,
 } satisfies Prisma.BusinessSelect;
 
+/** Услуга для расчёта окон: длительность и стенд развала. Просто число — длительность услуги на посту. */
+export type SlotService = number | { durationMin: number; onStand?: boolean };
+const svc = (s: SlotService) => (typeof s === "number" ? { durationMin: s, onStand: false } : { durationMin: s.durationMin, onStand: !!s.onStand });
+
 export async function getDaySlots(
   biz: BusinessForSlots,
   date: string,
-  durationMin: number,
+  service: SlotService,
   nowMs = Date.now(),
   tx: Tx = db,
 ): Promise<Slot[]> {
+  const { durationMin, onStand } = svc(service);
   if (!inHorizon(date, nowMs, biz.timezone, biz.horizonDays)) return [];
   const window = resolveDayWindow(date, biz.hours, biz.exceptions);
   if (!window) return [];
@@ -101,6 +109,8 @@ export async function getDaySlots(
     stepMin: biz.slotStepMin,
     posts: biz.posts,
     onlinePosts: biz.onlinePosts,
+    standPosts: biz.standPosts,
+    onStand,
     ...occ,
     nowMs,
     minLeadMin: biz.minLeadMin,
@@ -114,7 +124,9 @@ export async function getDayLoad(biz: BusinessForSlots, date: string, nowMs = Da
   if (!inHorizon(date, nowMs, biz.timezone, biz.horizonDays)) return null;
   const window = resolveDayWindow(date, biz.hours, biz.exceptions);
   if (!window) return null;
-  const occ = await loadDay(db, biz.id, date, biz.timezone);
+  const all = await loadDay(db, biz.id, date, biz.timezone);
+  // Витрина показывает, когда заняты все посты; записи на стенде развала посты не занимают
+  const occ = { ...all, bookings: splitStand(all.bookings, biz.standPosts).posts, siteBookings: splitStand(all.siteBookings, biz.standPosts).posts };
   const local = toLocal(nowMs, biz.timezone);
   const day = dayLanes({ date, tz: biz.timezone, window, posts: biz.posts, ...occ });
   // Для записи с сайта занято и тогда, когда заняты все посты под онлайн-запись (записями с сайта или закрытием поста)
@@ -130,7 +142,8 @@ export async function getDayLoad(biz: BusinessForSlots, date: string, nowMs = Da
 export type DaySummary = { date: string; closed: boolean; free: number; ended?: true };
 
 /** Сводка по дням горизонта для полоски дат: выходной или сколько свободных окон. Один запрос к базе. */
-export async function getHorizonSummary(biz: BusinessForSlots, durationMin: number, nowMs = Date.now()): Promise<DaySummary[]> {
+export async function getHorizonSummary(biz: BusinessForSlots, service: SlotService, nowMs = Date.now()): Promise<DaySummary[]> {
+  const { durationMin, onStand } = svc(service);
   const dates = horizonDates(nowMs, biz.timezone, biz.horizonDays);
   const occ = await loadRange(db, biz.id, dates[0], dates[dates.length - 1], biz.timezone);
   return dates.map((date) => {
@@ -138,11 +151,11 @@ export async function getHorizonSummary(biz: BusinessForSlots, durationMin: numb
     if (!window) return { date, closed: true, free: 0 };
     const slots = daySlots({
       date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts, onlinePosts: biz.onlinePosts,
-      ...occ, nowMs, minLeadMin: biz.minLeadMin,
+      standPosts: biz.standPosts, onStand, ...occ, nowMs, minLeadMin: biz.minLeadMin,
     });
     // «Поздно» — только сегодня и только когда окна были, но время уже вышло (а не услуга длиннее рабочего дня)
     const ended = slots.length === 0 && date === dates[0] && daySlots({
-      date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts,
+      date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts, standPosts: biz.standPosts, onStand,
       bookings: [], blocksAll: [], blocksOnePost: [], nowMs: 0, minLeadMin: 0,
     }).length > 0;
     return { date, closed: false, free: slots.filter((s) => s.free).length, ...(ended ? { ended: true as const } : {}) };
@@ -211,7 +224,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
     if (pd && (await noShowCount(tx, input.businessId, input.clientPhone, nowMs)) >= NO_SHOW_LIMIT) {
       throw new BookingError("no_shows", "Онлайн-запись с этого номера недоступна. Позвоните в сервис, вас запишут по телефону");
     }
-    const slots = await getDaySlots(biz, input.date, service.durationMin, nowMs, tx);
+    const slots = await getDaySlots(biz, input.date, service, nowMs, tx);
     const slot = slots.find((s) => s.time === input.time);
     // Чаще всего время просто прошло (или ушло за «запас до записи»), пока клиент заполнял форму
     if (!slot) throw new BookingError("bad_slot", "Это время уже недоступно. Выберите другое");
@@ -222,6 +235,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
         serviceId: service.id,
         serviceName: service.name,
         priceFrom: service.priceFrom,
+        onStand: service.onStand,
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "site",
@@ -255,26 +269,32 @@ export type OwnerBookingInput = {
  * Запись, которую владелец вносит сам после звонка (раздел 4.4).
  * Может превышать число постов, но только после явного подтверждения (force).
  */
-export type OwnerWarning = { load: number; posts: number; allClosed: boolean; outside: boolean };
+export type OwnerWarning = { load: number; posts: number; allClosed: boolean; outside: boolean; stand: boolean };
 
-/** Пересекается ли интервал с часами работы, обедом, закрытым временем и другими записями. */
-async function checkCapacity(tx: Tx, biz: BusinessForSlots, date: string, slot: Interval, ignoreBookingId?: string): Promise<OwnerWarning | null> {
+/**
+ * Пересекается ли интервал с часами работы, обедом, закрытым временем и другими записями.
+ * onStand — запись на стенд развала: считаем занятость стендов, а не постов.
+ */
+async function checkCapacity(tx: Tx, biz: BusinessForSlots, date: string, slot: Interval, onStand: boolean, ignoreBookingId?: string): Promise<OwnerWarning | null> {
   const window = resolveDayWindow(date, biz.hours, biz.exceptions);
   const dayStart = localToUtc(date, 0, biz.timezone);
   const outside = !window || slot.start < dayStart + window.openMin * 60000 || slot.end > dayStart + window.closeMin * 60000;
   const occ = await loadDay(tx, biz.id, date, biz.timezone);
   let bookings = occ.bookings;
   if (ignoreBookingId) {
-    const self = await tx.booking.findUnique({ where: { id: ignoreBookingId }, select: { startAt: true, endAt: true, status: true } });
+    const self = await tx.booking.findUnique({ where: { id: ignoreBookingId }, select: { startAt: true, endAt: true, status: true, onStand: true } });
     if (self && (OCCUPYING as readonly string[]).includes(self.status)) {
-      const i = bookings.findIndex((b) => b.start === self.startAt.getTime() && b.end === self.endAt.getTime());
+      const i = bookings.findIndex((b) => b.start === self.startAt.getTime() && b.end === self.endAt.getTime() && !!b.stand === self.onStand);
       if (i >= 0) bookings = bookings.filter((_, k) => k !== i);
     }
   }
   const closed = [...occ.blocksAll, ...breakIntervals(date, biz.timezone, window)];
   const allClosed = closed.some((b) => b.start < slot.end && slot.start < b.end);
-  const load = peakLoad(slot, [...bookings, ...occ.blocksOnePost]);
-  return outside || allClosed || load >= biz.posts ? { load, posts: biz.posts, allClosed, outside } : null;
+  const split = splitStand(bookings, biz.standPosts);
+  const stand = onStand && biz.standPosts > 0;
+  const cap = stand ? biz.standPosts : biz.posts;
+  const load = stand ? peakLoad(slot, split.stand) : peakLoad(slot, [...split.posts, ...occ.blocksOnePost]);
+  return outside || allClosed || load >= cap ? { load, posts: cap, allClosed, outside, stand } : null;
 }
 
 export async function createOwnerBooking(input: OwnerBookingInput) {
@@ -285,7 +305,7 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
     if (!biz || !service) throw new BookingError("not_found", "Услуга не найдена");
     const start = localToUtc(input.date, input.startMin, biz.timezone);
     const slot = { start, end: start + service.durationMin * 60000 };
-    const warning = await checkCapacity(tx, biz, input.date, slot);
+    const warning = await checkCapacity(tx, biz, input.date, slot, service.onStand);
     if (warning && !input.force) {
       return { booking: null, warning };
     }
@@ -295,6 +315,7 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
         serviceId: service.id,
         serviceName: service.name,
         priceFrom: service.priceFrom,
+        onStand: service.onStand,
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "owner",
@@ -320,7 +341,7 @@ export async function restoreBooking(id: string, businessId: string, force = fal
     const biz = await tx.business.findUnique({ where: { id: businessId }, select: businessForSlotsSelect });
     if (!b || !biz) throw new BookingError("not_found", "Запись не найдена");
     const date = toLocal(b.startAt.getTime(), biz.timezone).date;
-    const warning = await checkCapacity(tx, biz, date, { start: b.startAt.getTime(), end: b.endAt.getTime() }, id);
+    const warning = await checkCapacity(tx, biz, date, { start: b.startAt.getTime(), end: b.endAt.getTime() }, b.onStand, id);
     if (warning && !force) return { ok: false as const, warning };
     await tx.booking.update({ where: { id }, data: { status: "active", cancelledAt: null, cancelledBy: null } });
     return { ok: true as const, warning: null };

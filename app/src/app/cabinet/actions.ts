@@ -24,7 +24,7 @@ const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 // Названия полей для сообщений об ошибке: «Цена: слишком большое число…»
 const LABELS: Record<string, string> = {
   name: "Название", category: "Раздел", description: "Пояснение", priceFrom: "Цена", durationMin: "Длительность",
-  posts: "Посты", onlinePosts: "Посты под запись", cancelHours: "Отмена", horizonDays: "Запись вперёд", minLeadMin: "Самое раннее время", headline: "Главная фраза", addressNote: "Как найти въезд",
+  posts: "Посты", onlinePosts: "Посты под запись", standPosts: "Стенды развала", cancelHours: "Отмена", horizonDays: "Запись вперёд", minLeadMin: "Самое раннее время", headline: "Главная фраза", addressNote: "Как найти въезд",
   phone: "Телефон", comment: "Комментарий",
 };
 
@@ -41,6 +41,7 @@ async function ownBooking(id: string) {
 function warningText(w: OwnerWarning) {
   if (w.outside) return "Это время вне часов работы. Всё равно записать?";
   if (w.allClosed) return "Это время закрыто (обед или закрытое время). Всё равно записать?";
+  if (w.stand) return `В это время ${w.posts > 1 ? `заняты все стенды развала (${w.load} из ${w.posts})` : "стенд развала занят"}. Всё равно записать?`;
   return `В это время заняты все посты (${w.load} из ${w.posts}). Всё равно записать?`;
 }
 
@@ -58,7 +59,7 @@ export async function setBookingStatus(
     const r = await restoreBooking(id, business.id, force);
     if (!r.ok) {
       const w = r.warning;
-      return { warning: w.outside || w.allClosed ? warningText(w).replace("записать", "вернуть") : `На это время уже заняты все посты (${w.load} из ${w.posts}). Всё равно вернуть запись?` };
+      return { warning: warningText(w).replace("Всё равно записать?", "Всё равно вернуть запись?") };
     }
   } else {
     await db.booking.update({
@@ -101,7 +102,7 @@ export async function ownerDaySlots(date: string, serviceId: string) {
   const biz = await db.business.findUniqueOrThrow({ where: { id: business.id }, select: businessForSlotsSelect });
   // Владельцу показываем весь день, без «запаса» на подготовку и без ограничения горизонта
   // Владелец записывает на любой пост, а не только на посты под онлайн-запись
-  const slots = await getDaySlots({ ...biz, onlinePosts: biz.posts, minLeadMin: -24 * 60, horizonDays: 3650 }, date, service.durationMin, Date.now() - 365 * 86400000);
+  const slots = await getDaySlots({ ...biz, onlinePosts: biz.posts, minLeadMin: -24 * 60, horizonDays: 3650 }, date, service, Date.now() - 365 * 86400000);
   return slots.map((s) => ({ time: s.time, free: s.free }));
 }
 
@@ -190,6 +191,7 @@ const ServiceForm = z.object({
   priceFrom: z.coerce.number().int().min(0).max(1_000_000),
   durationMin: z.coerce.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов"),
   isDiagnostic: z.boolean(),
+  onStand: z.boolean(),
   active: z.boolean(),
 });
 
@@ -201,6 +203,7 @@ function readService(f: FormData) {
     priceFrom: str(f, "priceFrom") || "0",
     durationMin: str(f, "durationMin"),
     isDiagnostic: f.get("isDiagnostic") === "on",
+    onStand: f.get("onStand") === "on",
     active: f.get("active") === "on",
   });
 }
@@ -304,6 +307,7 @@ const Texts = z.object({
 const Rules = z.object({
   posts: z.coerce.number().int().min(1, "Хотя бы 1 пост").max(20),
   onlinePosts: z.coerce.number().int().min(1, "Хотя бы 1 пост под запись").max(20),
+  standPosts: z.coerce.number().int().min(0).max(10),
   cancelHours: z.coerce.number().int().min(0).max(168),
   horizonDays: z.coerce.number().int().min(1).max(60),
   minLeadMin: z.coerce.number().int().min(0).max(48 * 60),
@@ -332,7 +336,7 @@ export async function saveTexts(_prev: ActionResult, f: FormData): Promise<Actio
 
 export async function saveRules(_prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
-  const p = Rules.safeParse(pick(f, ["posts", "onlinePosts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]));
+  const p = Rules.safeParse({ ...pick(f, ["posts", "onlinePosts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]), standPosts: str(f, "standPosts") || "0" });
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
   // Постов под запись не больше, чем всего: после уменьшения постов лишнее срезается
   await db.business.update({ where: { id: business.id }, data: { ...p.data, onlinePosts: Math.min(p.data.onlinePosts, p.data.posts) } });

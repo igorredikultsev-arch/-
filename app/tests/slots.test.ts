@@ -296,3 +296,27 @@ describe("fullBusy", () => {
     expect(fullBusy([[{ from: 600, to: 720 }], []])).toEqual([]);
   });
 });
+
+describe("стенд развал-схождения", () => {
+  const stand = { start: at(h(10)), end: at(h(11)), stand: true };
+  it("услуга на стенде: занято, только если занят стенд; посты не важны", () => {
+    const post = { start: at(h(12)), end: at(h(13)) };
+    const s = daySlots(base({ posts: 1, standPosts: 1, onStand: true, bookings: [stand, post] }));
+    expect(free(s)).not.toContain("10:00");
+    expect(free(s)).toContain("12:00"); // пост занят, стенд свободен
+  });
+  it("обычная услуга не видит записи на стенде, а стенд не снимает «закрыт один пост»", () => {
+    const s = daySlots(base({ posts: 1, standPosts: 1, bookings: [stand] }));
+    expect(free(s)).toContain("10:00");
+    const closedPost = daySlots(base({ posts: 1, standPosts: 1, onStand: true, blocksOnePost: [{ start: at(h(10)), end: at(h(11)) }] }));
+    expect(free(closedPost)).toContain("10:00");
+  });
+  it("без стендов отметка «на стенде» ничего не меняет: как раньше, всё на постах", () => {
+    const s = daySlots(base({ posts: 1, onStand: true, bookings: [stand] }));
+    expect(free(s)).not.toContain("10:00");
+  });
+  it("закрытие всего сервиса закрывает и стенд", () => {
+    const s = daySlots(base({ posts: 2, standPosts: 1, onStand: true, blocksAll: [{ start: at(h(10)), end: at(h(11)) }] }));
+    expect(free(s)).not.toContain("10:00");
+  });
+});

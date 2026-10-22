@@ -87,6 +87,8 @@ model Business {
   posts        Int @default(1)
   /// Сколько постов отдано под запись с сайта (остальные — живая очередь и звонки, их в кабинет вносить не нужно)
   onlinePosts  Int @default(1)
+  /// Стенды развал-схождения, отдельно от постов: услуги с отметкой onStand записываются только на них, остальные — только на посты
+  standPosts   Int @default(0)
   slotStepMin  Int @default(30)
   minLeadMin   Int @default(120)
   horizonDays  Int @default(14)
@@ -153,6 +155,8 @@ model Service {
   priceFrom    Int
   durationMin  Int
   isDiagnostic Boolean  @default(false)
+  /// Делается на стенде развал-схождения (Business.standPosts), а не на обычном посту
+  onStand      Boolean  @default(false)
   sortOrder    Int      @default(0)
   active       Boolean  @default(true)
   bookings     Booking[]
@@ -197,6 +201,8 @@ model Booking {
   service     Service?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   serviceName String
   priceFrom   Int?
+  /// Занимает стенд развала, а не пост: копия Service.onStand на момент записи
+  onStand     Boolean       @default(false)
   startAt     DateTime
   endAt       DateTime
   source      BookingSource

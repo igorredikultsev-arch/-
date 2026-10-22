@@ -10,6 +10,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const service = biz.services.find((s) => s.id === q.get("service"));
   const date = q.get("date") ?? "";
   if (!service || !isDateString(date)) return json({ error: "Неверный запрос" }, 400);
-  const slots = await getDaySlots(biz, date, service.durationMin);
+  const slots = await getDaySlots(biz, date, service);
   return json({ slots: slots.map((s) => ({ time: s.time, free: s.free })) });
 }

@@ -7,5 +7,5 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   if (!biz) return notFound();
   const service = biz.services.find((s) => s.id === req.nextUrl.searchParams.get("service"));
   if (!service) return json({ error: "Выберите услугу" }, 400);
-  return json({ days: await getHorizonSummary(biz, service.durationMin) });
+  return json({ days: await getHorizonSummary(biz, service) });
 }
