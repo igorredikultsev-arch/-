@@ -113,46 +113,64 @@ const STACK_MS = 30 * 60000;
 const INDENT = 0.05;
 
 /**
- * Раскладка как в Google Календаре. Записи, которые начинаются почти одновременно, делят ширину и чуть
- * заходят друг под друга. Запись, которая начинается позже уже идущей, ложится поверх неё со сдвигом вправо
- * и тянется до правого края. Ширину никто не задаёт — она получается из времени записей.
+ * Раскладка как в Google Календаре (сверено со скриншотом календаря клиента):
+ * - записи раскладываются по колонкам; освободившуюся колонку занимает следующая запись;
+ * - k колонок делят ширину на k+1 долей: плашка шириной в две доли, соседка справа перекрывает её наполовину,
+ *   поэтому левые выглядывают узкой полосой, а правая — широкая; справа свободно — плашка тянется до края;
+ * - запись, которой нет свободной колонки и которая началась позже идущей, ложится поверх неё со сдвигом вправо;
+ * - выше лежит та, что правее.
+ * Ширину никто не задаёт — она получается из времени записей.
  */
 export function googleLayout<T extends { id: string; start: number; end: number }>(items: T[]): Map<string, Placed> {
-  type Group = { l: number; r: number; parent: Node | null; members: Node[] };
-  type Node = { it: T; group: Group; z: number; l: number; r: number };
+  type Node = { it: T; group: Group; slot: number; l: number; r: number };
+  // first — начало первой записи группы, k0 — сколько колонок заняли записи, начавшиеся вместе с ней: эти колонки
+  // делят ширину, и поздние записи ширину уже не меняют (как в Google: утренние плашки не сужаются из-за дневных)
+  type Group = { parent: Node | null; slots: Node[][]; l: number; r: number; first: number; k0: number };
+  const overlap = (a: { start: number; end: number }, b: { start: number; end: number }) => a.start < b.end && b.start < a.end;
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end || a.id.localeCompare(b.id));
   const nodes: Node[] = [];
   const groups: Group[] = [];
+  const freeSlot = (g: Group, it: T) => g.slots.findIndex((s) => s.every((n) => !overlap(n.it, it)));
+  // Новая колонка в группе: для записей, начавшихся вместе с первой, — всегда; для поздних — одна узкая у правого края
+  const canAdd = (g: Group, it: T) => it.start - g.first < STACK_MS || g.slots.length <= g.k0;
   for (const it of sorted) {
-    const active = nodes.filter((n) => n.it.start < it.end && it.start < n.it.end);
-    const near = active.filter((n) => it.start - n.it.start < STACK_MS).sort((a, b) => b.it.start - a.it.start)[0];
-    let group: Group;
-    if (near) group = near.group;
-    else {
-      const parent = active.sort((a, b) => b.it.start - a.it.start || b.l - a.l)[0] ?? null;
-      group = { l: 0, r: 1, parent, members: [] };
-      groups.push(group);
-    }
-    const node: Node = { it, group, z: nodes.length + 1, l: 0, r: 1 };
-    group.members.push(node);
-    nodes.push(node);
-    // Места считаются заново по мере добавления: группа-родитель создана раньше вложенной
-    for (const g of groups) {
-      if (g.parent) {
-        g.l = Math.min(g.parent.l + INDENT, 0.8);
-        g.r = g.parent.group.r;
+    const active = nodes.filter((n) => overlap(n.it, it));
+    let group: Group | undefined;
+    let slot = -1;
+    if (active.length) {
+      const near = active.filter((n) => it.start - n.it.start < STACK_MS).sort((a, b) => b.it.start - a.it.start)[0];
+      if (near && (freeSlot(near.group, it) >= 0 || canAdd(near.group, it))) group = near.group;
+      else {
+        // Свободная колонка в одной из идущих сейчас групп (сначала во вложенных)
+        group = [...groups].reverse().find((g) => (g.parent ? overlap(g.parent.it, it) : g.slots.flat().some((n) => overlap(n.it, it))) && freeSlot(g, it) >= 0);
+        if (!group) {
+          const parent = [...active].sort((a, b) => b.it.start - a.it.start || b.l - a.l)[0];
+          const own = groups.find((g) => g.parent === parent);
+          group = own && (freeSlot(own, it) >= 0 || canAdd(own, it)) ? own : { parent, slots: [], l: 0, r: 1, first: it.start, k0: 0 };
+          if (!groups.includes(group)) groups.push(group);
+        }
       }
-      const slot = (g.r - g.l) / g.members.length;
-      g.members.forEach((m, i) => { m.l = g.l + i * slot; m.r = m.l + slot; });
+      slot = freeSlot(group, it);
     }
+    if (!group) { group = { parent: null, slots: [], l: 0, r: 1, first: it.start, k0: 0 }; groups.push(group); }
+    if (slot < 0) slot = group.slots.length;
+    if (it.start - group.first < STACK_MS) group.k0 = Math.max(group.k0, slot + 1);
+    const node: Node = { it, group, slot, l: 0, r: 1 };
+    (group.slots[slot] ??= []).push(node);
+    nodes.push(node);
   }
+  // Места: группа-родитель создана раньше вложенной, поэтому её места уже посчитаны
+  for (const g of groups) {
+    if (g.parent) { g.l = Math.min(g.parent.l + INDENT, 0.8); g.r = g.parent.group.r; }
+    const step = (g.r - g.l) / (Math.max(g.k0, 1) + 1);
+    g.slots.forEach((s, i) => s.forEach((n) => {
+      n.l = g.l + i * step;
+      const next = g.slots.findIndex((t, j) => j > i && t.some((m) => overlap(m.it, n.it)));
+      n.r = next < 0 ? g.r : Math.min(g.r, g.l + (next + 1) * step);
+    }));
+  }
+  const order = [...nodes].sort((a, b) => a.l - b.l || a.it.start - b.it.start);
   const out = new Map<string, Placed>();
-  for (const n of nodes) {
-    const g = n.group;
-    const last = g.members[g.members.length - 1] === n;
-    // Как в Google: соседка справа перекрывает часть плашки, поэтому плашка шире своей доли
-    const width = last ? n.r - n.l : Math.min(g.r - n.l, (n.r - n.l) * 1.7);
-    out.set(n.it.id, { left: n.l, width, z: n.z });
-  }
+  order.forEach((n, i) => out.set(n.it.id, { left: n.l, width: n.r - n.l, z: i + 1 }));
   return out;
 }

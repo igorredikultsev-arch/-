@@ -20,10 +20,11 @@ describe("раскладка как в Google", () => {
 
   it("начались одновременно — рядом, левая чуть заходит под правую", () => {
     const l = googleLayout([ev("a", 540, 1140), ev("b", 540, 720)]);
+    // Две колонки делят ширину на три доли, каждая плашка в две доли, правая лежит сверху
     expect(l.get("a")!.left).toBe(0);
-    expect(l.get("b")!.left).toBe(0.5);
-    expect(l.get("b")!.width).toBe(0.5);
-    expect(l.get("a")!.width).toBeGreaterThan(0.5);
+    expect(l.get("a")!.width).toBeCloseTo(2 / 3);
+    expect(l.get("b")!.left).toBeCloseTo(1 / 3);
+    expect(l.get("b")!.width).toBeCloseTo(2 / 3);
     expect(l.get("b")!.z).toBeGreaterThan(l.get("a")!.z);
   });
 
@@ -33,6 +34,15 @@ describe("раскладка как в Google", () => {
     expect(l.get("later")!.left).toBeCloseTo(0.05);
     expect(l.get("later")!.left + l.get("later")!.width).toBeCloseTo(1);
     expect(l.get("later")!.z).toBeGreaterThan(l.get("long")!.z);
+  });
+
+  it("пять записей в 9:00, как у клиента: шесть долей, правая широкая; освободившуюся колонку занимает следующая", () => {
+    const l = googleLayout([ev("a", 540, 1140), ev("b", 540, 1065), ev("c", 540, 720), ev("d", 540, 660), ev("e", 540, 600), ev("f", 600, 690)]);
+    expect([..."abcde"].map((k) => +l.get(k)!.left.toFixed(3))).toEqual([0, 0.167, 0.333, 0.5, 0.667]);
+    expect(l.get("a")!.width).toBeCloseTo(1 / 3);
+    expect(l.get("e")!.width).toBeCloseTo(1 / 3);
+    // В 10:00 колонка «e» свободна: новая запись встаёт в неё и тянется до края
+    expect(l.get("f")).toMatchObject({ left: l.get("e")!.left });
   });
 
   it("не пересекаются — каждая во всю ширину", () => {
