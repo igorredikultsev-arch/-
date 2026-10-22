@@ -47,9 +47,10 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
     const r = 0.17 + (k / 25) * 0.41, w = (0.06 - 0.025 * (k / 25)) * off, a0 = (s / 5) * TAU, z = 0.04 + 0.11 * Math.min(1, Math.max(0, (r - 0.12) / 0.44));
     add(Math.cos(a0) * r - Math.sin(a0) * w, Math.sin(a0) * r + Math.cos(a0) * w, z, 3);
   }
-  // надпись по кругу боковины: рисуем буквы на холсте и берём точки, где они есть
+  // надпись по кругу боковины: рисуем буквы на холсте и берём точки, где они есть.
+  // Холст 480 и шаг 2: на букву нижней строки (город и радиусы) приходится ~13 точек по высоте, а не 6, иначе не прочитать
   const textDots = () => {
-    const S = 300, T = document.createElement("canvas");
+    const S = 480, T = document.createElement("canvas");
     T.width = T.height = S;
     const tg = T.getContext("2d")!;
     tg.translate(S / 2, S / 2);
@@ -61,7 +62,7 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
       const measure = (sz: number) => { tg.font = `800 ${sz}px ${o.font}, sans-serif`; return chars.map((c) => tg.measureText(c).width + sz * 0.08); };
       let ws = measure(size), tot = ws.reduce((a, b) => a + b, 0);
       const max = Math.PI * R * 0.92; // не больше половины окружности
-      if (tot > max) { size = Math.max(9, Math.floor((size * max) / tot)); ws = measure(size); tot = ws.reduce((a, b) => a + b, 0); }
+      if (tot > max) { size = Math.max(16, Math.floor((size * max) / tot)); ws = measure(size); tot = ws.reduce((a, b) => a + b, 0); }
       let ang = bottom ? tot / R / 2 : -tot / R / 2;
       chars.forEach((c, i) => {
         const d = ws[i] / R, mid = bottom ? ang - d / 2 : ang + d / 2;
@@ -69,8 +70,8 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
         ang += bottom ? -d : d;
       });
     };
-    ring(o.text, 19, (0.77 * S) / 2, false);
-    ring(o.marks, 13, (0.8 * S) / 2, true);
+    ring(o.text, 32, (0.77 * S) / 2, false);
+    ring(o.marks, 26, (0.8 * S) / 2, true);
     const im = tg.getImageData(0, 0, S, S).data;
     for (let y = 0; y < S; y += 2) for (let x = 0; x < S; x += 2) if (im[(y * S + x) * 4 + 3] > 128) add((x / S - 0.5) * 2, -(y / S - 0.5) * 2, 0.215, 2);
   };
@@ -120,7 +121,7 @@ export function mountDots(cv: HTMLCanvasElement, o: DotsOpts): DotsScene | null 
       else if (p.kind === 5) c = [255, 200, 120];
       else { const m = Math.pow(0.5 + 0.5 * Math.sin(Math.atan2(p.y, p.x) + t * 0.4), 2); c = [A[0] + (B[0] - A[0]) * m, A[1] + (B[1] - A[1]) * m, A[2] + (B[2] - A[2]) * m]; }
       g.fillStyle = `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a.toFixed(3)})`;
-      const s = (p.kind === 2 ? 1.5 : 1.7) * f;
+      const s = (p.kind === 2 ? 1.25 : 1.7) * f;
       g.fillRect(sx + p.ox - s / 2, syy + p.oy - s / 2, s, s);
     }
   };
