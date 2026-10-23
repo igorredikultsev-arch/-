@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { closeCabinet } from "@/app/admin/actions";
+import { appIconUrl, iconable } from "@/lib/app-icon";
 import { requireOwner } from "@/lib/auth";
+import { shortName } from "@/lib/business";
 import { OFFER_EDITION, OFFER_VERSION } from "@/lib/legal";
 import { db } from "@/lib/db";
 import { rub, SETUP_PRICE, UNPAID_GRACE_DAYS } from "@/lib/pricing";
@@ -28,14 +30,20 @@ function billingNotice(b: { status: string; paidUntil: Date | null; timezone: st
     : { tone: "warn", text: `Оплата не поступила. Сайт продолжит принимать записи до ${off}, потом приостановится. Если уже оплатили, напишите нам.` };
 }
 
-export const metadata: Metadata = {
-  title: "Кабинет",
-  robots: { index: false },
-  manifest: "/manifest.webmanifest",
-  // Иконка на экране iPhone и название под ней; без «приложения на экране» iPhone не показывает уведомления
-  icons: { apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Кабинет", statusBarStyle: "default" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { business } = await requireOwner();
+  const logo = business.logoAt && (await db.businessLogo.findUnique({ where: { businessId: business.id }, select: { mime: true } }));
+  const ownIcon = business.logoAt && logo && iconable(logo.mime) ? appIconUrl(business.slug, 180, business.logoAt) : null;
+  return {
+    title: "Кабинет",
+    robots: { index: false },
+    // Манифест сервиса: на экране телефона его логотип и название, а не общая «А» Автослота
+    manifest: `/api/s/${encodeURIComponent(business.slug)}/manifest`,
+    // Иконка на экране iPhone и название под ней; без «приложения на экране» iPhone не показывает уведомления
+    icons: { apple: ownIcon ?? "/icons/apple-touch-icon.png" },
+    appleWebApp: { capable: true, title: ownIcon ? shortName(business.name) : "Кабинет", statusBarStyle: "default" },
+  };
+}
 export const viewport: Viewport = { themeColor: "#eef0f3" };
 
 export default async function CabinetLayout({ children }: { children: React.ReactNode }) {
