@@ -10,7 +10,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const size = SIZES.includes(asked) ? asked : 192;
   const biz = await iconBusiness((await ctx.params).slug, true);
   if (!biz?.logo?.data || !iconable(biz.logo.mime)) {
-    return Response.redirect(new URL(size === 180 ? "/icons/apple-touch-icon.png" : `/icons/icon-${size === 512 ? 512 : 192}.png`, req.url), 302);
+    // Адрес без домена: за Caddy req.url внутренний (0.0.0.0:3000), браузер дополнит адрес сам
+    const fallback = size === 180 ? "/icons/apple-touch-icon.png" : `/icons/icon-${size === 512 ? 512 : 192}.png`;
+    return new Response(null, { status: 302, headers: { Location: fallback } });
   }
   const src = `data:${biz.logo.mime};base64,${Buffer.from(biz.logo.data).toString("base64")}`;
   // Фон — левый верхний угол того же логотипа, растянутый на весь квадрат: обычно это цвет фона логотипа,
