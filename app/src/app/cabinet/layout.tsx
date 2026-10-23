@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { closeCabinet } from "@/app/admin/actions";
+import { ownAppIcon } from "@/lib/app-icon";
 import { requireOwner } from "@/lib/auth";
+import { shortName } from "@/lib/business";
 import { OFFER_EDITION, OFFER_VERSION } from "@/lib/legal";
 import { db } from "@/lib/db";
 import { rub, SETUP_PRICE, UNPAID_GRACE_DAYS } from "@/lib/pricing";
@@ -37,14 +39,19 @@ function billingNotice(b: { status: string; paidUntil: Date | null; trialEndsAt:
     : { tone: "warn", text: `Оплата не поступила. Сайт продолжит принимать записи до ${off}, потом приостановится. Если уже оплатили, напишите нам.` };
 }
 
-export const metadata: Metadata = {
-  title: "Кабинет",
-  robots: { index: false },
-  manifest: "/manifest.webmanifest",
-  // Иконка на экране iPhone и название под ней; без «приложения на экране» iPhone не показывает уведомления
-  icons: { apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Кабинет", statusBarStyle: "default" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { business } = await requireOwner();
+  const ownIcon = await ownAppIcon(business, 180);
+  return {
+    title: "Кабинет",
+    robots: { index: false },
+    // Манифест сервиса: на экране телефона его логотип и название, а не общая «А» Автослота
+    manifest: `/api/s/${encodeURIComponent(business.slug)}/manifest`,
+    // Иконка на экране iPhone и название под ней; без «приложения на экране» iPhone не показывает уведомления
+    icons: { apple: ownIcon ?? "/icons/apple-touch-icon.png" },
+    appleWebApp: { capable: true, title: ownIcon ? shortName(business.name) : "Кабинет", statusBarStyle: "default" },
+  };
+}
 export const viewport: Viewport = { themeColor: "#eef0f3" };
 
 export default async function CabinetLayout({ children }: { children: React.ReactNode }) {
@@ -55,7 +62,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
   const needOffer = !asAdmin && business.status !== "demo" && business.offerVersion !== OFFER_VERSION;
   return (
     <div className="min-h-dvh bg-paper text-ink lg:flex">
-      {!needOffer && <Sidebar name={business.name} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
+      {!needOffer && <Sidebar name={business.name} icon={await ownAppIcon(business, 180)} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
       <div className="min-w-0 flex-1">
       {asAdmin && (
         <div className="sticky top-0 z-20 bg-ink text-white">
