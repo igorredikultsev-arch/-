@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDayLong, formatDayShort } from "@/lib/time";
 import { Categories } from "./categories";
-import { PICK_EVENT, SLOT_EVENT, STATE_EVENT, type SlotPick } from "./events";
+import { PICK_EVENT, SLOT_EVENT, STATE_EVENT, scrollToBook, type SlotPick } from "./events";
 
 export type WidgetService = {
   id: string;
@@ -177,6 +177,9 @@ export function BookingWidget(p: Props) {
   useEffect(() => {
     if (firstStep.current) { firstStep.current = false; return; }
     stepRef.current?.focus({ preventScroll: true });
+    // Услугу выбрали внизу длинного списка разделов, форма стала короче и ушла вверх за экран: возвращаем её
+    const top = document.getElementById("book")?.getBoundingClientRect().top;
+    if (top !== undefined && top < 0) scrollToBook();
   }, [step]);
 
   // Сообщаем витрине (план, шкала), какая услуга и время выбраны
@@ -307,7 +310,7 @@ export function BookingWidget(p: Props) {
               {list.map((s) => (
                 <button key={s.id} type="button" aria-pressed={s.id === serviceId} onClick={() => chooseService(s.id)}>
                   <span className="n">{s.name}</span>
-                  <span className="m">{s.category}</span>
+                  {s.description && <span className="m">{s.description}</span>}
                   <span className="p">{s.priceFrom > 0 ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
                 </button>
               ))}

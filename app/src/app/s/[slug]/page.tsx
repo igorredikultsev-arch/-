@@ -311,8 +311,10 @@ export default async function SitePage({ params, searchParams }: Props) {
         <div className="layout">
           {radii.length > 0 && <RadiusPicker services={services} bands={bands} radii={radii} />}
           {seasonBlock}
+          {/* Все услуги с ценами — в первом шаге записи; отдельный список ниже повторял бы те же разделы.
+              Без онлайн-записи формы нет, тогда список услуг остаётся */}
           <div className="book-col">{widget}</div>
-          {servicesBlock(radii.length > 0 ? "Все услуги и цены" : "Услуги и цены")}
+          {noOnline && servicesBlock("Услуги и цены")}
           {aboutBlock}
           {reviewsBlock}
           {contactsBlock}
