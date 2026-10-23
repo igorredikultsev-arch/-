@@ -1,4 +1,5 @@
 // Иконка кабинета на экране телефона: у сервиса с логотипом — его логотип, без логотипа — общая «А» Автослота.
+import { cache } from "react";
 import { decodeKey } from "@/lib/business";
 import { db } from "@/lib/db";
 
@@ -19,3 +20,10 @@ export const iconable = (mime: string | undefined) => mime === "image/png" || mi
 /** Адрес иконки нужного размера; v меняется с новым логотипом, чтобы телефон не держал старую. */
 export const appIconUrl = (slug: string, size: number, logoAt: Date) =>
   `/api/s/${encodeURIComponent(slug)}/app-icon?size=${size}&v=${logoAt.getTime()}`;
+
+/** Своя иконка сервиса для кабинета или null (нет логотипа или он WebP). Один запрос на страницу: метаданные и меню берут отсюда. */
+export const ownAppIcon = cache(async (b: { id: string; slug: string; logoAt: Date | null }, size: number) => {
+  if (!b.logoAt) return null;
+  const logo = await db.businessLogo.findUnique({ where: { businessId: b.id }, select: { mime: true } });
+  return logo && iconable(logo.mime) ? appIconUrl(b.slug, size, b.logoAt) : null;
+});

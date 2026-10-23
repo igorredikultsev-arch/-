@@ -51,13 +51,17 @@ export function Tabbar() {
 const sideTabs = [...tabs.filter((t) => !t.fab && t.href !== "/cabinet/more"), { href: "/cabinet/stats", label: "Статистика", icon: ChartBar }, tabs[tabs.length - 1]];
 
 /** Боковое меню на компьютере вместо нижней панели. */
-export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
+export function Sidebar({ name, icon, siteUrl }: { name: string; icon: string | null; siteUrl: string }) {
   const path = usePathname();
+  // Значок сервиса: его логотип (та же иконка, что на экране телефона), без логотипа — «А» Автослота
+  const badge = (cls: string) =>
+    // eslint-disable-next-line @next/next/no-img-element -- иконка с нашего же адреса, размер задан классом
+    icon ? <img src={icon} alt="" className={`${cls} rounded-xl object-cover`} /> : <span className={`${cls} grid place-items-center rounded-xl bg-accent text-[17px] font-bold text-white`}>А</span>;
   // В календаре меню кабинета — узкая полоска со значками: место отдаётся сетке, как в Google
   if (path === "/cabinet/week") {
     return (
       <aside className="sticky top-0 hidden h-dvh w-[72px] shrink-0 flex-col items-center border-r border-zinc-200 bg-white py-3 lg:flex">
-        <span className="grid size-10 place-items-center rounded-xl bg-accent text-[17px] font-bold text-white" title={name}>А</span>
+        <span title={name} className="grid">{badge("size-10")}</span>
         <nav aria-label="Разделы кабинета" className="mt-4 grid gap-1">
           {sideTabs.map((t) => {
             const on = isOn(t.href, path) && !(t.href === "/cabinet/more" && path.startsWith("/cabinet/stats"));
@@ -79,7 +83,7 @@ export function Sidebar({ name, siteUrl }: { name: string; siteUrl: string }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-zinc-200 bg-white px-4 py-6 lg:flex">
       <div className="flex items-center gap-2.5 px-2">
-        <span className="grid size-9 place-items-center rounded-xl bg-accent text-[17px] font-bold text-white">А</span>
+        {badge("size-9 shrink-0")}
         <span className="min-w-0">
           <b className="block text-[15px] leading-tight">Кабинет</b>
           <span className="block truncate text-[13px] text-zinc-500" title={name}>{name}</span>

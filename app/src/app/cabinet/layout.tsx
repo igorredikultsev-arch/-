@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { closeCabinet } from "@/app/admin/actions";
-import { appIconUrl, iconable } from "@/lib/app-icon";
+import { ownAppIcon } from "@/lib/app-icon";
 import { requireOwner } from "@/lib/auth";
 import { shortName } from "@/lib/business";
 import { OFFER_EDITION, OFFER_VERSION } from "@/lib/legal";
@@ -32,8 +32,7 @@ function billingNotice(b: { status: string; paidUntil: Date | null; timezone: st
 
 export async function generateMetadata(): Promise<Metadata> {
   const { business } = await requireOwner();
-  const logo = business.logoAt && (await db.businessLogo.findUnique({ where: { businessId: business.id }, select: { mime: true } }));
-  const ownIcon = business.logoAt && logo && iconable(logo.mime) ? appIconUrl(business.slug, 180, business.logoAt) : null;
+  const ownIcon = await ownAppIcon(business, 180);
   return {
     title: "Кабинет",
     robots: { index: false },
@@ -54,7 +53,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
   const needOffer = !asAdmin && business.status !== "demo" && business.offerVersion !== OFFER_VERSION;
   return (
     <div className="min-h-dvh bg-paper text-ink lg:flex">
-      {!needOffer && <Sidebar name={business.name} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
+      {!needOffer && <Sidebar name={business.name} icon={await ownAppIcon(business, 180)} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
       <div className="min-w-0 flex-1">
       {asAdmin && (
         <div className="sticky top-0 z-20 bg-ink text-white">
