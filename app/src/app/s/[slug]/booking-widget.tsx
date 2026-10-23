@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDayLong, formatDayShort } from "@/lib/time";
+import { Categories } from "./categories";
 import { PICK_EVENT, SLOT_EVENT, STATE_EVENT, type SlotPick } from "./events";
 
 export type WidgetService = {
@@ -27,6 +28,9 @@ type Props = {
   phone: string; // для звонка, когда свободного времени нет
   phoneLabel: string;
   demo: boolean;
+  /** Сервис просит госномер и комментарий обязательно */
+  askPlate?: boolean;
+  requireComment?: boolean;
 };
 
 declare global {
@@ -72,6 +76,7 @@ export function BookingWidget(p: Props) {
   const [phone, setPhone] = useState("+7");
   const [car, setCar] = useState("");
   const [comment, setComment] = useState("");
+  const [plate, setPlate] = useState("");
   const [consent, setConsent] = useState(false);
   const [captcha, setCaptcha] = useState("");
   const [fieldErr, setFieldErr] = useState<Record<string, string>>({});
@@ -204,7 +209,7 @@ export function BookingWidget(p: Props) {
 
   // Порядок полей в форме: курсор встаёт в первое неправильное, на телефоне оно прокручивается в экран
   function focusFirstError(errs: Record<string, string>) {
-    const k = ["name", "phone", "car", "comment", "consent"].find((x) => errs[x]);
+    const k = ["name", "phone", "car", "plate", "comment", "consent"].find((x) => errs[x]);
     if (k) requestAnimationFrame(() => document.getElementById(`bk-${k}`)?.focus());
   }
 
@@ -216,6 +221,8 @@ export function BookingWidget(p: Props) {
     if (phone.replace(/\D/g, "").length !== 11) errs.phone = "Нужен номер из 10 цифр после +7";
     if (car.trim().length < 2) errs.car = "Укажите марку и модель";
     if (service.isDiagnostic && comment.trim().length < 5) errs.comment = "Опишите, что беспокоит в машине";
+    else if (p.requireComment && comment.trim().length < 3) errs.comment = "Напишите, что нужно сделать";
+    if (p.askPlate && plate.replace(/\s/g, "").length < 6) errs.plate = "Укажите госномер, например А123ВС152";
     if (!consent) errs.consent = "Без согласия на обработку данных записаться нельзя";
     if (p.captchaKey && !captcha) errs.captcha = "Подтвердите, что вы не робот";
     setFieldErr(errs);
@@ -228,7 +235,7 @@ export function BookingWidget(p: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serviceId: service.id, date, time, name, phone, car, comment, consent, captcha,
+          serviceId: service.id, date, time, name, phone, car, comment, plate, consent, captcha,
           website: hpRef.current?.value || "",
         }),
       });
@@ -294,15 +301,19 @@ export function BookingWidget(p: Props) {
       )}
 
       {step === 1 && (
-        <div className="svc-pick" role="group" aria-label="Выберите услугу">
-          {p.services.map((s) => (
-            <button key={s.id} type="button" aria-pressed={s.id === serviceId} onClick={() => chooseService(s.id)}>
-              <span className="n">{s.name}</span>
-              <span className="m">{s.category}</span>
-              <span className="p">{s.priceFrom > 0 ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
-            </button>
-          ))}
-        </div>
+        <Categories items={p.services} openWith={serviceId}>
+          {(list) => (
+            <div className="svc-pick" role="group" aria-label="Выберите услугу">
+              {list.map((s) => (
+                <button key={s.id} type="button" aria-pressed={s.id === serviceId} onClick={() => chooseService(s.id)}>
+                  <span className="n">{s.name}</span>
+                  <span className="m">{s.category}</span>
+                  <span className="p">{s.priceFrom > 0 ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Categories>
       )}
 
       {step >= 2 && service && (
@@ -406,8 +417,15 @@ export function BookingWidget(p: Props) {
             <input id="bk-car" placeholder="Например, Kia Rio" value={car} onChange={(e) => { setCar(e.target.value); clearErr("car"); }} maxLength={60} aria-invalid={!!fieldErr.car} aria-describedby={fieldErr.car ? "bk-car-err" : undefined} />
             {fieldErr.car && <span className="err" id="bk-car-err">{fieldErr.car}</span>}
           </div>
+          {p.askPlate && (
           <div className="field">
-            <label htmlFor="bk-comment">{service.isDiagnostic ? "Что беспокоит в машине" : "Комментарий, если нужно"}</label>
+            <label htmlFor="bk-plate">Госномер</label>
+            <input id="bk-plate" placeholder="А123ВС152" autoCapitalize="characters" value={plate} onChange={(e) => { setPlate(e.target.value.toUpperCase()); clearErr("plate"); }} maxLength={15} aria-invalid={!!fieldErr.plate} aria-describedby={fieldErr.plate ? "bk-plate-err" : undefined} />
+            {fieldErr.plate && <span className="err" id="bk-plate-err">{fieldErr.plate}</span>}
+          </div>
+          )}
+          <div className="field">
+            <label htmlFor="bk-comment">{service.isDiagnostic ? "Что беспокоит в машине" : p.requireComment ? "Что нужно сделать" : "Комментарий, если нужно"}</label>
             <textarea
               id="bk-comment"
               value={comment}

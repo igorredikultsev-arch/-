@@ -1,47 +1,36 @@
 "use client";
 
 import { aboutDuration } from "@/lib/duration";
-import { useMemo, useState } from "react";
 import type { WidgetService } from "./booking-widget";
+import { Categories } from "./categories";
 import { PICK_EVENT, scrollToBook } from "./events";
 
 
 const duration = aboutDuration;
 
 export function ServicesList({ services }: { services: WidgetService[] }) {
-  const categories = useMemo(() => [...new Set(services.map((s) => s.category))], [services]);
-  const [cat, setCat] = useState(categories[0]);
-  const shown = services.filter((s) => s.category === cat);
-
   function pick(id: string) {
     window.dispatchEvent(new CustomEvent(PICK_EVENT, { detail: id }));
     scrollToBook();
   }
 
   return (
-    <>
-      {categories.length > 1 && (
-        <div className="tabs" role="group" aria-label="Категории услуг">
-          {categories.map((c) => (
-            <button key={c} type="button" aria-pressed={c === cat} onClick={() => setCat(c)}>
-              {c}
+    <Categories items={services}>
+      {(shown) => (
+        <div className="svc-list">
+          {shown.map((s) => (
+            // Вся строка — кнопка: нажали на услугу, и форма записи открывается с ней
+            <button type="button" className="svc" key={s.id} onClick={() => pick(s.id)}>
+              <div className="n">{s.name}</div>
+              <div className="m">{[s.description, duration(s.durationMin)].filter(Boolean).map((t) => t!.replace(/^./, (c) => c.toUpperCase())).join(". ")}</div>
+              <div className="p">
+                {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}
+                {s.priceFrom > 0 && <small>от</small>}
+              </div>
             </button>
           ))}
         </div>
       )}
-      <div className="svc-list">
-        {shown.map((s) => (
-          // Вся строка — кнопка: нажали на услугу, и форма записи открывается с ней
-          <button type="button" className="svc" key={s.id} onClick={() => pick(s.id)}>
-            <div className="n">{s.name}</div>
-            <div className="m">{[s.description, duration(s.durationMin)].filter(Boolean).map((t) => t!.replace(/^./, (c) => c.toUpperCase())).join(". ")}</div>
-            <div className="p">
-              {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}
-              {s.priceFrom > 0 && <small>от</small>}
-            </div>
-          </button>
-        ))}
-      </div>
-    </>
+    </Categories>
   );
 }

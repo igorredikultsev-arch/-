@@ -573,3 +573,22 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
   .t-taxi .card .block { padding: 28px 28px 30px; }
   .t-taxi .card .about { grid-template-columns: 1fr; }
 }
+
+/* Разделы услуг, раскрываются по нажатию (образец клиента «Конкурент»): значок, название, «4 варианта записи» */
+.cat-list { display: grid; }
+.cat { border-bottom: 1px solid var(--s-line); }
+.cat:first-child { border-top: 1px solid var(--s-line); }
+.cat-head { all: unset; box-sizing: border-box; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 14px 4px; cursor: pointer; }
+.cat-head:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; border-radius: 8px; }
+.cat-head .ic { display: grid; place-items: center; width: 26px; color: var(--s-muted); }
+.cat-head b { display: block; font-weight: 600; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
+.cat-head small { display: block; margin-top: 2px; font-size: 13.5px; color: var(--s-muted); }
+.cat-head .chev { color: var(--s-muted); transition: transform .2s; }
+.cat-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.cat-body { padding: 0 0 10px 40px; }
+.cat-body .svc-list .svc:first-child { border-top: 0; }
+.cat-body .svc-list .svc:last-child { border-bottom: 0; }
+.cat-body .svc-pick { padding-left: 0; }
+@media (max-width: 480px) { .cat-body { padding-left: 0; } }
+@media (prefers-reduced-motion: reduce) { .cat-head .chev { transition: none; } }
+.cat-body .svc-pick .m { display: none; }

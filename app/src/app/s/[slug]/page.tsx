@@ -120,6 +120,8 @@ export default async function SitePage({ params, searchParams }: Props) {
       phone={biz.phone}
       phoneLabel={formatPhone(biz.phone)}
       demo={demo}
+      askPlate={biz.askPlate}
+      requireComment={biz.requireComment}
     />
   );
 

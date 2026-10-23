@@ -89,6 +89,10 @@ model Business {
   onlinePosts Int @default(1)
   /// Стенды развал-схождения, отдельно от постов: услуги с отметкой onStand записываются только на них, остальные — только на посты
   standPosts  Int @default(0)
+  /// В форме записи на сайте обязателен госномер машины (просьба клиента: «марка, модель и госномер»)
+  askPlate       Boolean @default(false)
+  /// Комментарий к записи обязателен: что нужно сделать
+  requireComment Boolean @default(false)
   slotStepMin Int @default(30)
   minLeadMin  Int @default(120)
   horizonDays Int @default(14)

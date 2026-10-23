@@ -20,6 +20,7 @@ const Body = z.object({
   phone: z.string().max(30),
   car: z.string().trim().min(2, "Укажите марку и модель").max(60),
   comment: z.string().trim().max(500).optional().default(""),
+  plate: z.string().trim().max(15).optional().default(""),
   consent: z.literal(true, { error: "Без согласия на обработку данных записаться нельзя" }),
   // Ответ SmartCaptcha — несколько сотен символов. Длинную строку не пересылаем Яндексу: на ошибку его сервиса
   // запись пропускается без капчи (captcha «unavailable»), и так её можно было бы обойти
@@ -54,6 +55,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (service?.isDiagnostic && b.comment.length < 5) {
     return json({ error: "Проверьте поля формы", fields: { comment: "Опишите, что беспокоит в машине" } }, 400);
   }
+  // Сервис просит госномер и комментарий обязательно (настройка в «Правилах записи»)
+  const plate = b.plate.toUpperCase().replace(/\s+/g, " ");
+  if (biz.askPlate && plate.replace(/\s/g, "").length < 6) {
+    return json({ error: "Проверьте поля формы", fields: { plate: "Укажите госномер, например А123ВС152" } }, 400);
+  }
+  if (biz.requireComment && b.comment.length < 3) {
+    return json({ error: "Проверьте поля формы", fields: { comment: "Напишите, что нужно сделать" } }, 400);
+  }
 
   const ip = await clientIp();
   if (ip && !(await hit(`booking:ip:${ip}`, 10, 3600))) {
@@ -75,7 +84,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       time: b.time,
       clientName: b.name,
       clientPhone: phone,
-      car: b.car,
+      // Госномер хранится вместе с машиной: «Kia Rio, А123ВС152»
+      car: plate ? `${b.car}, ${plate}`.slice(0, 80) : b.car,
       comment: b.comment,
       consentIp: ip,
       maxActivePerPhone: MAX_ACTIVE_PER_PHONE,

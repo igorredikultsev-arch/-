@@ -484,6 +484,8 @@ const Rules = z.object({
   horizonDays: z.coerce.number().int().min(1).max(60),
   minLeadMin: z.coerce.number().int().min(0).max(48 * 60),
   slotStepMin: z.coerce.number().int().refine((v) => [15, 30, 60].includes(v), "Шаг 15, 30 или 60 минут"),
+  askPlate: z.boolean(),
+  requireComment: z.boolean(),
 });
 
 const pick = (f: FormData, keys: string[]) => Object.fromEntries(keys.map((k) => [k, str(f, k)]));
@@ -508,7 +510,7 @@ export async function saveTexts(_prev: ActionResult, f: FormData): Promise<Actio
 
 export async function saveRules(_prev: ActionResult, f: FormData): Promise<ActionResult> {
   const { user, business } = await requireOwner();
-  const p = Rules.safeParse({ ...pick(f, ["posts", "onlinePosts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]), standPosts: str(f, "standPosts") || "0" });
+  const p = Rules.safeParse({ ...pick(f, ["posts", "onlinePosts", "cancelHours", "horizonDays", "minLeadMin", "slotStepMin"]), standPosts: str(f, "standPosts") || "0", askPlate: f.get("askPlate") === "on", requireComment: f.get("requireComment") === "on" });
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
   // Постов под запись не больше, чем всего: после уменьшения постов лишнее срезается
   await db.business.update({ where: { id: business.id }, data: { ...p.data, onlinePosts: Math.min(p.data.onlinePosts, p.data.posts) } });

@@ -142,7 +142,7 @@ const withValue = (opts: { value: number; label: string }[], v: number, label: (
   opts.some((o) => o.value === v) ? opts : [...opts, { value: v, label: label(v) }].sort((a, b) => a.value - b.value);
 const hours = (m: number) => (m % 60 ? `${m} мин` : `${m / 60} ч`);
 
-type Rules = { posts: number; onlinePosts: number; standPosts: number; cancelHours: number; horizonDays: number; minLeadMin: number; slotStepMin: number };
+type Rules = { posts: number; onlinePosts: number; standPosts: number; cancelHours: number; horizonDays: number; minLeadMin: number; slotStepMin: number; askPlate: boolean; requireComment: boolean };
 
 /** Правила записи кнопками вместо чисел. Необычные значения, выставленные раньше, остаются в списке. */
 export function RulesForm({ r }: { r: Rules }) {
@@ -220,6 +220,18 @@ export function RulesForm({ r }: { r: Rules }) {
         value={r.cancelHours}
         options={withValue([{ value: 0, label: "До самого визита" }, { value: 2, label: "За 2 часа" }, { value: 24, label: "За сутки" }], r.cancelHours, (v) => `За ${v} ч`)}
       />
+      <fieldset className="grid gap-3">
+        <legend className="mb-2 text-[15px] font-semibold">Что клиент обязательно пишет при записи</legend>
+        <p className="-mt-1 text-[13px] leading-snug text-zinc-500">Имя, телефон, марка и модель машины — всегда.</p>
+        <label className="flex items-start gap-3 text-[15px]">
+          <input type="checkbox" name="askPlate" defaultChecked={r.askPlate} className="mt-0.5 size-5 accent-accent" />
+          <span>Госномер машины</span>
+        </label>
+        <label className="flex items-start gap-3 text-[15px]">
+          <input type="checkbox" name="requireComment" defaultChecked={r.requireComment} className="mt-0.5 size-5 accent-accent" />
+          <span>Комментарий: что нужно сделать</span>
+        </label>
+      </fieldset>
       <Result state={state} />
       <SaveBar pending={pending} label="Сохранить правила" />
     </form>
