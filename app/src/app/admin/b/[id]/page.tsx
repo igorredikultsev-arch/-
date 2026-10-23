@@ -12,8 +12,8 @@ import { connectFirst, operatorMissing, TERMINATE_AFTER_DAYS, terminationDue } f
 import { processor } from "@/lib/legal";
 import { rknDraft } from "@/lib/rkn";
 import { publicSiteUrl } from "@/lib/site-url";
-import { SETUP_PRICE, UNPAID_GRACE_DAYS, rub } from "@/lib/pricing";
-import { deleteBusiness, extendDemo, openCabinet, setReceiptSent, setStatus } from "../../actions";
+import { SETUP_PRICE, TEST_DRIVE_DAYS, UNPAID_GRACE_DAYS, rub } from "@/lib/pricing";
+import { deleteBusiness, extendDemo, openCabinet, setReceiptSent, setStatus, startTestDrive } from "../../actions";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
 import { btn2, CopyBox } from "../../ui";
 import { InfoForm, LeadForm, PaymentForm, RknForm, ServicesImportForm, TrialForm } from "./forms";
@@ -76,6 +76,13 @@ function nextStep(b: Biz, views?: ViewSummary): { text: string; tab: Tab; tone: 
     if (lead === "demo_sent" && days >= FOLLOW_UP_DAYS[0]) return { text: silent, tab: "work", tone: "do" };
     if (operatorMissing({ ...b, status: "active" })) return { text: "Ждём ответа. Чтобы подключить, понадобятся ФИО или название ИП и ИНН владельца.", tab: "info", tone: "wait" };
     return { text: "Владелец согласен? Создайте ему вход и подключите сервис.", tab: "connect", tone: "do" };
+  }
+  // Тест-драйв: сначала довести сайт до работы с клиентами, оплата подключения — после семи дней
+  if (b.status === "trial" && !b.payments.length) {
+    if (!b.rknFiledAt) return { text: "Тест-драйв: перешлите владельцу черновик уведомления в Роскомнадзор и отметьте, когда он подаст. Потом — ссылка на Яндекс Картах.", tab: "connect", tone: "do" };
+    if (!b.trialEndsAt) return { text: "Уведомление подано. Когда ссылка на сайт стоит на картах, нажмите «Начать тест-драйв с сегодня».", tab: "connect", tone: "do" };
+    if (b.trialEndsAt.getTime() > Date.now()) return { text: `Тест-драйв до ${day(b.trialEndsAt)}. За день-два до конца спросите владельца, как ему, и договоритесь об оплате ${rub(SETUP_PRICE)}.`, tab: "work", tone: "wait" };
+    return { text: `Тест-драйв закончился ${day(b.trialEndsAt)}. Запишите оплату подключения ${rub(SETUP_PRICE)}, без неё сайт приостановится ${day(new Date(b.trialEndsAt.getTime() + UNPAID_GRACE_DAYS * 86400000))}.`, tab: "pay", tone: "do" };
   }
   if (!b.payments.length) {
     const off = b.paidUntil ? day(new Date(b.paidUntil.getTime() + UNPAID_GRACE_DAYS * 86400000)) : "";
@@ -243,6 +250,18 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                 )}
                 <TrialForm id={b.id} loginUrl={loginUrl} siteUrl={siteUrl} hasOwner={b.users.length > 0} />
               </Card>
+              {b.status === "trial" && (
+                <Card title="Тест-драйв">
+                  {b.trialEndsAt ? (
+                    <p className="text-[14px] text-zinc-600">Идёт до {date(b.trialEndsAt)}. После — запишите оплату подключения {rub(SETUP_PRICE)}, без неё сайт приостановится через {UNPAID_GRACE_DAYS} дней.</p>
+                  ) : (
+                    <>
+                      <p className="text-[14px] text-zinc-600">Ещё не начат: владелец смотрит кабинет, напоминания об оплате нет. Нажмите, когда сайт заработает для клиентов — уведомление в Роскомнадзор подано, ссылка стоит на картах.</p>
+                      <form action={startTestDrive.bind(null, b.id)}><button className={btn2}>Начать тест-драйв с сегодня, {TEST_DRIVE_DAYS} дней</button></form>
+                    </>
+                  )}
+                </Card>
+              )}
               <Card title="Кабинет владельца">
                 <p className="text-[14px] text-zinc-600">Внести услуги, цены, часы и логотип за владельца, например при подключении. Пароль владельца не нужен.</p>
                 <form action={openCabinet.bind(null, b.id)}>

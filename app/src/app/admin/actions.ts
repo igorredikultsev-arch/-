@@ -15,7 +15,7 @@ import { db } from "@/lib/db";
 import { parseDemoRows, type DemoInput } from "@/lib/demo-import";
 import { demoMessage, emailSubject, outreach, questionVariant, withLink } from "@/lib/outreach";
 import { normalizePhone } from "@/lib/phone";
-import { UNPAID_GRACE_DAYS } from "@/lib/pricing";
+import { TEST_DRIVE_DAYS, UNPAID_GRACE_DAYS } from "@/lib/pricing";
 import { readTable } from "@/lib/sheet";
 import { parseServices } from "@/lib/services-import";
 import { publicSiteUrl } from "@/lib/site-url";
@@ -23,7 +23,7 @@ import { RESERVED_SLUGS, slugify } from "@/lib/slug";
 import { DEFAULT_FACTS, DEFAULT_HOURS, TEMPLATES } from "@/lib/templates";
 import { canBulkDelete } from "./labels";
 
-export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string } | null;
+export type AdminResult = { ok?: boolean; error?: string; message?: string; password?: string; id?: string; testDrive?: boolean } | null;
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const URL_MSG = "нужна ссылка вида https://…";
@@ -322,6 +322,8 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing && existing.businessId !== id) return { error: "Этот телефон уже привязан к другому сервису" };
   const fixedSlug = /-$/.test(biz.slug) ? await uniqueSlug(biz.slug.replace(/-+$/, "") || "servis") : null;
+  // Тест-драйв (по договорённости с клиентом): вход есть, но 7 дней и плашка об оплате — только после «Начать тест-драйв»
+  const testDrive = fromDemo && f.get("testDrive") === "on";
   const password = generatePassword();
   const passwordHash = await hashPassword(password);
   await db.$transaction([
@@ -331,10 +333,11 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
     db.business.update({
       where: { id },
       data: {
-        ...statusChange(fromDemo ? "active" : biz.status),
+        ...statusChange(testDrive ? "trial" : fromDemo ? "active" : biz.status),
         demoExpiresAt: null,
+        ...(testDrive ? { trialEndsAt: null } : {}),
         // Срок «до сегодня» и для вернувшегося архивного клиента: со старым сроком ночная проверка сразу приостановила бы сайт
-        ...(fromDemo && (!biz.paidUntil || biz.paidUntil < new Date()) ? { paidUntil: new Date() } : {}),
+        ...(fromDemo && !testDrive && (!biz.paidUntil || biz.paidUntil < new Date()) ? { paidUntil: new Date() } : {}),
         // Демо, созданные до исправления, могли получить адрес с дефисом на конце: поддомен с ним не откроется
         ...(fixedSlug ? { slug: fixedSlug } : {}),
       },
@@ -350,11 +353,25 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   revalidatePath(`/admin/b/${id}`);
   return {
     ok: true,
-    message: fromDemo
+    testDrive,
+    message: testDrive
+      ? "Вход создан, тест-драйв ещё не идёт. Пароль показан один раз: перешлите его владельцу. Когда сайт заработает для клиентов, нажмите «Начать тест-драйв с сегодня»"
+      : fromDemo
       ? `Сервис подключён. Пароль показан один раз: перешлите его владельцу. Запишите оплату подключения на вкладке «Оплаты», без неё через ${UNPAID_GRACE_DAYS} дней сайт приостановится`
       : "Новый пароль создан. Он показан один раз: перешлите его владельцу",
     password,
   };
+}
+
+/** Тест-драйв 7 дней с сегодняшнего дня: сайт работает для клиентов, оплата подключения — после. */
+export async function startTestDrive(id: string) {
+  const admin = await requireAdmin();
+  const biz = await db.business.findUniqueOrThrow({ where: { id }, select: { status: true, trialEndsAt: true } });
+  if (biz.status !== "trial") return;
+  await db.business.update({ where: { id }, data: { trialEndsAt: new Date(Date.now() + TEST_DRIVE_DAYS * 86400000) } });
+  await audit("admin.test_drive_start", { userId: admin.id, businessId: id });
+  revalidatePath(`/admin/b/${id}`);
+  revalidatePath("/cabinet", "layout");
 }
 
 export async function addPayment(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {

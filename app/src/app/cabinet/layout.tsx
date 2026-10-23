@@ -13,9 +13,18 @@ import { Main, Sidebar, Tabbar } from "./tabbar";
 const DAY = 86400000;
 
 /** Напоминание об оплате: за 5 дней до конца срока, после него — когда сайт приостановится, и сама приостановка. */
-function billingNotice(b: { status: string; paidUntil: Date | null; timezone: string }, paidBefore: boolean): { tone: "warn" | "error"; text: string } | null {
+function billingNotice(b: { status: string; paidUntil: Date | null; trialEndsAt: Date | null; timezone: string }, paidBefore: boolean): { tone: "info" | "warn" | "error"; text: string } | null {
   if (b.status === "suspended") {
     return { tone: "error", text: "Сайт приостановлен: клиенты не могут записаться онлайн. Чтобы включить его, оплатите абонентскую плату и напишите нам." };
+  }
+  // Тест-драйв: пока не начат — ничего; идёт — спокойная строка с датой; закончился — когда сайт приостановится
+  if (b.status === "trial") {
+    if (!b.trialEndsAt) return null;
+    if (b.trialEndsAt.getTime() > Date.now()) {
+      return { tone: "info", text: `Тест-драйв до ${formatDate(b.trialEndsAt.getTime(), b.timezone)}. Подключение ${rub(SETUP_PRICE)} после тест-драйва, в него входит первый месяц.` };
+    }
+    const off = formatDate(b.trialEndsAt.getTime() + UNPAID_GRACE_DAYS * DAY, b.timezone);
+    return { tone: "warn", text: `Тест-драйв закончился. Чтобы сайт работал дальше, оплатите подключение ${rub(SETUP_PRICE)}. Без оплаты сайт будет принимать записи до ${off}.` };
   }
   if (b.status !== "active" || !b.paidUntil) return null;
   const left = b.paidUntil.getTime() - Date.now();
@@ -58,7 +67,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
       )}
       {billing && (
         <div className="mx-auto max-w-md px-3.5 pt-3 lg:max-w-4xl lg:px-10">
-          <p role={billing.tone === "error" ? "alert" : undefined} className={`rounded-xl px-3.5 py-3 text-[13.5px] leading-snug ${billing.tone === "error" ? "bg-red-50 text-red-800" : "bg-orange-50 text-orange-900"}`}>
+          <p role={billing.tone === "error" ? "alert" : undefined} className={`rounded-xl px-3.5 py-3 text-[13.5px] leading-snug ${billing.tone === "error" ? "bg-red-50 text-red-800" : billing.tone === "info" ? "bg-white text-zinc-700 ring-1 ring-zinc-200" : "bg-orange-50 text-orange-900"}`}>
             {billing.text} <SupportLink />
           </p>
         </div>

@@ -9,5 +9,7 @@ export const MONTHLY_PRICE = 990;
 export const GUARANTEE_DAYS = 14;
 /** Через сколько дней после конца оплаченного срока сайт сам приостанавливается (оферта, п. 4.1). */
 export const UNPAID_GRACE_DAYS = 7;
+/** Тест-драйв по договорённости с клиентом: столько дней сайт работает до оплаты подключения. */
+export const TEST_DRIVE_DAYS = 7;
 
 export const rub = (n: number) => `${n.toLocaleString("ru-RU")} ₽`;

@@ -89,18 +89,26 @@ export function LeadForm({ id, lead }: { id: string; lead: { status: string; cha
 export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; loginUrl: string; siteUrl: string; hasOwner: boolean }) {
   const [state, action, pending] = useActionState(startTrial.bind(null, id), null);
   const [phone, setPhone] = useState("");
+  const paid = `Подключение ${rub(SETUP_PRICE)}, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц. Если за 2 недели не понравится — верну деньги.`;
+  const drive = `7 бесплатных дней начнём считать с дня, когда сайт заработает для клиентов. Подключение ${rub(SETUP_PRICE)} после тест-драйва, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц.`;
   return (
     <form onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <F label="Телефон владельца" id="t-phone"><input id="t-phone" name="ownerPhone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inp} /></F>
         <F label="Имя владельца" id="t-name"><input id="t-name" name="ownerName" className={inp} /></F>
       </div>
+      {!hasOwner && (
+        <label className="flex items-start gap-2 text-[14px]">
+          <input type="checkbox" name="testDrive" className="mt-0.5 size-4" />
+          <span>Тест-драйв 7 дней: вход сразу, а 7 дней и напоминание об оплате начнутся по кнопке «Начать тест-драйв», когда сайт заработает для клиентов</span>
+        </label>
+      )}
       <Result state={state} />
       {state?.password && (
         <CopyBox
           label="Сообщение владельцу"
           rows={6}
-          text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё».\n\nПодключение ${rub(SETUP_PRICE)}, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц. Если за 2 недели не понравится — верну деньги.`}
+          text={`Готово, ваш сайт работает: ${siteUrl}\n\nКабинет: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nПароль лучше сменить в разделе «Ещё».\n\n${state.testDrive ? drive : paid}`}
         />
       )}
       <button disabled={pending} className={btn}>{hasOwner ? "Выдать новый пароль" : "Создать вход и подключить"}</button>
