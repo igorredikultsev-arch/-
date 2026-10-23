@@ -100,7 +100,7 @@ export async function ownerDaySlots(date: string, serviceId: string | null, cust
   if (!isDateString(date)) return [];
   const service = serviceId
     ? await db.service.findFirst({ where: { id: serviceId, businessId: business.id } })
-    : custom && custom.durationMin >= 10 && custom.durationMin <= 600 ? { durationMin: custom.durationMin, onStand: !!custom.onStand } : null;
+    : custom && custom.durationMin >= 10 && custom.durationMin <= 1440 ? { durationMin: custom.durationMin, onStand: !!custom.onStand } : null;
   if (!service) return [];
   const biz = await db.business.findUniqueOrThrow({ where: { id: business.id }, select: businessForSlotsSelect });
   // Владельцу показываем весь день, без «запаса» на подготовку и без ограничения горизонта
@@ -113,7 +113,7 @@ const NewBooking = z.object({
   serviceId: z.string().optional(),
   // Своя запись без услуги одним полем, как в календаре: что делаем, клиент, машина, телефон; сколько длится, на стенде ли
   title: z.string().trim().max(400, "Запись не длиннее 400 знаков").optional(),
-  durationMin: z.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов").optional(),
+  durationMin: z.number().int().min(10, "Не меньше 10 минут").max(1440, "Не больше суток").optional(),
   onStand: z.boolean().optional(),
   staffId: z.string().optional(),
   date: z.string().refine(isDateString, "Выберите день"),

@@ -84,3 +84,42 @@ export function DatePick({ name, min, value, onChange }: { name?: string; min: s
     </div>
   );
 }
+
+/**
+ * Время с клавиатуры: «930», «9:30», «19» → 09:30, 19:00. Цифровая клавиатура на телефоне, без длинного списка.
+ * onChange получает «ЧЧ:ММ» или пустую строку, пока время не дописано.
+ */
+export function TimeField({ value, onChange, label, id, end }: { value: string; onChange: (v: string) => void; label: string; id?: string; end?: boolean }) {
+  const [text, setText] = useState(value);
+  const [shown, setShown] = useState(value);
+  // Время поменяли снаружи (нажали окно в сетке, «Весь день») — показываем его
+  if (value !== shown) { setShown(value); setText(value); }
+  const parse = (raw: string): string => {
+    const d = raw.replace(/\D/g, "").slice(0, 4);
+    if (!d) return "";
+    const [h, m] = raw.includes(":") ? raw.split(":").map((x) => x.replace(/\D/g, "")) : d.length <= 2 ? [d, "00"] : [d.slice(0, d.length - 2), d.slice(-2)];
+    const hh = Number(h), mm = Number(m || 0);
+    if (Number.isNaN(hh) || hh > 24 || mm > 59 || (hh === 24 && (mm > 0 || !end))) return "";
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
+  return (
+    <input
+      id={id}
+      aria-label={label}
+      inputMode="numeric"
+      placeholder="--:--"
+      maxLength={5}
+      value={text}
+      onChange={(e) => {
+        let v = e.target.value.replace(/[^\d:]/g, "");
+        // «1930» → «19:30» прямо при вводе
+        if (!v.includes(":") && v.length > 2) v = `${v.slice(0, 2)}:${v.slice(2, 4)}`;
+        setText(v);
+        const t = v.replace(":", "").length >= 3 ? parse(v) : "";
+        if (t) { setShown(t); onChange(t); }
+      }}
+      onBlur={() => { const t = parse(text); setText(t); setShown(t); onChange(t); }}
+      className="h-12 w-full min-w-0 rounded-xl border border-zinc-300 bg-white px-3 text-center text-[17px] font-semibold tabular-nums outline-none focus:border-transparent focus:ring-2 focus:ring-accent"
+    />
+  );
+}

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Check, WarningCircle } from "@phosphor-icons/react";
 import { addDays, formatDayShort } from "@/lib/time";
 import { ownerCreateBooking, ownerDaySlots, ownerUpdateBooking } from "../actions";
-import { DatePick, TimeSelect } from "../pickers";
+import { DatePick, TimeField } from "../pickers";
+import { hhmm, parseHhmm } from "@/lib/time";
 import { btnPrimary, Field, inputCls, Notice } from "../ui";
 
 type Svc = { id: string; name: string; durationMin: number; onStand?: boolean };
@@ -15,7 +16,7 @@ export type EditBooking = { id: string; custom: boolean; title: string; length: 
 
 const dur = (m: number) => (m < 60 ? `${m} мин` : m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч`);
 /** Длительность своей записи: от получаса до рабочего дня */
-const DURATIONS = [30, 60, 90, 120, 180, 240, 360, 480];
+const DURATIONS = [30, 60, 90, 120, 180, 240];
 
 /** Шаг формы: номер и заголовок. Запись идёт по порядку: что делаем → день → время → клиент. */
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
@@ -71,8 +72,20 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
   // Предупреждение относится к выбранному времени: сменили время, услугу или день — проверяем заново
   useEffect(() => setWarning(null), [custom, serviceId, length, onStand, date, time]);
 
-  // Время не из сетки окон (выбрано вручную или нажатием в календаре) показывается в «Другое время»
-  const offGrid = otherTime || (!!time && !!slots && !slots.some((s) => s.time === time));
+  // Конец записи текстом: длительность считается из «С» и «До»
+  const startMin = parseHhmm(time);
+  const endText = startMin != null ? hhmm(Math.min(1440, startMin + length)) : "";
+  const setEnd = (v: string) => {
+    const e = parseHhmm(v);
+    if (startMin != null && e != null && e > startMin) setLength(e - startMin);
+  };
+  // «Весь день» — по часам работы этого дня: от первого окна до закрытия
+  const wholeDay = () => {
+    const first = slots?.[0], last = slots?.[slots.length - 1];
+    const open = first ? parseHhmm(first.time)! : 540;
+    const close = last ? parseHhmm(last.time)! + length : 1140;
+    setTime(hhmm(open)); setOtherTime(true); setLength(Math.max(15, close - open));
+  };
   const pickDay = (d: string) => { setDate(d); setTime(""); setOtherTime(false); };
   const ready = !!time && (custom ? title.trim().length >= 2 : !!serviceId);
 
@@ -119,7 +132,9 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
                     {dur(m)}
                   </button>
                 ))}
+                <button type="button" onClick={wholeDay} className="h-10 rounded-xl bg-white px-3.5 text-[14.5px] font-semibold ring-1 ring-zinc-200">Весь день</button>
               </div>
+              <p className="text-[13px] text-zinc-500">{durations.includes(length) ? "Или впишите время «С» и «До» ниже, тогда длительность посчитается сама." : `Сейчас: ${dur(length)}. Время «С» и «До» — ниже.`}</p>
             </div>
             {standPosts > 0 && !staff.length && (
               <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl bg-white px-3 ring-1 ring-zinc-200">
@@ -203,11 +218,17 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
             </div>
           )}
           {slots && slots.some((s) => !s.free) && <p className="text-[13px] text-zinc-500">Серым — все посты заняты. Записать всё равно можно.</p>}
-          <div className="flex items-center gap-3">
-            <span className="shrink-0 text-[14.5px] text-zinc-600">Другое время</span>
-            <div className="w-32">
-              <TimeSelect value={offGrid ? time : ""} onChange={(v) => { setTime(v); setOtherTime(true); }} label="Другое время" />
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="nb-from" className="shrink-0 text-[14.5px] text-zinc-600">{slots && slots.length ? "Своё время: с" : "С"}</label>
+            <div className="w-24">
+              <TimeField id="nb-from" value={time} onChange={(v) => { setTime(v); setOtherTime(!!v && !slots?.some((s) => s.time === v)); }} label="Начало" />
             </div>
+            {custom && (
+              <>
+                <label htmlFor="nb-to" className="shrink-0 text-[14.5px] text-zinc-600">до</label>
+                <div className="w-24"><TimeField id="nb-to" value={endText} onChange={setEnd} label="Конец" end /></div>
+              </>
+            )}
           </div>
         </Step>
 
