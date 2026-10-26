@@ -153,6 +153,7 @@ model Staff {
   sortOrder  Int       @default(0)
   bookings   Booking[]
   notes      CalendarNote[]
+  services   Service[]
 
   @@index([businessId, sortOrder])
 }
@@ -203,6 +204,9 @@ model Service {
   onStand      Boolean   @default(false)
   /// На главном экране сайта: кнопка, которая сразу открывает выбор времени (акция, «бесплатная диагностика»)
   featured     Boolean   @default(false)
+  /// Делается только на этом посту (шиномонтаж — только «Пост 1»); пусто — на любом
+  staffId      String?
+  staff        Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
   sortOrder    Int       @default(0)
   active       Boolean   @default(true)
   bookings     Booking[]

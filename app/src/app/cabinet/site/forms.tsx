@@ -38,11 +38,11 @@ export function ExceptionForm({ today }: { today: string }) {
   );
 }
 
-type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; featured: boolean; active: boolean };
+type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; featured: boolean; staffId: string | null; active: boolean };
 
 const DURATIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 
-export function ServiceForm({ service, categories, standPosts = 0 }: { service: Svc | null; categories: string[]; standPosts?: number }) {
+export function ServiceForm({ service, categories, standPosts = 0, posts = [] }: { service: Svc | null; categories: string[]; standPosts?: number; posts?: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(saveService.bind(null, service?.id ?? null), null);
   const dur = service?.durationMin ?? 60;
   return (
@@ -69,6 +69,20 @@ export function ServiceForm({ service, categories, standPosts = 0 }: { service: 
         <input id="sv-cat" name="category" list="cats" defaultValue={service?.category ?? categories[0]} required maxLength={80} className={inputCls} />
         <datalist id="cats">{categories.map((c) => <option key={c} value={c} />)}</datalist>
       </Field>
+      {posts.length > 1 && (
+        <Field label="Делается на посту" htmlFor="sv-staff" hint="Например, шиномонтаж только на «Пост 1»: с сайта на него запишут, только когда свободен этот пост. Услуги на стенде развала идут на стенд">
+          <select id="sv-staff" name="staffId" defaultValue={service?.staffId ?? ""} className={inputCls}>
+            <option value="">На любом свободном</option>
+            {posts.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          {service && (
+            <label className="mt-2 flex cursor-pointer items-center gap-3 text-[15px]">
+              <input type="checkbox" name="staffForGroup" className="size-5 accent-accent" />
+              Так же для всего раздела «{service.category.split(" / ")[0]}»
+            </label>
+          )}
+        </Field>
+      )}
       <div className="grid gap-1 rounded-2xl border border-zinc-200 bg-white p-1">
         <label className="flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3 hover:bg-zinc-50">
           <input type="checkbox" name="active" defaultChecked={service?.active ?? true} className="size-5 accent-accent" />

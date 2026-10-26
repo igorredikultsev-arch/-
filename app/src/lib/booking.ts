@@ -44,7 +44,7 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
       // Нижняя граница по началу: без неё запрос перебирал бы всю историю записей сервиса. Запись не длиннее 10 часов,
       // закрытие — не длиннее суток, а from уже взят с запасом в сутки, поэтому ничего пересекающееся не теряется
       where: { businessId, status: { in: [...OCCUPYING] }, startAt: { gte: from, lt: to }, endAt: { gt: from } },
-      select: { startAt: true, endAt: true, source: true, onStand: true },
+      select: { startAt: true, endAt: true, source: true, onStand: true, staffId: true },
     }),
     tx.block.findMany({
       where: { businessId, startAt: { gte: from, lt: to }, endAt: { gt: from } },
@@ -58,6 +58,8 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
     siteBookings: bookings.filter((b) => b.source === "site").map(busy),
     blocksAll: blocks.filter((b) => b.scope === "all").map(iv),
     blocksOnePost: blocks.filter((b) => b.scope === "one_post").map(iv),
+    /** Записи на конкретном посту: для услуг, закреплённых за постом */
+    onStaff: (staffId: string) => bookings.filter((b) => b.staffId === staffId).map(iv),
   };
 }
 
@@ -87,9 +89,10 @@ export const businessForSlotsSelect = {
   exceptions: true,
 } satisfies Prisma.BusinessSelect;
 
-/** Услуга для расчёта окон: длительность и стенд развала. Просто число — длительность услуги на посту. */
-export type SlotService = number | { durationMin: number; onStand?: boolean };
-const svc = (s: SlotService) => (typeof s === "number" ? { durationMin: s, onStand: false } : { durationMin: s.durationMin, onStand: !!s.onStand });
+/** Услуга для расчёта окон: длительность, стенд развала, закреплённый пост. Просто число — длительность услуги на любом посту. */
+export type SlotService = number | { durationMin: number; onStand?: boolean; staffId?: string | null };
+const svc = (s: SlotService) =>
+  typeof s === "number" ? { durationMin: s, onStand: false, staffId: null } : { durationMin: s.durationMin, onStand: !!s.onStand, staffId: s.onStand ? null : (s.staffId ?? null) };
 
 export async function getDaySlots(
   biz: BusinessForSlots,
@@ -98,7 +101,7 @@ export async function getDaySlots(
   nowMs = Date.now(),
   tx: Tx = db,
 ): Promise<Slot[]> {
-  const { durationMin, onStand } = svc(service);
+  const { durationMin, onStand, staffId } = svc(service);
   if (!inHorizon(date, nowMs, biz.timezone, biz.horizonDays)) return [];
   const window = resolveDayWindow(date, biz.hours, biz.exceptions);
   if (!window) return [];
@@ -114,6 +117,7 @@ export async function getDaySlots(
     standPosts: biz.standPosts,
     onStand,
     ...occ,
+    pinnedBusy: staffId ? occ.onStaff(staffId) : undefined,
     nowMs,
     minLeadMin: biz.minLeadMin,
   });
@@ -145,7 +149,7 @@ export type DaySummary = { date: string; closed: boolean; free: number; ended?: 
 
 /** Сводка по дням горизонта для полоски дат: выходной или сколько свободных окон. Один запрос к базе. */
 export async function getHorizonSummary(biz: BusinessForSlots, service: SlotService, nowMs = Date.now()): Promise<DaySummary[]> {
-  const { durationMin, onStand } = svc(service);
+  const { durationMin, onStand, staffId } = svc(service);
   const dates = horizonDates(nowMs, biz.timezone, biz.horizonDays);
   const occ = await loadRange(db, biz.id, dates[0], dates[dates.length - 1], biz.timezone);
   return dates.map((date) => {
@@ -153,7 +157,7 @@ export async function getHorizonSummary(biz: BusinessForSlots, service: SlotServ
     if (!window) return { date, closed: true, free: 0 };
     const slots = daySlots({
       date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts, onlinePosts: biz.onlinePosts,
-      standPosts: biz.standPosts, onStand, ...occ, nowMs, minLeadMin: biz.minLeadMin,
+      standPosts: biz.standPosts, onStand, ...occ, pinnedBusy: staffId ? occ.onStaff(staffId) : undefined, nowMs, minLeadMin: biz.minLeadMin,
     });
     // «Поздно» — только сегодня и только когда окна были, но время уже вышло (а не услуга длиннее рабочего дня)
     const ended = slots.length === 0 && date === dates[0] && daySlots({
@@ -238,7 +242,8 @@ export async function createSiteBooking(input: SiteBookingInput) {
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
-        staffId: await freeStaff(tx, input.businessId, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts),
+        // Услуга закреплена за постом — на него (окно выше уже проверено по этому посту)
+        staffId: (!service.onStand && service.staffId) || (await freeStaff(tx, input.businessId, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts)),
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "site",
@@ -328,7 +333,8 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
-        staffId: input.staffId ?? (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts)),
+        // Пост выбран вручную — он; иначе закреплённый за услугой; иначе первый свободный
+        staffId: input.staffId ?? (("staffId" in service && !service.onStand && service.staffId) || (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts))),
         createdById: input.createdById ?? null,
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
@@ -374,7 +380,8 @@ export async function updateOwnerBooking(input: OwnerBookingInput & { id: string
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
-        staffId: input.staffId ?? (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, b.id)),
+        // Пост выбран вручную — он; иначе закреплённый за услугой; иначе первый свободный
+        staffId: input.staffId ?? (("staffId" in service && !service.onStand && service.staffId) || (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, b.id))),
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         clientName: input.clientName || null,

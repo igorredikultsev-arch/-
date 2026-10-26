@@ -2,6 +2,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { businessForSlotsSelect, createOwnerBooking, createSiteBooking, getDaySlots } from "@/lib/booking";
 import { db } from "@/lib/db";
+import { ensureStaff } from "@/lib/staff";
 import { localToUtc } from "@/lib/time";
 import { makeBusiness, resetDb } from "./helpers";
 
@@ -66,5 +67,23 @@ describe("своя запись текстом, без услуги", () => {
     // Пост занят своей записью: под шиномонтаж на 10:00 остаётся 4 из 5
     const left = await Promise.allSettled(Array.from({ length: 6 }, (_, i) => createSiteBooking(site(biz.id, tire.id, 30 + i))));
     expect(left.filter((r) => r.status === "fulfilled")).toHaveLength(4);
+  });
+});
+
+describe("услуга, закреплённая за постом (шиномонтаж только на «Пост 1»)", () => {
+  it("с сайта на 10:00 записывается одна машина и встаёт на этот пост; другие услуги идут на остальные посты", async () => {
+    const biz = await makeBusiness({ posts: 5, onlinePosts: 5 });
+    await ensureStaff({ id: biz.id, posts: 5, standPosts: 0 });
+    const post1 = await db.staff.findFirstOrThrow({ where: { businessId: biz.id }, orderBy: { sortOrder: "asc" } });
+    const tire = await db.service.update({ where: { id: biz.services[0].id }, data: { staffId: post1.id } });
+    const other = await db.service.create({ data: { businessId: biz.id, category: "ТО", name: "Замена масла", priceFrom: 1000, durationMin: 60 } });
+    const first = await createSiteBooking(site(biz.id, other.id, 1));
+    expect(first.staffId).not.toBe(post1.id);
+    const results = await Promise.allSettled(Array.from({ length: 3 }, (_, i) => createSiteBooking(site(biz.id, tire.id, 10 + i))));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await db.booking.count({ where: { businessId: biz.id, staffId: post1.id } })).toBe(1);
+    const b = await db.business.findUniqueOrThrow({ where: { id: biz.id }, select: businessForSlotsSelect });
+    expect((await getDaySlots(b, DATE, tire, NOW)).find((s) => s.time === "10:00")!.free).toBe(false);
+    expect((await getDaySlots(b, DATE, other, NOW)).find((s) => s.time === "10:00")!.free).toBe(true);
   });
 });

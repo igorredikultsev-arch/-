@@ -366,6 +366,7 @@ const ServiceForm = z.object({
   isDiagnostic: z.boolean(),
   onStand: z.boolean(),
   featured: z.boolean(),
+  staffId: z.string().max(40).transform((v) => v || null),
   active: z.boolean(),
 });
 
@@ -380,6 +381,7 @@ function readService(f: FormData) {
     isDiagnostic: f.get("isDiagnostic") === "on",
     onStand: f.get("onStand") === "on",
     featured: f.get("featured") === "on",
+    staffId: str(f, "staffId"),
     active: f.get("active") === "on",
   });
 }
@@ -388,9 +390,19 @@ export async function saveService(id: string | null, _prev: ActionResult, f: For
   const { user, business } = await requireOwner();
   const p = readService(f);
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
+  // Пост — только свой и не стенд (услуги на стенде идут на стенд)
+  if (p.data.staffId && !(await db.staff.count({ where: { id: p.data.staffId, businessId: business.id, onStand: false } }))) return { error: "Пост не найден" };
   if (id) {
     const r = await db.service.updateMany({ where: { id, businessId: business.id }, data: { ...p.data, description: p.data.description || null } });
     if (!r.count) return { error: "Услуга не найдена" };
+    // «Так же для всего раздела»: шиномонтаж целиком на «Пост 1» одним нажатием
+    if (f.get("staffForGroup") === "on") {
+      const group = p.data.category.split(" / ")[0];
+      await db.service.updateMany({
+        where: { businessId: business.id, onStand: false, OR: [{ category: group }, { category: { startsWith: `${group} / ` } }] },
+        data: { staffId: p.data.staffId },
+      });
+    }
   } else {
     const max = await db.service.aggregate({ where: { businessId: business.id }, _max: { sortOrder: true } });
     await db.service.create({

@@ -10,8 +10,12 @@ import { db } from "./db";
  */
 export async function freeStaff(tx: Prisma.TransactionClient, businessId: string, onStand: boolean, start: Date, end: Date, standPosts: number, ignoreId?: string): Promise<string | null> {
   const staff = await tx.staff.findMany({ where: { businessId }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, onStand: true } });
-  const kind = standPosts > 0 ? staff.filter((s) => s.onStand === onStand) : staff.filter((s) => !s.onStand);
-  if (!kind.length) return null;
+  const all = standPosts > 0 ? staff.filter((s) => s.onStand === onStand) : staff.filter((s) => !s.onStand);
+  if (!all.length) return null;
+  // Посты, за которыми закреплены услуги (шиномонтаж — «Пост 1»), занимаем последними: остальные услуги идут на любой пост,
+  // но первыми на свободные другие, чтобы не отнимать закреплённый пост
+  const pinned = new Set((await tx.service.findMany({ where: { businessId, staffId: { not: null } }, select: { staffId: true } })).map((s) => s.staffId));
+  const kind = [...all.filter((s) => !pinned.has(s.id)), ...all.filter((s) => pinned.has(s.id))];
   const busy = await tx.booking.findMany({
     where: { businessId, staffId: { in: kind.map((s) => s.id) }, ...(ignoreId ? { id: { not: ignoreId } } : {}), status: { in: [...OCCUPYING] }, startAt: { lt: end }, endAt: { gt: start } },
     select: { staffId: true },

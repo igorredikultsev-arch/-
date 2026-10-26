@@ -320,3 +320,25 @@ describe("стенд развал-схождения", () => {
     expect(free(s)).not.toContain("10:00");
   });
 });
+
+// Услуга, закреплённая за постом (26 октября, «Конкурент»: шиномонтаж только на «Пост 1»)
+describe("услуга на одном посту", () => {
+  const TZP = "Europe/Moscow";
+  const DAY = "2026-10-12";
+  const at = (min: number) => localToUtc(DAY, min, TZP);
+  const input = (over: Partial<SlotInput> = {}): SlotInput => ({
+    date: DAY, tz: TZP, window: { openMin: 540, closeMin: 720 }, durationMin: 60, stepMin: 60, posts: 5,
+    bookings: [], blocksAll: [], blocksOnePost: [], nowMs: 0, minLeadMin: 0, ...over,
+  });
+  const free = (s: ReturnType<typeof daySlots>) => s.filter((x) => x.free).map((x) => x.time);
+
+  it("занят свой пост — окно занято, хотя другие посты свободны", () => {
+    const busy = [{ start: at(600), end: at(660) }];
+    expect(free(daySlots(input({ bookings: busy, pinnedBusy: busy })))).toEqual(["09:00", "11:00"]);
+  });
+  it("заняты другие посты, свой свободен — окно свободно; без закрепления считается как раньше", () => {
+    const others = Array.from({ length: 4 }, () => ({ start: at(600), end: at(660) }));
+    expect(free(daySlots(input({ bookings: others, pinnedBusy: [] })))).toEqual(["09:00", "10:00", "11:00"]);
+    expect(free(daySlots(input({ bookings: [...others, { start: at(600), end: at(660) }] })))).toEqual(["09:00", "11:00"]);
+  });
+});

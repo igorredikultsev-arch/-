@@ -88,6 +88,8 @@ export type SlotInput = {
   standPosts?: number;
   /** Услуга делается на стенде: окно свободно, если свободен стенд, посты не важны. */
   onStand?: boolean;
+  /** Услуга закреплена за одним постом (шиномонтаж только на «Пост 1»): записи на этом посту. Окно свободно, если свободен ещё и он */
+  pinnedBusy?: Interval[];
   nowMs: number;
   minLeadMin: number;
 };
@@ -118,7 +120,8 @@ export function daySlots(input: SlotInput): Slot[] {
     // На обед запись не предлагается вовсе, как и вне часов работы
     if (lunch.some((b) => overlaps(b, slot))) continue;
     const free =
-      !input.blocksAll.some((b) => overlaps(b, slot)) && peakLoad(slot, occupied) < posts && (!onlineLane || peakLoad(slot, onlineLane) < online);
+      !input.blocksAll.some((b) => overlaps(b, slot)) && peakLoad(slot, occupied) < posts && (!onlineLane || peakLoad(slot, onlineLane) < online) &&
+      (!input.pinnedBusy || !input.pinnedBusy.some((b) => overlaps(b, slot)));
     slots.push({ time: hhmm(m), start: slot.start, end: slot.end, free });
   }
   return slots;
