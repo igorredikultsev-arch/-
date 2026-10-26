@@ -12,9 +12,10 @@ export function FeaturedServices({ services }: { services: Featured[] }) {
   return (
     <div className="feat">
       {services.map((s) => (
-        <button key={s.id} type="button" onClick={() => { window.dispatchEvent(new CustomEvent(PICK_EVENT, { detail: s.id })); scrollToBook(); }}>
+        <button key={s.id} type="button" className="btn alt feat-btn"
+          onClick={() => { window.dispatchEvent(new CustomEvent(PICK_EVENT, { detail: s.id })); scrollToBook(); }}>
+          <span className="tag">{priceText(s.priceFrom, s.priceExact).replace(/^./, (c) => c.toUpperCase())}</span>
           <span className="n">{s.name}</span>
-          <span className="p">{priceText(s.priceFrom, s.priceExact).replace(/^./, (c) => c.toUpperCase())}</span>
           <span className="ic"><ArrowRight /></span>
         </button>
       ))}

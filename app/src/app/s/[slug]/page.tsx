@@ -303,14 +303,17 @@ export default async function SitePage({ params, searchParams }: Props) {
           <div className="hero-text">
             <h1 className="h3">{headline}</h1>
             {meta}
+          </div>
+          {/* Главная кнопка и рядом услуга с главного экрана (галочка в кабинете), например бесплатная диагностика */}
+          <div className="hero-actions">
+            <a className="btn hero-cta" href={noOnline ? tel : "#book"}>
+              {noOnline ? "Позвонить" : "Записаться онлайн"}
+              <span className="ic">
+                <ArrowRight />
+              </span>
+            </a>
             {!noOnline && <FeaturedServices services={featured} />}
           </div>
-          <a className="btn hero-cta" href={noOnline ? tel : "#book"}>
-            {noOnline ? "Позвонить" : "Записаться онлайн"}
-            <span className="ic">
-              <ArrowRight />
-            </span>
-          </a>
         </header>
         <div className="layout">
           {radii.length > 0 && <RadiusPicker services={services} bands={bands} radii={radii} />}

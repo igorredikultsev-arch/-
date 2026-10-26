@@ -289,13 +289,15 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .show .hero-text { order: 2; position: relative; z-index: 2; }
 .show .hero h1 { font: 800 clamp(36px, 10.2vw, 46px)/1.02 var(--s-head); letter-spacing: -.045em; margin: 0 0 12px; max-width: 13ch; text-wrap: balance; }
 .show .sub { font-size: 15px; gap: 4px 16px; color: color-mix(in srgb, var(--s-fg) 78%, transparent); }
-.show .hero-cta { order: 3; margin-top: 18px; width: 100%; border-radius: var(--r-btn); font-weight: 700; gap: 12px; }
+.show .hero-actions { order: 3; position: relative; z-index: 2; display: grid; gap: 10px; margin-top: 18px; }
+.show .hero-cta { width: 100%; border-radius: var(--r-btn); font-weight: 700; gap: 12px; }
+.show .feat-btn { width: 100%; border-radius: var(--r-btn); }
 .show .hero-cta .ic { width: 30px; height: 30px; padding: 6px; margin-right: -10px; border-radius: 50%; background: color-mix(in srgb, currentColor 14%, transparent); font-size: 18px; }
 @media (prefers-reduced-motion: no-preference) {
   .show .hero-cta .ic { transition: transform .4s cubic-bezier(.22, 1, .36, 1); }
   .show .hero-cta:hover .ic { transform: translateX(3px); }
-  .show .hero-text, .show .hero-cta { animation: show-up 1s cubic-bezier(.22, 1, .36, 1) both; animation-delay: 1.2s; }
-  .show .hero-cta { animation-delay: 1.35s; }
+  .show .hero-text, .show .hero-actions { animation: show-up 1s cubic-bezier(.22, 1, .36, 1) both; animation-delay: 1.2s; }
+  .show .hero-actions { animation-delay: 1.35s; }
   @keyframes show-up { from { opacity: 0; transform: translateY(16px); } }
 }
 .show .layout { padding: 0 16px; }
@@ -524,7 +526,10 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
     column-gap: 32px; min-height: 660px; padding: 0 var(--gutter) 8px; overflow: visible; }
   .show .top { grid-area: top; padding-top: 28px; }
   .show .hero-text { grid-area: text; align-self: end; }
-  .show .hero-cta { grid-area: cta; align-self: start; justify-self: start; width: auto; min-height: 58px; padding: 0 28px; font-size: 17px; margin-top: 30px; }
+  .show .hero-actions { grid-area: cta; align-self: start; justify-self: start; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .show .hero-cta { width: auto; min-height: 58px; padding: 0 28px; font-size: 17px; }
+  .show .feat-btn { width: auto; min-height: 58px; font-size: 17px; padding-right: 22px; }
+  .show .feat-btn .tag { height: 42px; }
   .show .stage { grid-area: stage; height: 620px; margin: 0 calc(-1 * var(--gutter) + 8px) 0 0; }
   .show .hero h1 { font-size: 72px; margin-bottom: 20px; }
   .show .sub { font-size: 16px; }
@@ -542,8 +547,9 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
   /* точки на весь первый экран, шина справа; текст и кнопка поверх */
   .t-dots .stage { grid-area: auto; position: absolute; z-index: 0; top: 0; bottom: 0; left: 0; right: 0; height: auto; margin: 0; --cx: .7; }
   .t-dots .stage canvas { -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 84%, transparent); mask-image: linear-gradient(transparent, #000 10%, #000 84%, transparent); }
-  .t-dots .hero-cta, .t-dots .top { position: relative; z-index: 2; }
-  .t-dots .hero { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
+  .t-dots .hero-actions, .t-dots .top { position: relative; z-index: 2; }
+  /* 660px: в ряд помещаются «Записаться онлайн» и услуга с главного экрана; шина в «Частицах» — фон, колонке не мешает */
+  .t-dots .hero { grid-template-columns: minmax(0, 660px) minmax(0, 1fr); }
 
   /* План */
   .t-plan .top { padding: 26px var(--gutter) 0; }
@@ -600,16 +606,16 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .cat-body .svc-pick { padding-left: 0; }
 @media (max-width: 480px) { .cat-body { padding-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .cat-head .chev { transition: none; } }
-/* Услуга на главном экране (галочка в кабинете): под заголовком, нажатие — сразу выбор времени */
-.feat { display: grid; gap: 8px; margin-top: 18px; max-width: 460px; }
-.feat button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 52px; padding: 10px 14px 10px 16px;
-  border-radius: var(--r-ctl); background: color-mix(in srgb, var(--accent) 12%, var(--s-card)); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); color: var(--s-fg); }
-.feat .n { font-weight: 600; font-size: 15.5px; line-height: 1.3; overflow-wrap: anywhere; }
-.feat .p { font-weight: 700; font-size: 15.5px; color: var(--accent); white-space: nowrap; }
-.feat .ic { font-size: 18px; }
-.feat button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (hover: hover) { .feat button:hover { background: color-mix(in srgb, var(--accent) 20%, var(--s-card)); } }
-.t-plan .feat .p { color: var(--s-fg); }
+/* Услуга на главном экране (галочка в кабинете): вторая кнопка рядом с «Записаться онлайн» — та же высота и форма,
+   контурная, слева плашка цены акцентом («Бесплатно»). Нажатие — сразу выбор времени */
+.feat { display: contents; }
+.feat-btn { justify-content: flex-start; gap: 12px; padding: 0 18px 0 8px; border: 1px solid var(--s-line); background: color-mix(in srgb, var(--s-fg) 6%, transparent); color: var(--s-fg); font-weight: 600; }
+.feat-btn .tag { display: inline-flex; align-items: center; height: 38px; padding: 0 13px; border-radius: var(--r-btn, var(--r-ctl)); background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 700; flex: none; }
+.feat-btn .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.feat-btn .ic { margin-left: auto; font-size: 18px; opacity: .7; }
+@media (hover: hover) { .feat-btn:hover { background: color-mix(in srgb, var(--s-fg) 11%, transparent); } .feat-btn:hover .ic { opacity: 1; } }
+.t-plan .feat-btn { font: 600 16px var(--s-body); text-transform: none; letter-spacing: 0; background: var(--s-card); }
+.t-plan .side .feat-btn { justify-self: start; }
 
 /* Подраздел внутри раздела («Седан», «Кроссовер»): без значка, строка ниже, услуги без отступа */
 .cat-head.sub { grid-template-columns: minmax(0, 1fr) auto; min-height: 52px; padding: 10px 2px; }
