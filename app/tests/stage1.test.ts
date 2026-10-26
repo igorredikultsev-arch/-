@@ -32,10 +32,14 @@ function pages(dir: string): string[] {
 describe("каждая страница админки и кабинета сама проверяет вход", () => {
   // Проверка в layout не спасает: при переходах layout не перерисовывается (документация Next.js, «Layouts and auth checks»)
   const root = path.resolve(import.meta.dirname, "../src/app");
+  // Календарь открыт и мастеру (вход только на просмотр): там requireViewer, который для всех, кроме мастера, — requireOwner
+  const viewerPages = new Set(["cabinet/week/page.tsx"]);
   for (const [dir, fn] of [["admin", "requireAdmin()"], ["cabinet", "requireOwner()"]] as const) {
     for (const file of pages(path.join(root, dir))) {
-      it(`${path.relative(root, file)} вызывает ${fn}`, () => {
-        expect(readFileSync(file, "utf8")).toContain(`await ${fn}`);
+      const rel = path.relative(root, file).replaceAll("\\", "/");
+      const need = viewerPages.has(rel) ? "requireViewer()" : fn;
+      it(`${rel} вызывает ${need}`, () => {
+        expect(readFileSync(file, "utf8")).toContain(`await ${need}`);
       });
     }
   }
