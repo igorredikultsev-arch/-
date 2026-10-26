@@ -26,11 +26,13 @@ type Staff = { id: string; name: string; color: string };
 
 type Props = {
   view: CalView; days: number; date: string; today: string; nowMs: number; gmt: string; dates: string[]; monthStart: string; monthEnd: string;
-  dayStarts: Record<string, number>; scrollMin: number; hidden: string[]; staff: Staff[]; bookings: CalBooking[]; notes: CalNote[];
+  dayStarts: Record<string, number>; scrollMin: number; scrollEndMin: number; hidden: string[]; staff: Staff[]; bookings: CalBooking[]; notes: CalNote[];
   explicitView: boolean;
 };
 
-const HOUR = 48; // высота часа, как в Google
+const HOUR = 48; // высота часа, как в Google, — самая крупная
+/** Мельче часа не делаем: короткие записи перестают читаться */
+const MIN_HOUR = 22;
 const SNAP = 15;
 const BLUE = "#0b57d0";
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -90,6 +92,8 @@ export function Calendar(p: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const cols = useRef(new Map<string, HTMLDivElement>());
   const drag = useRef<Drag | null>(null);
+  // Высота часа: рабочий день целиком на экране без прокрутки, как у клиента в Google (просьба «Конкурента»)
+  const [hour, setHour] = useState(HOUR);
 
   useEffect(() => { setMoved(new Map()); setRemoved(new Set()); setTemp([]); }, [p.bookings, p.notes]);
   useEffect(() => { setMini(`${p.date.slice(0, 8)}01`); }, [p.date]);
@@ -102,7 +106,6 @@ export function Calendar(p: Props) {
     try { if (localStorage.getItem("cal-sidebar") === "0") setSidebar(false); } catch {}
     // На телефоне по умолчанию «3 дня», как в приложении Google
     if (!p.explicitView && window.innerWidth < 640) router.replace(href("3days", p.date));
-    if (scroller.current) scroller.current.scrollTop = (p.scrollMin / 60) * HOUR - 10;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 6000); return () => clearTimeout(t); }, [toast]);
@@ -174,6 +177,37 @@ export function Calendar(p: Props) {
 
   /* ---------- перетаскивание ---------- */
 
+  useEffect(() => {
+    const sc = scroller.current;
+    if (!sc) return;
+    const fit = () => {
+      const h = Math.round(sc.clientHeight / Math.max(1, (p.scrollEndMin - p.scrollMin) / 60));
+      const next = Math.min(HOUR, Math.max(MIN_HOUR, h));
+      setHour(next);
+      sc.scrollTop = (p.scrollMin / 60) * next - 4;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [p.scrollMin, p.scrollEndMin, p.view]);
+
+  // На телефоне дни листаются пальцем влево и вправо, как в приложении Google
+  useEffect(() => {
+    const sc = scroller.current;
+    if (!sc) return;
+    let x0 = 0, y0 = 0, t0 = 0;
+    const start = (e: TouchEvent) => { if (e.touches.length !== 1) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); };
+    const end = (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - x0, dy = t.clientY - y0;
+      if (drag.current?.active || Date.now() - t0 > 700) return;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) go(p.view, shift(dx < 0 ? 1 : -1));
+    };
+    sc.addEventListener("touchstart", start, { passive: true });
+    sc.addEventListener("touchend", end);
+    return () => { sc.removeEventListener("touchstart", start); sc.removeEventListener("touchend", end); };
+  });
+
   const slotAt = (x: number, y: number): { date: string; min: number } | null => {
     // Колонка под пальцем; левее или правее сетки — ближайшая
     let best: { date: string; rect: DOMRect; dist: number } | null = null;
@@ -183,7 +217,7 @@ export function Calendar(p: Props) {
       if (!best || dist < best.dist) best = { date, rect: r, dist };
     }
     if (!best) return null;
-    return { date: best.date, min: clamp(((y - best.rect.top) / HOUR) * 60, 0, 1440) };
+    return { date: best.date, min: clamp(((y - best.rect.top) / hour) * 60, 0, 1440) };
   };
 
   const beginDrag = (e: React.PointerEvent, b: CalBooking | null, mode: Drag["mode"]) => {
@@ -252,7 +286,7 @@ export function Calendar(p: Props) {
         // Нажатие без движения: на записи — окно записи, на пустом месте — быстрая запись на получас вниз
         if (d.mode === "create") {
           const start = clamp(Math.floor(d.min0 / 30) * 30, 0, 1380);
-          openCreate(d.date0, start, 60, false, col ? { left: col.left, right: col.right, top: col.top + (start / 60) * HOUR, bottom: col.top + ((start + 60) / 60) * HOUR } : null);
+          openCreate(d.date0, start, 60, false, col ? { left: col.left, right: col.right, top: col.top + (start / 60) * hour, bottom: col.top + ((start + 60) / 60) * hour } : null);
         } else if (d.id && d.el) openEvent(d.id, d.el);
         setPreview(null);
         return;
@@ -262,7 +296,7 @@ export function Calendar(p: Props) {
       if (!last) return;
       if (d.mode === "create") {
         const c = cols.current.get(last.date)?.getBoundingClientRect();
-        openCreate(last.date, last.start, last.dur, false, c ? { left: c.left, right: c.right, top: c.top + (last.start / 60) * HOUR, bottom: c.top + ((last.start + last.dur) / 60) * HOUR } : null);
+        openCreate(last.date, last.start, last.dur, false, c ? { left: c.left, right: c.right, top: c.top + (last.start / 60) * hour, bottom: c.top + ((last.start + last.dur) / 60) * hour } : null);
         return;
       }
       if (!d.id || (last.date === d.date0 && last.start === d.start0 && last.dur === d.dur0)) return;
@@ -453,14 +487,14 @@ export function Calendar(p: Props) {
               </div>
               {/* Сетка по часам */}
               <div ref={scroller} className="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-                <div className="relative flex" style={{ height: 24 * HOUR }}>
+                <div className="relative flex" style={{ height: 24 * hour }}>
                   <div className="relative w-14 shrink-0">
                     {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
-                      <span key={h} className="absolute right-2 -translate-y-1/2 text-[10px] text-[#70757a]" style={{ top: h * HOUR }}>{hhmm(h * 60)}</span>
+                      <span key={h} className="absolute right-2 -translate-y-1/2 text-[10px] text-[#70757a]" style={{ top: h * hour }}>{hhmm(h * 60)}</span>
                     ))}
                   </div>
                   {p.dates.map((d) => (
-                    <DayColumn key={d} date={d} p={p} bookings={bookings} color={color} now={now} preview={preview} create={create} staffById={staffById}
+                    <DayColumn key={d} date={d} hour={hour} p={p} bookings={bookings} color={color} now={now} preview={preview} create={create} staffById={staffById}
                       register={(el) => { if (el) cols.current.set(d, el); else cols.current.delete(d); }}
                       onDown={beginDrag} onOpen={openEvent} />
                   ))}
@@ -542,8 +576,8 @@ export function Calendar(p: Props) {
 
 /* ---------- колонка дня ---------- */
 
-function DayColumn({ date, p, bookings, color, now, preview, create, staffById, register, onDown, onOpen }: {
-  date: string; p: Props; bookings: CalBooking[]; color: (id: string | null) => string; now: number; preview: Preview | null; create: Create | null;
+function DayColumn({ date, hour, p, bookings, color, now, preview, create, staffById, register, onDown, onOpen }: {
+  date: string; hour: number; p: Props; bookings: CalBooking[]; color: (id: string | null) => string; now: number; preview: Preview | null; create: Create | null;
   staffById: Map<string, Staff>; register: (el: HTMLDivElement | null) => void; onDown: (e: React.PointerEvent, b: CalBooking | null, mode: Drag["mode"]) => void;
   onOpen: (id: string, el: HTMLElement) => void;
 }) {
@@ -562,7 +596,7 @@ function DayColumn({ date, p, bookings, color, now, preview, create, staffById, 
 
   return (
     <div ref={register} className="relative min-w-0 flex-1 border-l border-[#dde3ea]"
-      style={{ backgroundImage: "linear-gradient(#dde3ea 1px, transparent 1px)", backgroundSize: `100% ${HOUR}px` }}
+      style={{ backgroundImage: "linear-gradient(#dde3ea 1px, transparent 1px)", backgroundSize: `100% ${hour}px` }}
       onPointerDown={(e) => { if (e.target === e.currentTarget) onDown(e, null, "create"); }}>
       {items.map(({ b, s, e, dragging }) => {
         const pos = layout.get(b.id)!;
@@ -571,7 +605,7 @@ function DayColumn({ date, p, bookings, color, now, preview, create, staffById, 
         const c = color(b.staffId);
         const bg = past ? pastBg(c) : calmBg(c);
         const fg = past ? "#3c4043" : textOn(c);
-        const top = (s / 60) * HOUR, height = Math.max(16, (dur / 60) * HOUR - 1);
+        const top = (s / 60) * hour, height = Math.max(16, (dur / 60) * hour - 1);
         const t1 = hhmm(Math.round(s)), t2 = hhmm(Math.round(e));
         const short = dur < 45;
         const lines = Math.max(1, Math.floor((height - 6) / 15) - 1);
@@ -599,13 +633,13 @@ function DayColumn({ date, p, bookings, color, now, preview, create, staffById, 
       })}
       {ghost && (
         <div className="pointer-events-none absolute left-0 z-40 overflow-hidden rounded-[5px] border border-white px-1.5 py-0.5 text-[12px] leading-[15px] text-white shadow-[0_6px_10px_rgba(60,64,67,.3)]"
-          style={{ top: (ghost.start / 60) * HOUR, height: Math.max(16, (ghost.dur / 60) * HOUR - 1), width: "calc(100% - 10px)", background: create?.staffId ? staffById.get(create.staffId)?.color ?? BLUE : "#039be5" }}>
+          style={{ top: (ghost.start / 60) * hour, height: Math.max(16, (ghost.dur / 60) * hour - 1), width: "calc(100% - 10px)", background: create?.staffId ? staffById.get(create.staffId)?.color ?? BLUE : "#039be5" }}>
           <div className="truncate font-medium">{create?.title || "(Без названия)"}</div>
           <div>{hhmm(ghost.start)}–{hhmm(ghost.start + ghost.dur)}</div>
         </div>
       )}
       {date === p.today && nowMin >= 0 && nowMin <= 1440 && (
-        <div className="pointer-events-none absolute -left-1.5 right-0 z-[35] flex items-center" style={{ top: (nowMin / 60) * HOUR - 6 }}>
+        <div className="pointer-events-none absolute -left-1.5 right-0 z-[35] flex items-center" style={{ top: (nowMin / 60) * hour - 6 }}>
           <span className="size-3 rounded-full bg-[#ea4335]" />
           <span className="h-0.5 flex-1 bg-[#ea4335]" />
         </div>

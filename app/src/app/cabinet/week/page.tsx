@@ -45,6 +45,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     lanes,
   );
   const open = cal.days.filter((d) => d.win).map((d) => d.win!.openMin);
+  const close = cal.days.filter((d) => d.win).map((d) => d.win!.closeMin);
 
   return (
     <Calendar
@@ -59,6 +60,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       monthEnd={monthEnd}
       dayStarts={Object.fromEntries(cal.days.map((d) => [d.date, d.start]))}
       scrollMin={Math.max(0, (open.length ? Math.min(...open) : 9 * 60) - 60)}
+      // До какого часа видно без прокрутки: конец рабочего дня и час запаса
+      scrollEndMin={Math.min(1440, (close.length ? Math.max(...close) : 20 * 60) + 60)}
       hidden={(sp.hide ?? "").split(",").filter(Boolean)}
       staff={lanes.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
       bookings={cal.bookings.map((b) => ({
