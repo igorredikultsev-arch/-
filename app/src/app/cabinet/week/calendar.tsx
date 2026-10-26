@@ -14,7 +14,9 @@ import { googleLayout, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
 import { calendarCreate, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
 
-export type CalView = "day" | "3days" | "week" | "month";
+export type CalView = "day" | "3days" | "week" | "month" | "custom";
+/** Сколько дней можно выделить в мини-календаре: больше — столбцы слишком узкие */
+export const MAX_RANGE_DAYS = 14;
 export type CalBooking = {
   id: string; start: number; end: number; title: string; status: "active" | "done" | "no_show" | "cancelled"; site: boolean;
   staffId: string; ownStaff: boolean; phone: string | null; phoneText: string | null; author: string;
@@ -23,7 +25,7 @@ export type CalNote = { id: string; title: string; startDate: string; endDate: s
 type Staff = { id: string; name: string; color: string };
 
 type Props = {
-  view: CalView; date: string; today: string; nowMs: number; gmt: string; dates: string[]; monthStart: string; monthEnd: string;
+  view: CalView; days: number; date: string; today: string; nowMs: number; gmt: string; dates: string[]; monthStart: string; monthEnd: string;
   dayStarts: Record<string, number>; scrollMin: number; hidden: string[]; staff: Staff[]; bookings: CalBooking[]; notes: CalNote[];
   explicitView: boolean;
 };
@@ -43,6 +45,8 @@ const VIEW_NAMES: { v: CalView; label: string; key: string }[] = [
 const TIMES = Array.from({ length: 96 }, (_, i) => i * 15);
 
 const dayNum = (d: string) => Number(d.slice(8, 10));
+const daysBetween = (a: string, z: string) => Math.round((Date.parse(`${z}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
+const daysLabel = (n: number) => `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "дня" : "дней"}`;
 const monthIdx = (d: string) => Number(d.slice(5, 7)) - 1;
 const longDate = (d: string) => `${WD_FULL[weekdayOf(d)]}, ${dayNum(d)} ${MONTHS_GEN[monthIdx(d)]}`;
 const nextMonth = (d: string) => { const [y, m] = d.split("-").map(Number); return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`; };
@@ -103,9 +107,9 @@ export function Calendar(p: Props) {
   }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 6000); return () => clearTimeout(t); }, [toast]);
 
-  const href = (v: CalView, d: string, h: Set<string> = hidden) => `/cabinet/week?view=${v}&date=${d}${h.size ? `&hide=${[...h].join(",")}` : ""}`;
+  const href = (v: CalView, d: string, h: Set<string> = hidden, n = p.days) => `/cabinet/week?view=${v}&date=${d}${v === "custom" ? `&days=${n}` : ""}${h.size ? `&hide=${[...h].join(",")}` : ""}`;
   const go = (v: CalView, d: string) => router.push(href(v, d));
-  const shift = (n: number) => (p.view === "month" ? (n > 0 ? nextMonth(p.date) : prevMonth(p.date)) : addDays(p.date, n * (p.view === "week" ? 7 : p.view === "3days" ? 3 : 1)));
+  const shift = (n: number) => (p.view === "month" ? (n > 0 ? nextMonth(p.date) : prevMonth(p.date)) : addDays(p.date, n * (p.view === "week" ? 7 : p.view === "3days" ? 3 : p.view === "custom" ? p.days : 1)));
   const toggleCal = (id: string) => {
     const h = new Set(hidden);
     if (h.has(id)) h.delete(id); else h.add(id);
@@ -342,7 +346,8 @@ export function Calendar(p: Props) {
     </div>
   );
 
-  const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); go(p.view, d); }} />;
+  const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); go(p.view, d); }}
+    onRange={(a, z) => { setDrawer(false); router.push(href("custom", a, hidden, Math.min(MAX_RANGE_DAYS, daysBetween(a, z) + 1))); }} />;
 
   return (
     <div className="flex h-[calc(100dvh-84px-env(safe-area-inset-bottom,0px))] flex-col bg-[#f8fafd] text-[#1f1f1f] lg:h-dvh" style={{ fontFamily: GOOGLE_FONT }}>
@@ -368,7 +373,7 @@ export function Calendar(p: Props) {
           <div className="relative hidden sm:block">
             <button type="button" onClick={() => setViewMenu((v) => !v)} aria-expanded={viewMenu}
               className="flex h-10 items-center gap-2 rounded-full border border-[#747775] px-4 text-[14px] font-medium hover:bg-[#f1f3f4]">
-              {VIEW_NAMES.find((v) => v.v === p.view)!.label} <CaretDown size={14} />
+              {VIEW_NAMES.find((v) => v.v === p.view)?.label ?? daysLabel(p.days)} <CaretDown size={14} />
             </button>
             {viewMenu && (
               <>
@@ -667,9 +672,24 @@ function MonthGrid({ p, bookings, notes, color, now, onDay, onEvent, onNote, onC
 
 /* ---------- мини-календарь ---------- */
 
-function MiniMonth({ month, setMonth, today, from, to, onPick }: { month: string; setMonth: (m: string) => void; today: string; from: string; to: string; onPick: (d: string) => void }) {
+function MiniMonth({ month, setMonth, today, from, to, onPick, onRange }: {
+  month: string; setMonth: (m: string) => void; today: string; from: string; to: string; onPick: (d: string) => void; onRange: (a: string, z: string) => void;
+}) {
   const start = addDays(month, 1 - weekdayOf(month));
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
+  // Как в Google: зажали день и провели мышкой — показываются выделенные дни; просто нажали — этот день
+  const [sel, setSel] = useState<{ a: string; b: string } | null>(null);
+  useEffect(() => {
+    if (!sel) return;
+    const up = () => {
+      const [x, y] = sel.a <= sel.b ? [sel.a, sel.b] : [sel.b, sel.a];
+      setSel(null);
+      if (x === y) onPick(x); else onRange(x, y);
+    };
+    window.addEventListener("pointerup", up);
+    return () => window.removeEventListener("pointerup", up);
+  }, [sel, onPick, onRange]);
+  const [lo, hi] = sel ? (sel.a <= sel.b ? [sel.a, sel.b] : [sel.b, sel.a]) : [from, to];
   return (
     <div className="px-2">
       <div className="mb-1 flex items-center justify-between pl-2">
@@ -684,9 +704,13 @@ function MiniMonth({ month, setMonth, today, from, to, onPick }: { month: string
       </div>
       <div className="grid grid-cols-7 text-center">
         {days.map((d) => {
-          const isToday = d === today, inRange = d >= from && d <= to, out = d.slice(0, 7) !== month.slice(0, 7);
+          const isToday = d === today, inRange = d >= lo && d <= hi, out = d.slice(0, 7) !== month.slice(0, 7);
           return (
-            <button key={d} type="button" onClick={() => onPick(d)} aria-label={longDate(d)}
+            <button key={d} type="button" aria-label={longDate(d)}
+              onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); setSel({ a: d, b: d }); }}
+              onPointerEnter={() => { if (sel) setSel({ a: sel.a, b: d }); }}
+              // С клавиатуры (Enter, пробел) — просто этот день; мышь и палец обрабатывает pointerup выше
+              onClick={(e) => { if (e.detail === 0) onPick(d); }}
               className={`mx-auto my-px grid size-7 place-items-center rounded-full text-[11.5px] ${isToday ? "font-medium text-white" : inRange ? "bg-[#d3e3fd] text-[#041e49]" : out ? "text-[#70757a] hover:bg-[#e9eef6]" : "text-[#1f1f1f] hover:bg-[#e9eef6]"}`}
               style={isToday ? { background: BLUE } : undefined}>
               {dayNum(d)}

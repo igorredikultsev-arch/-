@@ -4,12 +4,12 @@ import { loadCalendar } from "@/lib/cabinet";
 import { formatPhone } from "@/lib/phone";
 import { ensureStaff } from "@/lib/staff";
 import { addDays, isDateString, toLocal, weekdayOf } from "@/lib/time";
-import { Calendar, type CalView } from "./calendar";
+import { Calendar, MAX_RANGE_DAYS, type CalView } from "./calendar";
 
 // Календарь как Google: данные за видимые дни собираются здесь, всё остальное (перетаскивание, быстрая запись,
 // окна записи, скрытие постов) — в calendar.tsx в браузере.
 
-const VIEWS: CalView[] = ["day", "3days", "week", "month"];
+const VIEWS: CalView[] = ["day", "3days", "week", "month", "custom"];
 const nextMonth = (d: string) => { const [y, m] = d.split("-").map(Number); return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`; };
 
 /** Смещение пояса для подписи над часами, как в Google: «GMT+03». */
@@ -19,18 +19,20 @@ function gmtLabel(tz: string): string {
   return m ? `GMT${m[1]}${m[2].padStart(2, "0")}${m[3] ? `:${m[3]}` : ""}` : "GMT";
 }
 
-export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; hide?: string }> }) {
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; hide?: string; days?: string }> }) {
   const { business } = await requireOwner();
   const tz = business.timezone;
   const sp = await searchParams;
   const view = VIEWS.find((v) => v === sp.view) ?? "week";
+  // «Свой период»: дни, выделенные мышкой в мини-календаре, как в Google (от 2 до MAX_RANGE_DAYS)
+  const days = Math.min(MAX_RANGE_DAYS, Math.max(2, Math.trunc(Number(sp.days)) || 7));
   const nowMs = Date.now();
   const today = toLocal(nowMs, tz).date;
   const date = sp.date && isDateString(sp.date) ? sp.date : today;
   const monthStart = `${date.slice(0, 8)}01`;
   const monthEnd = addDays(nextMonth(date), -1);
   const first = view === "week" ? addDays(date, 1 - weekdayOf(date)) : view === "month" ? addDays(monthStart, 1 - weekdayOf(monthStart)) : date;
-  const last = view === "week" ? addDays(first, 6) : view === "month" ? addDays(monthEnd, 7 - weekdayOf(monthEnd)) : view === "3days" ? addDays(first, 2) : first;
+  const last = view === "week" ? addDays(first, 6) : view === "month" ? addDays(monthEnd, 7 - weekdayOf(monthEnd)) : view === "3days" ? addDays(first, 2) : view === "custom" ? addDays(first, days - 1) : first;
   const dates: string[] = [];
   for (let d = first; d <= last; d = addDays(d, 1)) dates.push(d);
 
@@ -47,6 +49,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   return (
     <Calendar
       view={view}
+      days={days}
       date={date}
       today={today}
       nowMs={nowMs}
