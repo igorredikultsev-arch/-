@@ -3,11 +3,12 @@
 import { aboutDuration } from "@/lib/duration";
 import { useEffect, useState } from "react";
 import type { RadiusBand } from "@/lib/radius";
+import { priceText } from "@/lib/service-display";
 import type { WidgetService } from "./booking-widget";
 import { PICK_EVENT, RADIUS_EVENT, scrollToBook, type RadiusPick } from "./events";
 
 const duration = aboutDuration;
-const price = (p: number) => (p > 0 ? `${p.toLocaleString("ru-RU")} ₽` : "после осмотра");
+const price = (s: WidgetService) => (s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : priceText(0, s.priceExact));
 
 /** Стили с 3D-сценой: сначала радиус, сразу цена подходящей услуги и кнопка к выбору времени. */
 export function RadiusPicker({ services, bands, radii }: { services: WidgetService[]; bands: RadiusBand[]; radii: number[] }) {
@@ -37,7 +38,7 @@ export function RadiusPicker({ services, bands, radii }: { services: WidgetServi
           </span>
           <span className="p">
             {svc.priceFrom > 0 && !svc.priceExact && <small>от</small>}
-            {price(svc.priceFrom)}
+            {price(svc)}
           </span>
         </div>
         <p className="d">{[svc.description, duration(svc.durationMin)].filter(Boolean).map((t) => t!.replace(/^./, (c) => c.toUpperCase())).join(". ")}</p>

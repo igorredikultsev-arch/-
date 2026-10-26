@@ -365,6 +365,7 @@ const ServiceForm = z.object({
   durationMin: z.coerce.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов"),
   isDiagnostic: z.boolean(),
   onStand: z.boolean(),
+  featured: z.boolean(),
   active: z.boolean(),
 });
 
@@ -378,6 +379,7 @@ function readService(f: FormData) {
     durationMin: str(f, "durationMin"),
     isDiagnostic: f.get("isDiagnostic") === "on",
     onStand: f.get("onStand") === "on",
+    featured: f.get("featured") === "on",
     active: f.get("active") === "on",
   });
 }

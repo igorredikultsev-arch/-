@@ -600,6 +600,17 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .cat-body .svc-pick { padding-left: 0; }
 @media (max-width: 480px) { .cat-body { padding-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .cat-head .chev { transition: none; } }
+/* Услуга на главном экране (галочка в кабинете): под заголовком, нажатие — сразу выбор времени */
+.feat { display: grid; gap: 8px; margin-top: 18px; max-width: 460px; }
+.feat button { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 52px; padding: 10px 14px 10px 16px;
+  border-radius: var(--r-ctl); background: color-mix(in srgb, var(--accent) 12%, var(--s-card)); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); color: var(--s-fg); }
+.feat .n { font-weight: 600; font-size: 15.5px; line-height: 1.3; overflow-wrap: anywhere; }
+.feat .p { font-weight: 700; font-size: 15.5px; color: var(--accent); white-space: nowrap; }
+.feat .ic { font-size: 18px; }
+.feat button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) { .feat button:hover { background: color-mix(in srgb, var(--accent) 20%, var(--s-card)); } }
+.t-plan .feat .p { color: var(--s-fg); }
+
 /* Подраздел внутри раздела («Седан», «Кроссовер»): без значка, строка ниже, услуги без отступа */
 .cat-head.sub { grid-template-columns: minmax(0, 1fr) auto; min-height: 52px; padding: 10px 2px; }
 .cat-head.sub b { font-size: 15.5px; }

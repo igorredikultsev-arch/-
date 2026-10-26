@@ -38,7 +38,7 @@ export function ExceptionForm({ today }: { today: string }) {
   );
 }
 
-type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; active: boolean };
+type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; featured: boolean; active: boolean };
 
 const DURATIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 
@@ -51,7 +51,7 @@ export function ServiceForm({ service, categories, standPosts = 0 }: { service: 
       <Field label="Пояснение для клиента, коротко" htmlFor="sv-desc" hint="Например: снять, разбортировать, отбалансировать">
         <input id="sv-desc" name="description" defaultValue={service?.description ?? ""} maxLength={120} className={inputCls} />
       </Field>
-      <Field label="Цена, ₽" htmlFor="sv-price" hint="0 — на сайте будет написано «после осмотра»">
+      <Field label="Цена, ₽" htmlFor="sv-price" hint="0 — на сайте «после осмотра», 0 с галочкой «Цена точная» — «бесплатно»">
         <input id="sv-price" name="priceFrom" type="number" min={0} max={1000000} inputMode="numeric" defaultValue={service?.priceFrom ?? 0} className={inputCls} />
         <label className="mt-2 flex cursor-pointer items-center gap-3 text-[15px]">
           <input type="checkbox" name="priceExact" defaultChecked={service?.priceExact} className="size-5 accent-accent" />
@@ -73,6 +73,13 @@ export function ServiceForm({ service, categories, standPosts = 0 }: { service: 
         <label className="flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3 hover:bg-zinc-50">
           <input type="checkbox" name="active" defaultChecked={service?.active ?? true} className="size-5 accent-accent" />
           <span className="text-[15px]">Показывать на сайте</span>
+        </label>
+        <label className="flex min-h-13 cursor-pointer items-start gap-3 rounded-xl px-3 py-3 hover:bg-zinc-50">
+          <input type="checkbox" name="featured" defaultChecked={service?.featured} className="mt-0.5 size-5 accent-accent" />
+          <span className="text-[15px] leading-snug">
+            На главный экран сайта
+            <span className="block text-[13px] text-zinc-500">Кнопка под заголовком: клиент нажимает и сразу выбирает время. Например, бесплатная диагностика</span>
+          </span>
         </label>
         <label className="flex min-h-13 cursor-pointer items-start gap-3 rounded-xl px-3 py-3 hover:bg-zinc-50">
           <input type="checkbox" name="isDiagnostic" defaultChecked={service?.isDiagnostic} className="mt-0.5 size-5 accent-accent" />

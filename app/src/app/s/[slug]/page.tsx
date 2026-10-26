@@ -19,6 +19,7 @@ import { PostsPlan } from "./posts-plan";
 import { RadiusPicker } from "./radius-picker";
 import { ServicesList } from "./services-list";
 import { DemoBeacon } from "./demo-beacon";
+import { FeaturedServices } from "./featured";
 import { ThemeSwitch } from "./theme-switch";
 import { TireArt } from "./tire-art";
 import { CarStage } from "./stage/car-stage";
@@ -90,6 +91,7 @@ export default async function SitePage({ params, searchParams }: Props) {
   }));
   const defaultServiceId = (services.find((s) => !s.isDiagnostic) ?? services[0])?.id ?? "";
   const headline = biz.headline || "Запись онлайн без очереди";
+  const featured = biz.services.filter((s) => s.featured).slice(0, 3).map((s) => ({ id: s.id, name: s.name, priceFrom: s.priceFrom, priceExact: s.priceExact }));
   const demo = biz.status === "demo";
 
   // В демо владелец может посмотреть сайт в другом стиле: ?theme=plan (оформление ставит layout). Сохраняется только по кнопке «Выбрать».
@@ -301,6 +303,7 @@ export default async function SitePage({ params, searchParams }: Props) {
           <div className="hero-text">
             <h1 className="h3">{headline}</h1>
             {meta}
+            {!noOnline && <FeaturedServices services={featured} />}
           </div>
           <a className="btn hero-cta" href={noOnline ? tel : "#book"}>
             {noOnline ? "Позвонить" : "Записаться онлайн"}
@@ -339,6 +342,7 @@ export default async function SitePage({ params, searchParams }: Props) {
           <h1 className="h3">{headline}</h1>
           <div className="side">
             {meta}
+            {!noOnline && <FeaturedServices services={featured} />}
             {seasonBlock}
           </div>
         </section>

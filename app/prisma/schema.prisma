@@ -201,6 +201,8 @@ model Service {
   isDiagnostic Boolean   @default(false)
   /// Делается на стенде развал-схождения (Business.standPosts), а не на обычном посту
   onStand      Boolean   @default(false)
+  /// На главном экране сайта: кнопка, которая сразу открывает выбор времени (акция, «бесплатная диагностика»)
+  featured     Boolean   @default(false)
   sortOrder    Int       @default(0)
   active       Boolean   @default(true)
   bookings     Booking[]

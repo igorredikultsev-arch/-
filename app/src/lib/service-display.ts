@@ -9,8 +9,8 @@ export function splitCategory(category: string): [string, string | null] {
   return i < 0 ? [category, null] : [category.slice(0, i), category.slice(i + SUB_SEP.length)];
 }
 
-/** «от 1 200 ₽», «1 200 ₽» (цена точная) или «после осмотра». */
+/** «от 1 200 ₽», «1 200 ₽» (цена точная), «после осмотра»; 0 с точной ценой — «бесплатно». */
 export function priceText(priceFrom: number, priceExact = false): string {
-  if (priceFrom <= 0) return "после осмотра";
+  if (priceFrom <= 0) return priceExact ? "бесплатно" : "после осмотра";
   return `${priceExact ? "" : "от "}${priceFrom.toLocaleString("ru-RU")} ₽`;
 }

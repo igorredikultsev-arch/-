@@ -2,6 +2,7 @@
 
 import { aboutDuration } from "@/lib/duration";
 import type { WidgetService } from "./booking-widget";
+import { priceText } from "@/lib/service-display";
 import { Categories } from "./categories";
 import { PICK_EVENT, scrollToBook } from "./events";
 
@@ -24,7 +25,7 @@ export function ServicesList({ services }: { services: WidgetService[] }) {
               <div className="n">{s.name}</div>
               <div className="m">{[s.description, duration(s.durationMin)].filter(Boolean).map((t) => t!.replace(/^./, (c) => c.toUpperCase())).join(". ")}</div>
               <div className="p">
-                {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}
+                {s.priceFrom > 0 ? `${s.priceFrom.toLocaleString("ru-RU")} ₽` : priceText(0, s.priceExact)}
                 {s.priceFrom > 0 && !s.priceExact && <small>от</small>}
               </div>
             </button>

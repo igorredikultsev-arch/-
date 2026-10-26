@@ -71,3 +71,13 @@ describe("таблица с группами (как у «Конкурента»
     expect(r.priceExact).toBe(false);
   });
 });
+
+describe("цена на сайте", () => {
+  it("от, точная, после осмотра, бесплатно", async () => {
+    const { priceText } = await import("@/lib/service-display");
+    expect(priceText(1200)).toBe("от 1 200 ₽");
+    expect(priceText(1200, true)).toBe("1 200 ₽");
+    expect(priceText(0)).toBe("после осмотра");
+    expect(priceText(0, true)).toBe("бесплатно");
+  });
+});
