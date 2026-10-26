@@ -13,10 +13,10 @@ import { processor } from "@/lib/legal";
 import { rknDraft } from "@/lib/rkn";
 import { publicSiteUrl } from "@/lib/site-url";
 import { SETUP_PRICE, TEST_DRIVE_DAYS, UNPAID_GRACE_DAYS, rub } from "@/lib/pricing";
-import { deleteBusiness, extendDemo, openCabinet, setReceiptSent, setStatus, startTestDrive } from "../../actions";
+import { deleteBusiness, extendDemo, openCabinet, removeMasterLogin, setReceiptSent, setStatus, startTestDrive } from "../../actions";
 import { LEAD_LABEL, STATUS_CLS, STATUS_LABEL, THEMES } from "../../labels";
 import { btn2, CopyBox } from "../../ui";
-import { InfoForm, LeadForm, PaymentForm, RknForm, ServicesImportForm, TrialForm } from "./forms";
+import { InfoForm, LeadForm, MasterForm, PaymentForm, RknForm, ServicesImportForm, TrialForm } from "./forms";
 
 const date = (d: Date | null) => (d ? d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) : "");
 
@@ -43,7 +43,7 @@ type Biz = NonNullable<Awaited<ReturnType<typeof load>>>;
 const load = (id: string) =>
   db.business.findUnique({
     where: { id },
-    include: { lead: true, users: true, payments: { orderBy: { createdAt: "desc" } }, _count: { select: { bookings: true, services: true } } },
+    include: { lead: true, users: { include: { staff: { select: { name: true } } } }, staff: { where: { onStand: false }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } }, payments: { orderBy: { createdAt: "desc" } }, _count: { select: { bookings: true, services: true } } },
   });
 
 const day = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
@@ -120,7 +120,10 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   const tab = sp.tab as Tab;
   const siteUrl = publicSiteUrl(b.slug, b.customDomain, b.status);
   // Демо или архивное демо без владельца: оплату и «Активировать» не показываем, сначала «Создать вход»
-  const payBlocked = connectFirst({ status: b.status, owners: b.users.filter((u) => u.role === "owner").length });
+  // Владельцы и мастера (вход только на просмотр календаря) — разные входы
+  const owners = b.users.filter((u) => u.role === "owner");
+  const masters = b.users.filter((u) => u.role === "master");
+  const payBlocked = connectFirst({ status: b.status, owners: owners.length });
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
   const [siteBookings, early] = await Promise.all([db.booking.count({ where: { businessId: id, source: "site" } }), earlyPrice()]);
   const facts: [string, React.ReactNode][] = [
@@ -235,8 +238,8 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
           {tab === "connect" && (
             <>
               <Card title="Вход для владельца">
-                {b.users.length > 0 && (
-                  <p className="text-[14px] text-zinc-600">Владелец: {b.users.map((u) => `${u.name ? `${u.name}, ` : ""}${formatPhone(u.phone)}`).join("; ")}</p>
+                {owners.length > 0 && (
+                  <p className="text-[14px] text-zinc-600">Владелец: {owners.map((u) => `${u.name ? `${u.name}, ` : ""}${formatPhone(u.phone)}`).join("; ")}</p>
                 )}
                 {operatorMissing(b) && b.status !== "archived" && (
                   <p className="rounded-xl bg-red-50 px-3 py-2.5 text-[13.5px] font-medium text-red-800">
@@ -248,8 +251,24 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
                     Чтобы подключить сервис, заполните «Оператор ПДн» и «ИНН оператора» во вкладке «Данные»: они попадают в согласие клиента на сайте.
                   </p>
                 )}
-                <TrialForm id={b.id} loginUrl={loginUrl} siteUrl={siteUrl} hasOwner={b.users.length > 0} />
+                <TrialForm id={b.id} loginUrl={loginUrl} siteUrl={siteUrl} hasOwner={owners.length > 0} />
               </Card>
+              {owners.length > 0 && (
+                <Card title="Входы мастеров">
+                  <p className="text-[14px] text-zinc-600">Мастер видит календарь записей и ничего не может менять: ни записать, ни перенести, ни удалить. Календарь открывается на его посту.</p>
+                  {masters.length > 0 && (
+                    <ul className="grid gap-1.5 text-[14px]">
+                      {masters.map((u) => (
+                        <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-zinc-50 px-3 py-2.5">
+                          <span>{u.name ? `${u.name}, ` : ""}{formatPhone(u.phone)}{u.staff ? ` · ${u.staff.name}` : " · все посты"}</span>
+                          <form action={removeMasterLogin.bind(null, u.id, b.id)}><button className="text-[13px] font-semibold text-red-700 underline">Убрать вход</button></form>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <MasterForm id={b.id} loginUrl={loginUrl} posts={b.staff} />
+                </Card>
+              )}
               {b.status === "trial" && (
                 <Card title="Тест-драйв">
                   {b.trialEndsAt ? (

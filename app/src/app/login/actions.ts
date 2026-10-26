@@ -53,7 +53,7 @@ export async function loginAction(_prev: string | null, form: FormData): Promise
     httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/login", maxAge: 365 * 86400,
   });
   await audit("login", { userId: user.id, businessId: user.businessId ?? undefined });
-  redirect(user.role === "admin" ? "/admin" : "/cabinet");
+  redirect(user.role === "admin" ? "/admin" : user.role === "master" ? "/cabinet/week" : "/cabinet");
 }
 
 export async function logoutAction() {

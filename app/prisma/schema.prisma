@@ -46,6 +46,8 @@ enum BlockScope {
 enum Role {
   owner
   admin
+  /// Мастер сервиса: календарь только на просмотр, менять ничего не может
+  master
 }
 
 enum LeadStatus {
@@ -154,6 +156,7 @@ model Staff {
   bookings   Booking[]
   notes      CalendarNote[]
   services   Service[]
+  masters    User[]
 
   @@index([businessId, sortOrder])
 }
@@ -310,6 +313,9 @@ model User {
   phone        String             @unique
   passwordHash String
   role         Role               @default(owner)
+  /// Пост мастера (role master): календарь открывается на его записях
+  staffId      String?
+  staff        Staff?             @relation(fields: [staffId], references: [id], onDelete: SetNull)
   name         String?
   businessId   String?
   business     Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)

@@ -28,6 +28,8 @@ type Props = {
   view: CalView; days: number; date: string; today: string; nowMs: number; gmt: string; dates: string[]; monthStart: string; monthEnd: string;
   dayStarts: Record<string, number>; scrollMin: number; scrollEndMin: number; hidden: string[]; staff: Staff[]; bookings: CalBooking[]; notes: CalNote[];
   explicitView: boolean;
+  /** Вход мастера: только смотреть — ни записи, ни переноса, ни удаления */
+  readOnly?: boolean;
 };
 
 const HOUR = 48; // высота часа, как в Google, — самая крупная
@@ -149,6 +151,7 @@ export function Calendar(p: Props) {
   /* ---------- быстрая запись ---------- */
 
   const openCreate = (date: string, start: number, dur: number, allDay: boolean, anchor: Anchor | null) => {
+    if (p.readOnly) return;
     setPop(null);
     setCreate({ date, start, dur, allDay, staffId: "", title: "", anchor });
   };
@@ -221,7 +224,8 @@ export function Calendar(p: Props) {
   };
 
   const beginDrag = (e: React.PointerEvent, b: CalBooking | null, mode: Drag["mode"]) => {
-    if (e.button !== 0 || create) return;
+    // Мастеру записи не перетаскиваются; открываются обычным нажатием (onClick в колонке)
+    if (e.button !== 0 || create || p.readOnly) return;
     const s = slotAt(e.clientX, e.clientY);
     if (!s) return;
     e.stopPropagation();
@@ -340,7 +344,7 @@ export function Calendar(p: Props) {
       else if (k === "t" || k === "е") go(p.view, p.today);
       else if (k === "j" || k === "n" || k === "о" || k === "т") go(p.view, shift(1));
       else if (k === "k" || k === "p" || k === "л" || k === "з") go(p.view, shift(-1));
-      else if (k === "c" || k === "с") { e.preventDefault(); createNow(); }
+      else if ((k === "c" || k === "с") && !p.readOnly) { e.preventDefault(); createNow(); }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
@@ -374,8 +378,12 @@ export function Calendar(p: Props) {
         </ul>
       )}
       <div className="mt-3 grid gap-0.5 border-t border-[#dde3ea] pt-3">
+        {!p.readOnly && (
+          <>
         <Link href="/cabinet/week/staff" className="flex h-9 items-center gap-3 rounded-full px-3 text-[14px] text-[#444746] hover:bg-[#e9eef6]"><Gear size={18} /> Посты и цвета</Link>
         <Link href="/cabinet/week/staff#import" className="flex h-9 items-center gap-3 rounded-full px-3 text-[14px] text-[#444746] hover:bg-[#e9eef6]"><DownloadSimple size={18} /> Перенести из Google</Link>
+          </>
+        )}
       </div>
     </div>
   );
@@ -431,10 +439,10 @@ export function Calendar(p: Props) {
       <div className="flex min-h-0 flex-1">
         {sidebar && (
           <aside className="hidden w-64 shrink-0 overflow-y-auto px-3 pb-6 lg:block">
-            <button type="button" onClick={createNow}
+            {!p.readOnly && <button type="button" onClick={createNow}
               className="mb-5 flex h-14 items-center gap-3 rounded-2xl bg-white pl-4 pr-6 text-[14px] font-medium text-[#1f1f1f] shadow-[0_1px_3px_rgba(60,64,67,.3),0_4px_8px_3px_rgba(60,64,67,.15)] hover:bg-[#f8fafd]">
               <Plus size={26} color={BLUE} weight="bold" /> Создать
-            </button>
+            </button>}
             {miniMonth}
             {calendars}
           </aside>
@@ -529,7 +537,7 @@ export function Calendar(p: Props) {
         const b = bookings.find((x) => x.id === pop.id);
         if (!b) return null;
         return (
-          <EventPopover b={b} anchor={pop.anchor} staff={p.staff} color={color(b.staffId)} dayStarts={p.dayStarts} close={() => setPop(null)}
+          <EventPopover readOnly={p.readOnly} b={b} anchor={pop.anchor} staff={p.staff} color={color(b.staffId)} dayStarts={p.dayStarts} close={() => setPop(null)}
             onDelete={() => {
               setPop(null);
               setRemoved((s) => new Set(s).add(b.id));
@@ -549,7 +557,7 @@ export function Calendar(p: Props) {
         const n = notes.find((x) => x.id === pop.id);
         if (!n) return null;
         return (
-          <NotePopover n={n} anchor={pop.anchor} staff={p.staff} color={color(n.staffId)} close={() => setPop(null)}
+          <NotePopover readOnly={p.readOnly} n={n} anchor={pop.anchor} staff={p.staff} color={color(n.staffId)} close={() => setPop(null)}
             onSave={(title, staffId) => startTransition(async () => {
               const r = await noteUpdate(n.id, { title, staffId, date: n.startDate, endDate: n.endDate });
               if (r.error) setToast({ text: r.error }); else setPop(null);
@@ -612,6 +620,7 @@ function DayColumn({ date, hour, p, bookings, color, now, preview, create, staff
         return (
           <div key={b.id} role="button" tabIndex={0} aria-label={`${t1}–${t2}, ${b.title}${b.site ? ", записался сам через сайт" : ""}`}
             onPointerDown={(ev) => onDown(ev, b, "move")}
+            onClick={(ev) => { if (p.readOnly) onOpen(b.id, ev.currentTarget); }}
             onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onOpen(b.id, ev.currentTarget); } }}
             className={`absolute cursor-pointer select-none overflow-hidden rounded-[5px] border border-white px-1.5 text-[12px] leading-[15px] outline-none focus-visible:ring-2 focus-visible:ring-[#0b57d0] [touch-action:pan-y] ${short ? "py-px" : "py-0.5"} ${dragging ? "shadow-[0_6px_10px_rgba(60,64,67,.3)] opacity-90" : ""} ${b.status === "no_show" ? "line-through" : ""}`}
             style={{ top, height, left: `calc((100% - 10px) * ${pos.left})`, width: `calc((100% - 10px) * ${pos.width})`, zIndex: dragging ? 30 : pos.z, background: bg, color: fg }}>
@@ -851,8 +860,8 @@ function CreatePopover({ c, setC, staff, save }: { c: Create; setC: (c: Create |
   );
 }
 
-function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onStaff }: {
-  b: CalBooking; anchor: Anchor; staff: Staff[]; color: string; dayStarts: Record<string, number>; close: () => void; onDelete: () => void; onStaff: (id: string | null) => void;
+function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onStaff, readOnly }: {
+  readOnly?: boolean; b: CalBooking; anchor: Anchor; staff: Staff[]; color: string; dayStarts: Record<string, number>; close: () => void; onDelete: () => void; onStaff: (id: string | null) => void;
 }) {
   const date = Object.keys(dayStarts).find((d) => b.start >= dayStarts[d] && b.start < dayStarts[d] + 86400000) ?? Object.keys(dayStarts)[0];
   const ds = dayStarts[date];
@@ -861,9 +870,13 @@ function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onS
   return (
     <Floating anchor={anchor} width={448} close={close} label="Запись">
       <div className="flex justify-end gap-0.5 px-2 pt-2">
-        <Link href={`/cabinet/b/${b.id}/edit`} aria-label="Изменить" title="Изменить" className={icon}><PencilSimple size={20} /></Link>
-        <button type="button" aria-label="Удалить" title="Удалить" onClick={onDelete} className={icon}><Trash size={20} /></button>
-        <Link href={`/cabinet/b/${b.id}`} aria-label="Подробнее" title="Подробнее: выполнена, не приехал" className={icon}><DotsThreeVertical size={20} weight="bold" /></Link>
+        {!readOnly && (
+          <>
+            <Link href={`/cabinet/b/${b.id}/edit`} aria-label="Изменить" title="Изменить" className={icon}><PencilSimple size={20} /></Link>
+            <button type="button" aria-label="Удалить" title="Удалить" onClick={onDelete} className={icon}><Trash size={20} /></button>
+            <Link href={`/cabinet/b/${b.id}`} aria-label="Подробнее" title="Подробнее: выполнена, не приехал" className={icon}><DotsThreeVertical size={20} weight="bold" /></Link>
+          </>
+        )}
         <button type="button" aria-label="Закрыть" onClick={close} className={icon}><X size={20} /></button>
       </div>
       <div className="grid gap-4 px-6 pb-6 pt-1 text-[14px] text-[#1f1f1f]">
@@ -882,10 +895,10 @@ function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onS
         )}
         <div className="flex items-center gap-4">
           <CalendarBlank size={20} className="shrink-0 text-[#444746]" />
-          <select aria-label="Пост" value={b.ownStaff ? b.staffId : ""} onChange={(e) => onStaff(e.target.value || null)} className="h-9 rounded-md bg-[#e1e5ea]/70 px-2 hover:bg-[#dde3ea]">
+          {readOnly ? <span>{staff.find((s) => s.id === b.staffId)?.name ?? "Любой свободный"}</span> : <select aria-label="Пост" value={b.ownStaff ? b.staffId : ""} onChange={(e) => onStaff(e.target.value || null)} className="h-9 rounded-md bg-[#e1e5ea]/70 px-2 hover:bg-[#dde3ea]">
             {!b.ownStaff && <option value="">{staff.find((s) => s.id === b.staffId)?.name ?? "Любой свободный"}</option>}
             {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </select>}
         </div>
         {b.author && (
           <div className="flex items-center gap-4 text-[#444746]">
@@ -897,8 +910,8 @@ function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onS
   );
 }
 
-function NotePopover({ n, anchor, staff, color, close, onSave, onDelete }: {
-  n: CalNote; anchor: Anchor; staff: Staff[]; color: string; close: () => void; onSave: (title: string, staffId: string | null) => void; onDelete: () => void;
+function NotePopover({ n, anchor, staff, color, close, onSave, onDelete, readOnly }: {
+  readOnly?: boolean; n: CalNote; anchor: Anchor; staff: Staff[]; color: string; close: () => void; onSave: (title: string, staffId: string | null) => void; onDelete: () => void;
 }) {
   const [title, setTitle] = useState(n.title);
   const [staffId, setStaffId] = useState(n.staffId ?? "");
@@ -907,10 +920,11 @@ function NotePopover({ n, anchor, staff, color, close, onSave, onDelete }: {
   return (
     <Floating anchor={anchor} width={448} close={close} label="Запись на весь день">
       <div className="flex justify-end gap-0.5 px-2 pt-2">
-        <button type="button" aria-label="Удалить" title="Удалить" onClick={onDelete} className={icon}><Trash size={20} /></button>
+        {!readOnly && <button type="button" aria-label="Удалить" title="Удалить" onClick={onDelete} className={icon}><Trash size={20} /></button>}
         <button type="button" aria-label="Закрыть" onClick={close} className={icon}><X size={20} /></button>
       </div>
-      <form className="grid gap-4 px-6 pb-6 pt-1 text-[14px]" onSubmit={(e) => { e.preventDefault(); onSave(title, staffId || null); }}>
+      <form className="grid gap-4 px-6 pb-6 pt-1 text-[14px]" onSubmit={(e) => { e.preventDefault(); if (!readOnly) onSave(title, staffId || null); }}>
+        <fieldset disabled={readOnly} className="contents">
         <div className="flex gap-4">
           <span className="mt-3 size-3.5 shrink-0 rounded-[4px]" style={{ background: color }} />
           <div className="min-w-0 flex-1">
@@ -926,9 +940,10 @@ function NotePopover({ n, anchor, staff, color, close, onSave, onDelete }: {
             {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
-        {(title !== n.title || staffId !== (n.staffId ?? "")) && (
+        {!readOnly && (title !== n.title || staffId !== (n.staffId ?? "")) && (
           <div className="flex justify-end"><button className="h-10 rounded-full bg-[#0b57d0] px-6 text-[14px] font-medium text-white">Сохранить</button></div>
         )}
+        </fieldset>
       </form>
     </Floating>
   );

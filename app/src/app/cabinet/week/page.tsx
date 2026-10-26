@@ -1,4 +1,4 @@
-import { requireOwner } from "@/lib/auth";
+import { requireViewer } from "@/lib/auth";
 import { assignLanes, calendarLanes } from "@/lib/calendar";
 import { loadCalendar } from "@/lib/cabinet";
 import { formatPhone } from "@/lib/phone";
@@ -20,7 +20,7 @@ function gmtLabel(tz: string): string {
 }
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; hide?: string; days?: string }> }) {
-  const { business } = await requireOwner();
+  const { business, readOnly, masterStaffId } = await requireViewer();
   const tz = business.timezone;
   const sp = await searchParams;
   const view = VIEWS.find((v) => v === sp.view) ?? "week";
@@ -62,7 +62,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       scrollMin={Math.max(0, (open.length ? Math.min(...open) : 9 * 60) - 60)}
       // До какого часа видно без прокрутки: конец рабочего дня и час запаса
       scrollEndMin={Math.min(1440, (close.length ? Math.max(...close) : 20 * 60) + 60)}
-      hidden={(sp.hide ?? "").split(",").filter(Boolean)}
+      // Мастер по умолчанию видит только свой пост; остальные можно включить галочками
+      hidden={sp.hide != null || !masterStaffId ? (sp.hide ?? "").split(",").filter(Boolean) : lanes.filter((l) => l.id !== masterStaffId).map((l) => l.id)}
+      readOnly={readOnly}
       staff={lanes.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
       bookings={cal.bookings.map((b) => ({
         id: b.id,

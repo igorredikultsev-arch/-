@@ -10,7 +10,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const closed = (await searchParams).closed !== undefined;
   const user = await getSessionUser();
   // Сервис в архиве: кабинет отправил сюда, обратно в кабинет не пускаем, иначе получится круг
-  if (user && !closed) redirect(user.role === "admin" ? "/admin" : "/cabinet");
+  if (user && !closed) redirect(user.role === "admin" ? "/admin" : user.role === "master" ? "/cabinet/week" : "/cabinet");
   const c = brandContacts();
   const contact = c.telegram ? (
     <a href={c.telegram} className="font-semibold text-ink underline underline-offset-2">в Telegram {c.telegramName}</a>

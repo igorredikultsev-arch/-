@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { closeCabinet } from "@/app/admin/actions";
 import { ownAppIcon } from "@/lib/app-icon";
-import { requireOwner } from "@/lib/auth";
+import { requireViewer } from "@/lib/auth";
 import { shortName } from "@/lib/business";
 import { OFFER_EDITION, OFFER_VERSION } from "@/lib/legal";
 import { db } from "@/lib/db";
@@ -40,7 +40,7 @@ function billingNotice(b: { status: string; paidUntil: Date | null; trialEndsAt:
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { business } = await requireOwner();
+  const { business } = await requireViewer();
   const ownIcon = await ownAppIcon(business, 180);
   return {
     title: "Кабинет",
@@ -55,14 +55,15 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = { themeColor: "#eef0f3" };
 
 export default async function CabinetLayout({ children }: { children: React.ReactNode }) {
-  const { asAdmin, business } = await requireOwner();
+  // Мастер видит только календарь: без оплаты, оферты и меню владельца
+  const { asAdmin, business, readOnly } = await requireViewer();
   const paidBefore = (await db.payment.count({ where: { businessId: business.id } })) > 0;
-  const billing = billingNotice(business, paidBefore);
+  const billing = readOnly ? null : billingNotice(business, paidBefore);
   // Подключённый сервис: владелец принимает действующую редакцию оферты до работы в кабинете. Администратор за него не принимает
-  const needOffer = !asAdmin && business.status !== "demo" && business.offerVersion !== OFFER_VERSION;
+  const needOffer = !asAdmin && !readOnly && business.status !== "demo" && business.offerVersion !== OFFER_VERSION;
   return (
     <div className="min-h-dvh bg-paper text-ink lg:flex">
-      {!needOffer && <Sidebar name={business.name} icon={await ownAppIcon(business, 180)} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
+      {!needOffer && <Sidebar readOnly={readOnly} name={business.name} icon={await ownAppIcon(business, 180)} siteUrl={publicSiteUrl(business.slug, business.customDomain, business.status)} />}
       <div className="min-w-0 flex-1">
       {asAdmin && (
         <div className="sticky top-0 z-20 bg-ink text-white">
@@ -86,7 +87,7 @@ export default async function CabinetLayout({ children }: { children: React.Reac
       ) : (
         <>
           <Main>{children}</Main>
-          <Tabbar />
+          <Tabbar readOnly={readOnly} />
         </>
       )}
       </div>

@@ -17,8 +17,12 @@ const isOn = (href: string, path: string) =>
   : href === "/cabinet/more" ? path.startsWith("/cabinet/more") || path.startsWith("/cabinet/block") || path.startsWith("/cabinet/stats")
   : path.startsWith(href);
 
-export function Tabbar() {
+// Мастер (вход только на просмотр) видит один раздел — календарь
+const masterTabs = tabs.filter((t) => t.href === "/cabinet/week");
+
+export function Tabbar({ readOnly = false }: { readOnly?: boolean }) {
   const path = usePathname();
+  if (readOnly) return null;
   return (
     <nav
       aria-label="Разделы кабинета"
@@ -51,8 +55,9 @@ export function Tabbar() {
 const sideTabs = [...tabs.filter((t) => !t.fab && t.href !== "/cabinet/more"), { href: "/cabinet/stats", label: "Статистика", icon: ChartBar }, tabs[tabs.length - 1]];
 
 /** Боковое меню на компьютере вместо нижней панели. */
-export function Sidebar({ name, icon, siteUrl }: { name: string; icon: string | null; siteUrl: string }) {
+export function Sidebar({ name, icon, siteUrl, readOnly = false }: { name: string; icon: string | null; siteUrl: string; readOnly?: boolean }) {
   const path = usePathname();
+  const shownTabs = readOnly ? masterTabs : sideTabs;
   // Значок сервиса: его логотип (та же иконка, что на экране телефона), без логотипа — «А» Автослота
   const badge = (cls: string) =>
     // eslint-disable-next-line @next/next/no-img-element -- иконка с нашего же адреса, размер задан классом
@@ -63,7 +68,7 @@ export function Sidebar({ name, icon, siteUrl }: { name: string; icon: string | 
       <aside className="sticky top-0 hidden h-dvh w-[72px] shrink-0 flex-col items-center border-r border-zinc-200 bg-white py-3 lg:flex">
         <span title={name} className="grid">{badge("size-10")}</span>
         <nav aria-label="Разделы кабинета" className="mt-4 grid gap-1">
-          {sideTabs.map((t) => {
+          {shownTabs.map((t) => {
             const on = isOn(t.href, path) && !(t.href === "/cabinet/more" && path.startsWith("/cabinet/stats"));
             const Icon = t.icon;
             return (
@@ -89,11 +94,11 @@ export function Sidebar({ name, icon, siteUrl }: { name: string; icon: string | 
           <span className="block truncate text-[13px] text-zinc-500" title={name}>{name}</span>
         </span>
       </div>
-      <Link href="/cabinet/new" className="mt-6 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-accent text-[15px] font-semibold text-white hover:brightness-105">
+      {!readOnly && <Link href="/cabinet/new" className="mt-6 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-accent text-[15px] font-semibold text-white hover:brightness-105">
         <Plus size={20} weight="bold" /> Новая запись
-      </Link>
+      </Link>}
       <nav aria-label="Разделы кабинета" className="mt-4 grid gap-1">
-        {sideTabs.map((t) => {
+        {shownTabs.map((t) => {
           // На компьютере у статистики свой пункт, поэтому «Ещё» на ней не подсвечивается
           const on = isOn(t.href, path) && !(t.href === "/cabinet/more" && path.startsWith("/cabinet/stats"));
           const Icon = t.icon;

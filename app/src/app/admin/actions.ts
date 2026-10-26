@@ -321,6 +321,7 @@ export async function startTrial(id: string, _prev: AdminResult, f: FormData): P
   }
   const existing = await db.user.findUnique({ where: { phone } });
   if (existing && existing.businessId !== id) return { error: "Этот телефон уже привязан к другому сервису" };
+  if (existing?.role === "master") return { error: "Этот телефон — вход мастера. Уберите его в «Входы мастеров» и выдайте вход владельца заново" };
   const fixedSlug = /-$/.test(biz.slug) ? await uniqueSlug(biz.slug.replace(/-+$/, "") || "servis") : null;
   // Тест-драйв (по договорённости с клиентом): вход есть, но 7 дней и плашка об оплате — только после «Начать тест-драйв»
   const testDrive = fromDemo && f.get("testDrive") === "on";
@@ -372,6 +373,35 @@ export async function startTestDrive(id: string) {
   await audit("admin.test_drive_start", { userId: admin.id, businessId: id });
   revalidatePath(`/admin/b/${id}`);
   revalidatePath("/cabinet", "layout");
+}
+
+/** Вход мастера: календарь сервиса только на просмотр, открывается на его посту. Пароль показывается один раз. */
+export async function createMasterLogin(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {
+  const admin = await requireAdmin();
+  const phone = normalizePhone(str(f, "masterPhone"));
+  if (!phone) return { error: "Телефон мастера: 10 цифр после +7" };
+  const staffId = str(f, "masterStaff") || null;
+  if (staffId && !(await db.staff.count({ where: { id: staffId, businessId: id } }))) return { error: "Пост не найден" };
+  const existing = await db.user.findUnique({ where: { phone } });
+  if (existing && (existing.businessId !== id || existing.role !== "master")) return { error: "Этот телефон уже занят: вход владельца или другого сервиса" };
+  const password = generatePassword();
+  const passwordHash = await hashPassword(password);
+  const name = str(f, "masterName") || null;
+  const user = existing
+    ? await db.user.update({ where: { id: existing.id }, data: { passwordHash, staffId, name: name ?? existing.name } })
+    : await db.user.create({ data: { phone, passwordHash, role: "master", businessId: id, staffId, name } });
+  if (existing) await endAllSessions(existing.id);
+  await audit("admin.master_login", { userId: admin.id, businessId: id, details: { master: user.id } });
+  revalidatePath(`/admin/b/${id}`);
+  return { ok: true, message: "Вход мастера создан. Пароль показан один раз: перешлите его мастеру или владельцу", password };
+}
+
+/** Убрать вход мастера (уволился): входы на его устройствах завершаются сразу. */
+export async function removeMasterLogin(userId: string, businessId: string) {
+  const admin = await requireAdmin();
+  const r = await db.user.deleteMany({ where: { id: userId, businessId, role: "master" } });
+  if (r.count) await audit("admin.master_remove", { userId: admin.id, businessId });
+  revalidatePath(`/admin/b/${businessId}`);
 }
 
 export async function addPayment(id: string, _prev: AdminResult, f: FormData): Promise<AdminResult> {

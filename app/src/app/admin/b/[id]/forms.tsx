@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { addPayment, importServices, saveInfo, saveLead, saveRkn, startTrial } from "../../actions";
+import { addPayment, createMasterLogin, importServices, saveInfo, saveLead, saveRkn, startTrial } from "../../actions";
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
 import { keepValues } from "@/lib/keep-form";
@@ -112,6 +112,34 @@ export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; log
         />
       )}
       <button disabled={pending} className={btn}>{hasOwner ? "Выдать новый пароль" : "Создать вход и подключить"}</button>
+    </form>
+  );
+}
+
+export function MasterForm({ id, loginUrl, posts }: { id: string; loginUrl: string; posts: { id: string; name: string }[] }) {
+  const [state, action, pending] = useActionState(createMasterLogin.bind(null, id), null);
+  const [phone, setPhone] = useState("");
+  return (
+    <form onSubmit={keepValues(action)} className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <F label="Телефон мастера" id="m-phone"><input id="m-phone" name="masterPhone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inp} /></F>
+        <F label="Имя" id="m-name"><input id="m-name" name="masterName" className={inp} /></F>
+        <F label="Его пост" id="m-staff" hint="Календарь откроется на его записях">
+          <select id="m-staff" name="masterStaff" className={inp}>
+            <option value="">Все посты</option>
+            {posts.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </F>
+      </div>
+      <Result state={state} />
+      {state?.password && (
+        <CopyBox
+          label="Сообщение мастеру"
+          rows={5}
+          text={`Календарь записей сервиса: ${loginUrl}\nТелефон: ${phone}\nПароль: ${state.password}\n\nВидно все записи на ваш пост, менять их можно только у администратора.`}
+        />
+      )}
+      <button disabled={pending} className={btn}>Создать вход мастера</button>
     </form>
   );
 }

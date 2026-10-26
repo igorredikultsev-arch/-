@@ -83,6 +83,8 @@ export const getSessionUser = cache(async () => {
 export const requireOwner = cache(async () => {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  // Мастер только смотрит календарь: все страницы и действия владельца ему закрыты, отправляем в календарь
+  if (user.role === "master") redirect("/cabinet/week");
   if (user.role === "admin") {
     const viewId = (await cookies()).get(VIEW_COOKIE)?.value;
     const viewed = viewId ? await db.business.findUnique({ where: { id: viewId } }) : null;
@@ -95,6 +97,20 @@ export const requireOwner = cache(async () => {
   // Договор закончился, сервис в архиве: кабинет с данными клиентов владельцу больше не доступен (оферта, п. 7.7)
   if (business.status === "archived") redirect("/login?closed=1");
   return { user, business, asAdmin: false };
+});
+
+/**
+ * Кабинет на просмотр: владелец и администратор — как requireOwner (readOnly: false),
+ * мастер (role master) — свой сервис только на просмотр и его пост. Только для страниц, где ничего не меняется.
+ */
+export const requireViewer = cache(async () => {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.role !== "master") return { ...(await requireOwner()), readOnly: false, masterStaffId: null as string | null };
+  if (!user.businessId) redirect("/login");
+  const business = await db.business.findUnique({ where: { id: user.businessId } });
+  if (!business || business.status === "archived") redirect("/login?closed=1");
+  return { user, business, asAdmin: false, readOnly: true, masterStaffId: user.staffId };
 });
 
 /** Администратор открывает кабинет сервиса (или закрывает, null). Проверку прав делает вызывающий код. */
