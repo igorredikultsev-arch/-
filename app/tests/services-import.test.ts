@@ -75,8 +75,10 @@ describe("таблица с группами (как у «Конкурента»
 describe("цена на сайте", () => {
   it("от, точная, после осмотра, бесплатно", async () => {
     const { priceText } = await import("@/lib/service-display");
-    expect(priceText(1200)).toBe("от 1 200 ₽");
-    expect(priceText(1200, true)).toBe("1 200 ₽");
+    // Тысячи через неразрывный пробел, как печатает toLocaleString
+    const sp = (t: string) => t.replace(/\s/g, " ");
+    expect(sp(priceText(1200))).toBe("от 1 200 ₽");
+    expect(sp(priceText(1200, true))).toBe("1 200 ₽");
     expect(priceText(0)).toBe("после осмотра");
     expect(priceText(0, true)).toBe("бесплатно");
   });
