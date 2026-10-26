@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { priceText, splitCategory } from "@/lib/service-display";
 import { formatDayLong, formatDayShort } from "@/lib/time";
 import { Categories } from "./categories";
 import { PICK_EVENT, SLOT_EVENT, STATE_EVENT, scrollToBook, type SlotPick } from "./events";
@@ -11,6 +12,7 @@ export type WidgetService = {
   name: string;
   description: string | null;
   priceFrom: number;
+  priceExact: boolean;
   durationMin: number;
   isDiagnostic: boolean;
 };
@@ -311,7 +313,7 @@ export function BookingWidget(p: Props) {
                 <button key={s.id} type="button" aria-pressed={s.id === serviceId} onClick={() => chooseService(s.id)}>
                   <span className="n">{s.name}</span>
                   {s.description && <span className="m">{s.description}</span>}
-                  <span className="p">{s.priceFrom > 0 ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
+                  <span className="p">{priceText(s.priceFrom, s.priceExact)}</span>
                 </button>
               ))}
             </div>
@@ -322,7 +324,7 @@ export function BookingWidget(p: Props) {
       {step >= 2 && service && (
         <div className="picked">
           <span>
-            {service.name}, {dur(service.durationMin)}
+            {[splitCategory(service.category)[1], service.name, dur(service.durationMin)].filter(Boolean).join(", ")}
           </span>
           <button type="button" onClick={() => { setStep(1); setNotice(null); }}>
             Изменить

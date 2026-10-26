@@ -358,9 +358,10 @@ export async function deleteBlock(id: string) {
 
 const ServiceForm = z.object({
   name: z.string().trim().min(2, "Название слишком короткое").max(80),
-  category: z.string().trim().min(2, "Укажите раздел").max(40),
+  category: z.string().trim().min(2, "Укажите раздел").max(80),
   description: z.string().trim().max(120),
   priceFrom: z.coerce.number().int().min(0).max(1_000_000),
+  priceExact: z.boolean(),
   durationMin: z.coerce.number().int().min(10, "Не меньше 10 минут").max(600, "Не больше 10 часов"),
   isDiagnostic: z.boolean(),
   onStand: z.boolean(),
@@ -373,6 +374,7 @@ function readService(f: FormData) {
     category: str(f, "category"),
     description: str(f, "description"),
     priceFrom: str(f, "priceFrom") || "0",
+    priceExact: f.get("priceExact") === "on",
     durationMin: str(f, "durationMin"),
     isDiagnostic: f.get("isDiagnostic") === "on",
     onStand: f.get("onStand") === "on",

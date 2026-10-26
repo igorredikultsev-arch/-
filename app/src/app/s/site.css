@@ -600,3 +600,10 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .cat-body .svc-pick { padding-left: 0; }
 @media (max-width: 480px) { .cat-body { padding-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .cat-head .chev { transition: none; } }
+/* Подраздел внутри раздела («Седан», «Кроссовер»): без значка, строка ниже, услуги без отступа */
+.cat-head.sub { grid-template-columns: minmax(0, 1fr) auto; min-height: 52px; padding: 10px 2px; }
+.cat-head.sub b { font-size: 15.5px; }
+.cat-head.sub small { font-size: 12.5px; }
+.cat.sub:last-child { border-bottom: 0; }
+.cat.sub .cat-body { padding-left: 0; }
+.cat-body > .svc-pick + .cat.sub, .cat-body > .svc-list + .cat.sub { margin-top: 8px; }

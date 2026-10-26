@@ -84,6 +84,7 @@ export default async function SitePage({ params, searchParams }: Props) {
     name: s.name,
     description: s.description,
     priceFrom: s.priceFrom,
+    priceExact: s.priceExact,
     durationMin: s.durationMin,
     isDiagnostic: s.isDiagnostic,
   }));

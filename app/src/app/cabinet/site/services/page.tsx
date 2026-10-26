@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { priceText } from "@/lib/service-display";
 import { CaretRight, Plus } from "@phosphor-icons/react/dist/ssr";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -29,7 +30,7 @@ export default async function ServicesPage() {
                     <span className="block text-[15.5px] font-semibold leading-tight">{s.name}</span>
                     <span className="text-[13.5px] text-zinc-500">{dur(s.durationMin)}{s.active ? "" : ", скрыта с сайта"}</span>
                   </span>
-                  <span className="whitespace-nowrap text-[15px] font-semibold tabular-nums">{s.priceFrom ? `от ${s.priceFrom.toLocaleString("ru-RU")} ₽` : "после осмотра"}</span>
+                  <span className="whitespace-nowrap text-[15px] font-semibold tabular-nums">{priceText(s.priceFrom, s.priceExact)}</span>
                   <CaretRight size={18} className="shrink-0 text-zinc-400" />
                 </Link>
               ))}

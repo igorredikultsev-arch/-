@@ -36,7 +36,7 @@ export function RadiusPicker({ services, bands, radii }: { services: WidgetServi
             {what} R{r}
           </span>
           <span className="p">
-            {svc.priceFrom > 0 && <small>от</small>}
+            {svc.priceFrom > 0 && !svc.priceExact && <small>от</small>}
             {price(svc.priceFrom)}
           </span>
         </div>

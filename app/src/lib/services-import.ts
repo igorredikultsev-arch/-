@@ -1,10 +1,16 @@
 // Услуги из таблицы (файл, который присылает клиент): «Раздел на сайте | Название | Цена от | Минуты | Пояснение».
 // Столбцы ищутся по заголовку; без заголовка — по порядку. Чистые функции.
+// Таблица с группами (как у «Конкурента»): строка, где заполнен только раздел, — заголовок группы;
+// разделы ниже становятся подразделами («Развал-схождение / Седан»), строка без названия, но с ценой или временем, — услуга
+// с названием из столбца раздела. Цена «от 1000» — с «от», просто «1000» — точная (если в заголовке не «Цена от»).
+import { SUB_SEP } from "@/lib/service-display";
 
-export type ServiceRow = { category: string; name: string; priceFrom: number; durationMin: number; description: string | null; onStand: boolean; isDiagnostic: boolean };
+export type ServiceRow = {
+  category: string; name: string; priceFrom: number; priceExact: boolean; durationMin: number; description: string | null; onStand: boolean; isDiagnostic: boolean;
+};
 export type ServicesParse = { rows: ServiceRow[]; errors: string[] };
 
-const COLS: Record<keyof Omit<ServiceRow, "onStand" | "isDiagnostic">, RegExp> = {
+const COLS: Record<"category" | "name" | "priceFrom" | "durationMin" | "description", RegExp> = {
   category: /раздел|категор|группа/i,
   name: /назван|услуг/i,
   priceFrom: /цен|стоим|₽|руб/i,
@@ -13,7 +19,7 @@ const COLS: Record<keyof Omit<ServiceRow, "onStand" | "isDiagnostic">, RegExp> =
 };
 
 /** «3 120 ₽», «от 500» → 3120, 500; пусто или «договорная» → 0 (на сайте: «после осмотра»). */
-const money = (v: string) => { const d = v.replace(/[\s ]/g, "").match(/\d+/); return d ? Number(d[0]) : 0; };
+const money = (v: string) => { const d = v.replace(/[\s ]/g, "").match(/\d+/); return d ? Number(d[0]) : 0; };
 /** «60», «1 ч», «1,5 ч», «1ч 30мин» → минуты; пусто — час. */
 function minutes(v: string): number {
   const s = v.toLowerCase().replace(",", ".");
@@ -22,6 +28,16 @@ function minutes(v: string): number {
   if (h || m) return Math.round((h ? Number(h[1]) * 60 : 0) + (m ? Number(m[1]) : 0));
   const n = Number(s.match(/\d+(?:\.\d+)?/)?.[0] ?? 0);
   return Math.round(n);
+}
+/** Слово «от» в ячейке («от 1000», «Цена от»). Не через границу слова: в JS она не видит кириллицу */
+const hasOt = (s: string) => /(^|[^а-яё])от([^а-яё]|$)/i.test(s);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Подраздел внутри группы: «Шиномонтаж седан» в группе «Шиномонтаж» → «Седан»; совпадает с группой — подраздела нет. */
+function subOf(group: string, sub: string): string | null {
+  if (!sub || sub.toLowerCase() === group.toLowerCase()) return null;
+  const rest = sub.toLowerCase().startsWith(`${group.toLowerCase()} `) ? sub.slice(group.length).trim() : sub;
+  return cap(rest);
 }
 
 export function parseServices(table: string[][]): ServicesParse {
@@ -41,23 +57,44 @@ export function parseServices(table: string[][]): ServicesParse {
     // «Название услуги» подходит и под раздел: раздел — другой столбец
     if (idx.category === idx.name) idx.category = head.findIndex((c, i) => i !== idx.name && COLS.category.test(c));
   }
+  // «Цена от» в заголовке: все цены — «от», как было до точных цен
+  const allFrom = hasHead && hasOt(head[idx.priceFrom] ?? "");
+  const cell = (r: string[], k: keyof typeof idx) => (idx[k] >= 0 ? r[idx[k]] ?? "" : "");
+  const body = hasHead ? lines.slice(1) : lines;
+  // Строка-заголовок группы: заполнен только раздел
+  const isGroup = (r: string[]) => !!cell(r, "category") && !cell(r, "name") && !cell(r, "priceFrom") && !cell(r, "durationMin") && !cell(r, "description");
+  const grouped = body.some(isGroup);
+
   let lastCategory = "Услуги";
-  (hasHead ? lines.slice(1) : lines).forEach((r, n) => {
+  let group: string | null = null;
+  body.forEach((r, n) => {
     const line = n + (hasHead ? 2 : 1);
-    const name = r[idx.name] ?? "";
+    if (grouped && isGroup(r)) { group = cap(cell(r, "category")); return; }
+    let name = cell(r, "name");
+    let category: string;
+    if (grouped && group) {
+      const sub = cell(r, "category");
+      // Без названия, но с ценой, временем или пояснением: услуга называется по столбцу раздела («Балансировка», «Другой ремонт»)
+      if (!name) { name = sub; category = group; }
+      else { const s = subOf(group, sub); category = s ? `${group}${SUB_SEP}${s}` : group; }
+    } else {
+      if (!name) return;
+      category = cap(cell(r, "category")) || lastCategory;
+      lastCategory = category;
+    }
     if (!name) return;
-    const category = (idx.category >= 0 ? r[idx.category] : "") || lastCategory;
-    lastCategory = category;
-    const durationMin = minutes(r[idx.durationMin] ?? "");
-    if (durationMin < 10 || durationMin > 600) { errors.push(`Строка ${line}, «${name}»: время ${r[idx.durationMin]} — нужно от 10 до 600 минут`); return; }
+    const durationMin = minutes(cell(r, "durationMin"));
+    if (durationMin < 10 || durationMin > 600) { errors.push(`Строка ${line}, «${name}»: время ${cell(r, "durationMin")} — нужно от 10 до 600 минут`); return; }
     if (name.length > 80) { errors.push(`Строка ${line}: название длиннее 80 знаков`); return; }
+    const price = cell(r, "priceFrom");
     const text = `${category} ${name}`;
     rows.push({
-      category: category.slice(0, 40),
+      category: category.slice(0, 80),
       name,
-      priceFrom: money(r[idx.priceFrom] ?? ""),
+      priceFrom: money(price),
+      priceExact: !allFrom && money(price) > 0 && !hasOt(price),
       durationMin,
-      description: (r[idx.description] ?? "").slice(0, 300) || null,
+      description: cell(r, "description").slice(0, 300) || null,
       // Развал-схождение — на стенде (если стендов в правилах нет, отметка ни на что не влияет)
       onStand: /развал|сход/i.test(text),
       // Диагностика и осмотр: клиент пишет, что беспокоит

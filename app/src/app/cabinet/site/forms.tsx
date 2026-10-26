@@ -38,7 +38,7 @@ export function ExceptionForm({ today }: { today: string }) {
   );
 }
 
-type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; durationMin: number; isDiagnostic: boolean; onStand: boolean; active: boolean };
+type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; active: boolean };
 
 const DURATIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 
@@ -51,8 +51,12 @@ export function ServiceForm({ service, categories, standPosts = 0 }: { service: 
       <Field label="Пояснение для клиента, коротко" htmlFor="sv-desc" hint="Например: снять, разбортировать, отбалансировать">
         <input id="sv-desc" name="description" defaultValue={service?.description ?? ""} maxLength={120} className={inputCls} />
       </Field>
-      <Field label="Цена от, ₽" htmlFor="sv-price" hint="0 — на сайте будет написано «бесплатно»">
+      <Field label="Цена, ₽" htmlFor="sv-price" hint="0 — на сайте будет написано «после осмотра»">
         <input id="sv-price" name="priceFrom" type="number" min={0} max={1000000} inputMode="numeric" defaultValue={service?.priceFrom ?? 0} className={inputCls} />
+        <label className="mt-2 flex cursor-pointer items-center gap-3 text-[15px]">
+          <input type="checkbox" name="priceExact" defaultChecked={service?.priceExact} className="size-5 accent-accent" />
+          Цена точная: на сайте без «от»
+        </label>
       </Field>
       <Choice
         name="durationMin"
@@ -61,8 +65,8 @@ export function ServiceForm({ service, categories, standPosts = 0 }: { service: 
         value={dur}
         options={(DURATIONS.includes(dur) ? DURATIONS : [...DURATIONS, dur].sort((a, b) => a - b)).map((m) => ({ value: m, label: m < 60 ? `${m} мин` : m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч` }))}
       />
-      <Field label="Раздел на сайте" htmlFor="sv-cat" hint="Вкладка, где показана услуга: Шиномонтаж, Развал, ТО и масло…">
-        <input id="sv-cat" name="category" list="cats" defaultValue={service?.category ?? categories[0]} required maxLength={40} className={inputCls} />
+      <Field label="Раздел на сайте" htmlFor="sv-cat" hint="Вкладка, где показана услуга: Шиномонтаж, ТО и масло… Подраздел — через косую черту: «Развал-схождение / Седан»">
+        <input id="sv-cat" name="category" list="cats" defaultValue={service?.category ?? categories[0]} required maxLength={80} className={inputCls} />
         <datalist id="cats">{categories.map((c) => <option key={c} value={c} />)}</datalist>
       </Field>
       <div className="grid gap-1 rounded-2xl border border-zinc-200 bg-white p-1">
