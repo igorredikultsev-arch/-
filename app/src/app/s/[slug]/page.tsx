@@ -19,6 +19,7 @@ import { PostsPlan } from "./posts-plan";
 import { RadiusPicker } from "./radius-picker";
 import { ServicesList } from "./services-list";
 import { DemoBeacon } from "./demo-beacon";
+import { MyBookings } from "./my-booking";
 import { FeaturedServices } from "./featured";
 import { ThemeSwitch } from "./theme-switch";
 import { TireArt } from "./tire-art";
@@ -444,6 +445,7 @@ export default async function SitePage({ params, searchParams }: Props) {
         <ThemeSwitch shown={theme} saved={biz.theme as ThemeKey} chosen={!!biz.themeChosenAt} apiBase={apiBase} pagePath={pagePath} example={isExampleSlug(biz.slug)} />
       ) : null}
       {demo && !isExampleSlug(biz.slug) ? <DemoBeacon apiBase={apiBase} slug={biz.slug} /> : null}
+      <MyBookings site={key} />
       {content}
       {footer}
     </>

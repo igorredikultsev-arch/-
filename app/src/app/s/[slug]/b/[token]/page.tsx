@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/phone";
 import { routeUrl, siteBase } from "@/lib/site-url";
 import { formatDayLong, formatDayShort, hhmm, toLocal } from "@/lib/time";
+import { RememberBooking } from "../../my-booking";
 import { CancelForm } from "./cancel-form";
 
 export const metadata: Metadata = { title: "Ваша запись", robots: { index: false, follow: false } };
@@ -36,6 +37,8 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="done">
+      <RememberBooking active={!cancelled && !closed} site={key} href={`${base}/b/${token}`}
+        when={`${formatDayLong(start.date)}, ${hhmm(start.minutes)}`} what={b.serviceName} end={b.endAt.getTime()} />
       <div className="tick" aria-hidden="true">
         <span className="ic">{cancelled ? <X /> : <Check />}</span>
       </div>
