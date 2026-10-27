@@ -141,8 +141,10 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .about > :only-child { grid-column: 1 / -1; }
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .fact { border-radius: var(--r); background: var(--s-card); padding: 14px 16px; display: grid; gap: 2px; }
-.fact b { font: 700 20px/1.15 var(--s-head); overflow-wrap: anywhere; }
-.fact span { font-size: 13.5px; color: var(--s-muted); }
+.fact:last-child:nth-child(odd) { grid-column: 1 / -1; } /* нечётная последняя — на всю ширину, а не одна в половине */
+/* Слово не рвётся посередине («Шиномонта/ж»): на узком экране шрифт меньше, а если всё равно не влезло — перенос через дефис */
+.fact b { font: 700 clamp(16px, 4.6vw, 20px)/1.15 var(--s-head); hyphens: auto; overflow-wrap: break-word; }
+.fact span { font-size: 13.5px; color: var(--s-muted); hyphens: auto; }
 
 .reviews { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; }
 .score b { display: block; font: 800 52px/1 var(--s-head); letter-spacing: -.03em; }
@@ -407,7 +409,7 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .t-plan .svc-list .svc:first-child { border-top: 2.5px solid var(--s-fg); }
 .t-plan .svc .p { font: 800 24px var(--s-head); }
 .t-plan .fact { background: var(--s-card); border: 1px solid var(--s-line); }
-.t-plan .fact b { font: 800 32px/1 var(--s-head); text-transform: uppercase; }
+.t-plan .fact b { font: 800 clamp(20px, 6.4vw, 32px)/1 var(--s-head); text-transform: uppercase; }
 .t-plan .score b { font: 900 76px/.95 var(--s-head); }
 .t-plan .reviews { margin-top: 14px; }
 .t-plan .contacts div:first-child { border-top: 2.5px solid var(--s-fg); }
