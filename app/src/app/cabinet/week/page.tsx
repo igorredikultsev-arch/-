@@ -1,10 +1,10 @@
 import { requireViewer } from "@/lib/auth";
-import { assignLanes, calendarLanes } from "@/lib/calendar";
+import { assignLanes, calendarLanes, MAX_RANGE_DAYS } from "@/lib/calendar";
 import { loadCalendar } from "@/lib/cabinet";
 import { formatPhone } from "@/lib/phone";
 import { ensureStaff } from "@/lib/staff";
 import { addDays, isDateString, toLocal, weekdayOf } from "@/lib/time";
-import { Calendar, MAX_RANGE_DAYS, type CalView } from "./calendar";
+import { Calendar, type CalView } from "./calendar";
 
 // Календарь как Google: данные за видимые дни собираются здесь, всё остальное (перетаскивание, быстрая запись,
 // окна записи, скрытие постов) — в calendar.tsx в браузере.

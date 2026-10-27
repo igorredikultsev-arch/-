@@ -10,13 +10,12 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
 } from "@phosphor-icons/react";
-import { googleLayout, textOn } from "@/lib/calendar";
+import { googleLayout, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
 import { calendarCreate, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
 
 export type CalView = "day" | "3days" | "week" | "month" | "custom";
 /** Сколько дней можно выделить в мини-календаре: больше — столбцы слишком узкие */
-export const MAX_RANGE_DAYS = 14;
 export type CalBooking = {
   id: string; start: number; end: number; title: string; status: "active" | "done" | "no_show" | "cancelled"; site: boolean;
   staffId: string; ownStaff: boolean; phone: string | null; phoneText: string | null; author: string;
