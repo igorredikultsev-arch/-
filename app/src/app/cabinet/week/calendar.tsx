@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
 } from "@phosphor-icons/react";
-import { googleLayout, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
+import { googleLayout, isMultiWeek, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
 import { calendarCreate, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
 
@@ -49,7 +49,7 @@ const TIMES = Array.from({ length: 96 }, (_, i) => i * 15);
 
 const dayNum = (d: string) => Number(d.slice(8, 10));
 const daysBetween = (a: string, z: string) => Math.round((Date.parse(`${z}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
-const daysLabel = (n: number) => `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "дня" : "дней"}`;
+const daysLabel = (n: number) => n > 7 && n % 7 === 0 ? `${n / 7} ${n / 7 < 5 ? "недели" : "недель"}` : `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? "дня" : "дней"}`;
 const monthIdx = (d: string) => Number(d.slice(5, 7)) - 1;
 const longDate = (d: string) => `${WD_FULL[weekdayOf(d)]}, ${dayNum(d)} ${MONTHS_GEN[monthIdx(d)]}`;
 const nextMonth = (d: string) => { const [y, m] = d.split("-").map(Number); return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`; };
@@ -448,7 +448,7 @@ export function Calendar(p: Props) {
         )}
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white sm:mr-3 sm:mb-3 sm:rounded-2xl lg:mr-4 lg:mb-4">
-          {p.view === "month" ? (
+          {p.view === "month" || isMultiWeek(p.view, p.days) ? (
             <MonthGrid p={p} bookings={bookings} notes={notes} color={color} now={now}
               onDay={(d) => go("day", d)}
               onEvent={openEvent}
@@ -663,7 +663,9 @@ function MonthGrid({ p, bookings, notes, color, now, onDay, onEvent, onNote, onC
   onDay: (d: string) => void; onEvent: (id: string, el: HTMLElement) => void; onNote: (id: string, el: HTMLElement) => void; onCreate: (d: string, el: HTMLElement) => void;
 }) {
   const weeks = p.dates.length / 7;
-  const MAX = 3;
+  // Сколько записей видно в клетке: в 2 неделях строки высокие, в месяце — по 3, как в Google
+  // ponytail: по числу недель, а не по высоте клетки; мерить высоту, если на низких экранах будет обрезаться
+  const MAX = Math.max(3, Math.floor(16 / weeks));
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="grid shrink-0 grid-cols-7">
@@ -675,7 +677,7 @@ function MonthGrid({ p, bookings, notes, color, now, onDay, onEvent, onNote, onC
           const dn = notes.filter((n) => n.startDate <= d && n.endDate >= d);
           const db = bookings.filter((b) => b.start >= ds && b.start < ds + 86400000).sort((x, y) => x.start - y.start);
           const all = [...dn.map((n) => ({ kind: "note" as const, n })), ...db.map((b) => ({ kind: "b" as const, b }))];
-          const out = d < p.monthStart || d > p.monthEnd;
+          const out = p.view === "month" && (d < p.monthStart || d > p.monthEnd);
           const isToday = d === p.today;
           return (
             <div key={d} className={`flex min-h-[88px] min-w-0 cursor-pointer flex-col border-b border-[#dde3ea] ${i % 7 ? "border-l" : ""}`}

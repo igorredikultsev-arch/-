@@ -1,5 +1,5 @@
 import { requireViewer } from "@/lib/auth";
-import { assignLanes, calendarLanes, MAX_RANGE_DAYS } from "@/lib/calendar";
+import { assignLanes, calendarLanes, isMultiWeek, MAX_RANGE_DAYS } from "@/lib/calendar";
 import { loadCalendar } from "@/lib/cabinet";
 import { formatPhone } from "@/lib/phone";
 import { ensureStaff } from "@/lib/staff";
@@ -31,8 +31,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const date = sp.date && isDateString(sp.date) ? sp.date : today;
   const monthStart = `${date.slice(0, 8)}01`;
   const monthEnd = addDays(nextMonth(date), -1);
-  const first = view === "week" ? addDays(date, 1 - weekdayOf(date)) : view === "month" ? addDays(monthStart, 1 - weekdayOf(monthStart)) : date;
-  const last = view === "week" ? addDays(first, 6) : view === "month" ? addDays(monthEnd, 7 - weekdayOf(monthEnd)) : view === "3days" ? addDays(first, 2) : view === "custom" ? addDays(first, days - 1) : first;
+  // Больше недели — целые недели с понедельника по воскресенье, как в Google
+  const multi = isMultiWeek(view, days);
+  const rangeEnd = addDays(date, days - 1);
+  const first = view === "week" || multi ? addDays(date, 1 - weekdayOf(date)) : view === "month" ? addDays(monthStart, 1 - weekdayOf(monthStart)) : date;
+  const last = view === "week" ? addDays(first, 6) : view === "month" ? addDays(monthEnd, 7 - weekdayOf(monthEnd))
+    : multi ? addDays(rangeEnd, 7 - weekdayOf(rangeEnd)) : view === "3days" ? addDays(first, 2) : view === "custom" ? addDays(first, days - 1) : first;
   const dates: string[] = [];
   for (let d = first; d <= last; d = addDays(d, 1)) dates.push(d);
 
@@ -50,7 +54,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   return (
     <Calendar
       view={view}
-      days={days}
+      // Сколько дней на экране на самом деле: стрелки и пальцем листают на столько же
+      days={view === "custom" ? dates.length : days}
       date={date}
       today={today}
       nowMs={nowMs}
