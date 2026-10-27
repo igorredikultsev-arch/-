@@ -619,10 +619,13 @@ button.svc:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 2px; 
 .t-plan .feat-btn { font: 600 16px var(--s-body); text-transform: none; letter-spacing: 0; background: var(--s-card); }
 .t-plan .side .feat-btn { justify-self: start; }
 
-/* Подраздел внутри раздела («Седан», «Кроссовер»): без значка, строка ниже, услуги без отступа */
-.cat-head.sub { grid-template-columns: minmax(0, 1fr) auto; min-height: 52px; padding: 10px 2px; }
-.cat-head.sub b { font-size: 15.5px; }
-.cat-head.sub small { font-size: 12.5px; }
-.cat.sub:last-child { border-bottom: 0; }
-.cat.sub .cat-body { padding-left: 0; }
-.cat-body > .svc-pick + .cat.sub, .cat-body > .svc-list + .cat.sub { margin-top: 8px; }
+/* Подраздел внутри раздела («Седан», «Кроссовер»): карточка в рамке, как услуга рядом, иначе его проскакивают.
+   Класс не .sub: так уже называется серая подпись в шапке сайта */
+.cat.nested { border: 1.5px solid var(--s-line); border-radius: min(var(--r), 16px); background: var(--s-bg); padding: 0 14px; }
+.show .cat.nested { border-width: 1px; }
+.cat.nested + .cat.nested, .cat-body > .svc-pick + .cat.nested, .cat-body > .svc-list + .cat.nested { margin-top: 8px; }
+.cat-head.nested { grid-template-columns: minmax(0, 1fr) auto; min-height: 56px; padding: 12px 0; }
+.cat-head.nested b { font-size: 15.5px; }
+.cat-head.nested small { font-size: 12.5px; }
+.cat-head.nested .chev { color: var(--s-fg); }
+.cat.nested .cat-body { padding: 0 0 14px; }

@@ -55,7 +55,7 @@ export function Categories<T extends Item>({ items, openFirst, openWith, childre
   const toggle = (c: string) => setOpen((s) => { const x = new Set(s); if (x.has(c)) x.delete(c); else x.add(c); return x; });
 
   const head = (key: string, title: string, count: number, sub: boolean) => (
-    <button type="button" className={`cat-head${sub ? " sub" : ""}`} aria-expanded={open.has(key)} onClick={() => toggle(key)}>
+    <button type="button" className={`cat-head${sub ? " nested" : ""}`} aria-expanded={open.has(key)} onClick={() => toggle(key)}>
       {!sub && <span className="ic"><CategoryIcon name={title} /></span>}
       <span className="t"><b>{title}</b><small>{variants(count)}</small></span>
       <CaretDown size={18} className="chev" aria-hidden />
@@ -69,7 +69,7 @@ export function Categories<T extends Item>({ items, openFirst, openWith, childre
       p.sub === null ? (
         <Fragment key={`${p.key}#${p.list[0].id}`}>{children(p.list)}</Fragment>
       ) : (
-        <div className="cat sub" key={p.key}>
+        <div className="cat nested" key={p.key}>
           {head(p.key, p.sub, p.list.length, true)}
           {open.has(p.key) && <div className="cat-body">{children(p.list)}</div>}
         </div>
