@@ -387,7 +387,7 @@ export function Calendar(p: Props) {
     </div>
   );
 
-  const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); go(p.view, d); }}
+  const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); go(p.view === "custom" ? "day" : p.view, d); }}
     onRange={(a, z) => { setDrawer(false); router.push(href("custom", a, hidden, Math.min(MAX_RANGE_DAYS, daysBetween(a, z) + 1))); }} />;
 
   return (
@@ -720,17 +720,24 @@ function MiniMonth({ month, setMonth, today, from, to, onPick, onRange }: {
   const start = addDays(month, 1 - weekdayOf(month));
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
   // Как в Google: зажали день и провели мышкой — показываются выделенные дни; просто нажали — этот день
-  const [sel, setSel] = useState<{ a: string; b: string } | null>(null);
+  const [sel, setSelState] = useState<{ a: string; b: string } | null>(null);
+  // Отпускание мыши читает выделение отсюда: при быстром движении React не успевает перерисоваться до pointerup
+  const selRef = useRef(sel);
+  const setSel = (v: typeof sel) => { selRef.current = v; setSelState(v); };
+  const selecting = sel != null;
   useEffect(() => {
-    if (!sel) return;
+    if (!selecting) return;
     const up = () => {
-      const [x, y] = sel.a <= sel.b ? [sel.a, sel.b] : [sel.b, sel.a];
+      const cur = selRef.current;
+      if (!cur) return;
+      const [x, y] = cur.a <= cur.b ? [cur.a, cur.b] : [cur.b, cur.a];
       setSel(null);
       if (x === y) onPick(x); else onRange(x, y);
     };
     window.addEventListener("pointerup", up);
     return () => window.removeEventListener("pointerup", up);
-  }, [sel, onPick, onRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selecting, onPick, onRange]);
   const [lo, hi] = sel ? (sel.a <= sel.b ? [sel.a, sel.b] : [sel.b, sel.a]) : [from, to];
   return (
     <div className="px-2">
@@ -745,18 +752,21 @@ function MiniMonth({ month, setMonth, today, from, to, onPick, onRange }: {
         {WD_MINI.map((w) => <span key={w} className="py-1">{w}</span>)}
       </div>
       <div className="grid grid-cols-7 text-center">
-        {days.map((d) => {
+        {days.map((d, i) => {
           const isToday = d === today, inRange = d >= lo && d <= hi, out = d.slice(0, 7) !== month.slice(0, 7);
+          const band = inRange ? `bg-[#d3e3fd] ${d === lo || i % 7 === 0 ? "rounded-l-full" : ""} ${d === hi || i % 7 === 6 ? "rounded-r-full" : ""}` : "";
           return (
-            <button key={d} type="button" aria-label={longDate(d)}
-              onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); setSel({ a: d, b: d }); }}
-              onPointerEnter={() => { if (sel) setSel({ a: sel.a, b: d }); }}
-              // С клавиатуры (Enter, пробел) — просто этот день; мышь и палец обрабатывает pointerup выше
-              onClick={(e) => { if (e.detail === 0) onPick(d); }}
-              className={`mx-auto my-px grid size-7 place-items-center rounded-full text-[11.5px] ${isToday ? "font-medium text-white" : inRange ? "bg-[#d3e3fd] text-[#041e49]" : out ? "text-[#70757a] hover:bg-[#e9eef6]" : "text-[#1f1f1f] hover:bg-[#e9eef6]"}`}
-              style={isToday ? { background: BLUE } : undefined}>
-              {dayNum(d)}
-            </button>
+            <div key={d} className={`my-px ${band}`}>
+              <button type="button" aria-label={longDate(d)}
+                onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); setSel({ a: d, b: d }); }}
+                onPointerEnter={() => { if (selRef.current) setSel({ a: selRef.current.a, b: d }); }}
+                // С клавиатуры (Enter, пробел) — просто этот день; мышь и палец обрабатывает pointerup выше
+                onClick={(e) => { if (e.detail === 0) onPick(d); }}
+                className={`mx-auto grid size-7 place-items-center rounded-full text-[11.5px] ${isToday ? "font-medium text-white" : inRange ? "text-[#041e49] hover:bg-[#c2d7fb]" : out ? "text-[#70757a] hover:bg-[#e9eef6]" : "text-[#1f1f1f] hover:bg-[#e9eef6]"}`}
+                style={isToday ? { background: BLUE } : undefined}>
+                {dayNum(d)}
+              </button>
+            </div>
           );
         })}
       </div>
