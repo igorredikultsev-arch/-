@@ -488,7 +488,12 @@ export function Calendar(p: Props) {
           </div>
         </div>
       </header>
-      {monthOpen && <div className="shrink-0 pb-2 lg:hidden">{miniMonth}</div>}
+      {monthOpen && (
+        <div className="shrink-0 pb-2 lg:hidden">
+          {miniMonth}
+          <p className="px-4 pt-1 text-[12px] text-[#70757a]">Проведите пальцем по числам, чтобы выбрать несколько дней</p>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         {sidebar && (
@@ -791,8 +796,14 @@ function MiniMonth({ month, setMonth, today, from, to, onPick, onRange }: {
       setSel(null);
       if (x === y) onPick(x); else onRange(x, y);
     };
+    // День под мышкой или пальцем: палец «прилипает» к первому дню, поэтому ищем по точке, а не по pointerenter
+    const move = (e: PointerEvent) => {
+      const d = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>("[data-d]")?.dataset.d;
+      if (d && selRef.current && d !== selRef.current.b) setSel({ a: selRef.current.a, b: d });
+    };
+    window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
-    return () => window.removeEventListener("pointerup", up);
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selecting, onPick, onRange]);
   const [lo, hi] = sel ? (sel.a <= sel.b ? [sel.a, sel.b] : [sel.b, sel.a]) : [from, to];
@@ -808,15 +819,15 @@ function MiniMonth({ month, setMonth, today, from, to, onPick, onRange }: {
       <div className="grid grid-cols-7 text-center text-[11px] font-medium text-[#444746]">
         {WD_MINI.map((w) => <span key={w} className="py-1">{w}</span>)}
       </div>
-      <div className="grid grid-cols-7 text-center">
+      {/* touch-none: палец ведёт выделение, а не прокручивает страницу */}
+      <div className="grid touch-none grid-cols-7 text-center">
         {days.map((d, i) => {
           const isToday = d === today, inRange = d >= lo && d <= hi, out = d.slice(0, 7) !== month.slice(0, 7);
           const band = inRange ? `bg-[#d3e3fd] ${d === lo || i % 7 === 0 ? "rounded-l-full" : ""} ${d === hi || i % 7 === 6 ? "rounded-r-full" : ""}` : "";
           return (
             <div key={d} className={`my-px ${band}`}>
-              <button type="button" aria-label={longDate(d)}
+              <button type="button" aria-label={longDate(d)} data-d={d}
                 onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); setSel({ a: d, b: d }); }}
-                onPointerEnter={() => { if (selRef.current) setSel({ a: selRef.current.a, b: d }); }}
                 // С клавиатуры (Enter, пробел) — просто этот день; мышь и палец обрабатывает pointerup выше
                 onClick={(e) => { if (e.detail === 0) onPick(d); }}
                 className={`mx-auto grid size-7 place-items-center rounded-full text-[11.5px] ${isToday ? "font-medium text-white" : inRange ? "text-[#041e49] hover:bg-[#c2d7fb]" : out ? "text-[#70757a] hover:bg-[#e9eef6]" : "text-[#1f1f1f] hover:bg-[#e9eef6]"}`}
