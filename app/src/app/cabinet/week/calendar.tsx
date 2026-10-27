@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
 } from "@phosphor-icons/react";
@@ -79,6 +79,8 @@ export function Calendar(p: Props) {
   const [now, setNow] = useState(p.nowMs);
   const [sidebar, setSidebar] = useState(true);
   const [drawer, setDrawer] = useState(false);
+  // На телефоне месяц выпадает под шапкой по нажатию на название, как в приложении Google
+  const [monthOpen, setMonthOpen] = useState(false);
   const [viewMenu, setViewMenu] = useState(false);
   const [mini, setMini] = useState(`${p.date.slice(0, 8)}01`);
   const [calsOpen, setCalsOpen] = useState(true);
@@ -91,6 +93,9 @@ export function Calendar(p: Props) {
   const [removed, setRemoved] = useState<Set<string>>(new Set());
   const [temp, setTemp] = useState<CalBooking[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
+  // Дни, которые едут за пальцем, и куда листнули: новые дни въезжают с той же стороны
+  const slide = useRef<HTMLDivElement>(null);
+  const swiped = useRef(0);
   const cols = useRef(new Map<string, HTMLDivElement>());
   const drag = useRef<Drag | null>(null);
   // Высота часа: рабочий день целиком на экране без прокрутки, как у клиента в Google (просьба «Конкурента»)
@@ -193,22 +198,65 @@ export function Calendar(p: Props) {
     return () => window.removeEventListener("resize", fit);
   }, [p.scrollMin, p.scrollEndMin, p.view]);
 
-  // На телефоне дни листаются пальцем влево и вправо, как в приложении Google
+  // На телефоне дни листаются пальцем, как в приложении Google: едут за пальцем, отпустили дальше четверти экрана
+  // (или резко смахнули) — уезжают, и с той же стороны въезжают следующие; не дотянули — возвращаются на место
   useEffect(() => {
-    const sc = scroller.current;
-    if (!sc) return;
-    let x0 = 0, y0 = 0, t0 = 0;
-    const start = (e: TouchEvent) => { if (e.touches.length !== 1) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); };
-    const end = (e: TouchEvent) => {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - x0, dy = t.clientY - y0;
-      if (drag.current?.active || Date.now() - t0 > 700) return;
-      if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) go(p.view, shift(dx < 0 ? 1 : -1));
+    const el = slide.current;
+    if (!el) return;
+    let x0 = 0, y0 = 0, t0 = 0, mode: "" | "x" | "y" = "y";
+    const put = (x: number, anim: boolean) => {
+      el.style.transition = anim ? "transform .2s ease-out" : "none";
+      el.style.transform = x ? `translateX(${x}px)` : "";
     };
-    sc.addEventListener("touchstart", start, { passive: true });
-    sc.addEventListener("touchend", end);
-    return () => { sc.removeEventListener("touchstart", start); sc.removeEventListener("touchend", end); };
+    const start = (e: TouchEvent) => {
+      mode = e.touches.length === 1 ? "" : "y";
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+    };
+    const move = (e: TouchEvent) => {
+      if (mode === "y" || drag.current?.active) return;
+      const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+      if (!mode) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        mode = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        if (mode === "y") return;
+      }
+      put(dx, false);
+    };
+    const end = (e: TouchEvent) => {
+      if (mode !== "x") return;
+      mode = "y";
+      const dx = e.changedTouches[0].clientX - x0;
+      const flick = Date.now() - t0 < 300 && Math.abs(dx) > 40;
+      if (drag.current?.active || (Math.abs(dx) < el.clientWidth / 4 && !flick)) { put(0, true); return; }
+      const dir = dx < 0 ? 1 : -1;
+      swiped.current = dir;
+      put(-dir * el.clientWidth, true);
+      go(p.view, shift(dir));
+    };
+    const cancel = () => { if (mode === "x") put(0, true); mode = "y"; };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: true });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", cancel);
+    return () => {
+      el.removeEventListener("touchstart", start); el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end); el.removeEventListener("touchcancel", cancel);
+    };
   });
+  // Пришли новые дни после свайпа — въезжают с той стороны, куда листнули
+  useLayoutEffect(() => {
+    const el = slide.current, dir = swiped.current;
+    swiped.current = 0;
+    if (!el) return;
+    if (!dir) { el.style.transform = ""; return; }
+    el.style.transition = "none";
+    el.style.transform = `translateX(${dir * el.clientWidth * 0.35}px)`;
+    el.style.opacity = "0";
+    void el.offsetWidth;
+    el.style.transition = "transform .22s ease-out, opacity .22s ease-out";
+    el.style.transform = "";
+    el.style.opacity = "";
+  }, [p.date, p.view, p.days]);
 
   const slotAt = (x: number, y: number): { date: string; min: number } | null => {
     // Колонка под пальцем; левее или правее сетки — ближайшая
@@ -387,8 +435,8 @@ export function Calendar(p: Props) {
     </div>
   );
 
-  const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); go(p.view === "custom" ? "day" : p.view, d); }}
-    onRange={(a, z) => { setDrawer(false); router.push(href("custom", a, hidden, Math.min(MAX_RANGE_DAYS, daysBetween(a, z) + 1))); }} />;
+  const miniMonth = <MiniMonth month={mini} setMonth={setMini} today={p.today} from={shown[0]} to={shown[1]} onPick={(d) => { setDrawer(false); setMonthOpen(false); go(p.view === "custom" ? "day" : p.view, d); }}
+    onRange={(a, z) => { setDrawer(false); setMonthOpen(false); router.push(href("custom", a, hidden, Math.min(MAX_RANGE_DAYS, daysBetween(a, z) + 1))); }} />;
 
   return (
     <div className="flex h-[calc(100dvh-84px-env(safe-area-inset-bottom,0px))] flex-col bg-[#f8fafd] text-[#1f1f1f] lg:h-dvh" style={{ fontFamily: GOOGLE_FONT }}>
@@ -406,7 +454,13 @@ export function Calendar(p: Props) {
         </Link>
         <Link href={href(p.view, shift(-1))} aria-label="Назад" className="hidden size-10 place-items-center rounded-full text-[#444746] hover:bg-[#e9eef6] sm:grid"><CaretLeft size={18} /></Link>
         <Link href={href(p.view, shift(1))} aria-label="Вперёд" className="hidden size-10 place-items-center rounded-full text-[#444746] hover:bg-[#e9eef6] sm:grid"><CaretRight size={18} /></Link>
-        <h1 className="ml-1 min-w-0 truncate text-[20px] font-normal text-[#1f1f1f] sm:text-[22px]">{title}</h1>
+        <h1 className="ml-1 min-w-0 text-[20px] font-normal text-[#1f1f1f] sm:text-[22px]">
+          <button type="button" aria-expanded={monthOpen} onClick={() => { if (window.innerWidth < 1024) setMonthOpen((v) => !v); }}
+            className="flex min-w-0 max-w-full items-center gap-1 rounded-lg text-left lg:pointer-events-none">
+            <span className="truncate">{title}</span>
+            <CaretDown size={16} className={`shrink-0 text-[#444746] transition-transform lg:hidden ${monthOpen ? "rotate-180" : ""}`} />
+          </button>
+        </h1>
         <div className="ml-auto flex items-center gap-1">
           <Link href={href(p.view, p.today)} aria-label="Сегодня" className="relative grid size-10 place-items-center rounded-full text-[#444746] hover:bg-[#e9eef6] sm:hidden">
             <CalendarBlank size={24} /><span className="absolute top-[15px] text-[9px] font-bold">{dayNum(p.today)}</span>
@@ -434,6 +488,7 @@ export function Calendar(p: Props) {
           </div>
         </div>
       </header>
+      {monthOpen && <div className="shrink-0 pb-2 lg:hidden">{miniMonth}</div>}
 
       <div className="flex min-h-0 flex-1">
         {sidebar && (
@@ -455,7 +510,7 @@ export function Calendar(p: Props) {
               onNote={(id, el) => { const r = el.getBoundingClientRect(); setCreate(null); setPop({ kind: "note", id, anchor: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } }); }}
               onCreate={(d, el) => { const r = el.getBoundingClientRect(); openCreate(d, 540, 60, true, { left: r.left, right: r.right, top: r.top, bottom: r.bottom }); }} />
           ) : (
-            <>
+            <div ref={slide} className="flex min-h-0 flex-1 touch-pan-y flex-col will-change-transform">
               {/* Дни: «ЧТ» и число, сегодня — в синем круге */}
               <div className="flex shrink-0 overflow-y-hidden border-b border-[#dde3ea] [scrollbar-gutter:stable]">
                 <div className="w-14 shrink-0" />
@@ -507,7 +562,7 @@ export function Calendar(p: Props) {
                   ))}
                 </div>
               </div>
-            </>
+            </div>
           )}
         </main>
       </div>
