@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Бот для «Конкурента»</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Раскладка: короткая шапка, под ней три телефона в ряд (на телефоне — друг под другом), у каждого подпись, что это и кто видит */
+:root {
+  --bg: #eef1ef;
+  --paper: #ffffff;
+  --ink: #16201c;
+  --muted: #5d6a64;
+  --line: #d6ddd9;
+  --accent: #0e7a5f;
+  --accent-ink: #ffffff;
+  --wall: #dfe8e3;
+  --bubble-in: #ffffff;
+  --bubble-out: #d7f3e4;
+  --btn: #f1f6f3;
+  --btn-ink: #0b6a52;
+  --note: #fff6dc;
+  --note-ink: #5b4710;
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101614; --paper: #18211e; --ink: #e7eeea; --muted: #9aa8a1; --line: #2b3632; --accent: #3cc49b; --accent-ink: #06231a;
+    --wall: #0d1311; --bubble-in: #1d2824; --bubble-out: #144233; --btn: #1d2a25; --btn-ink: #6fdcb8; --note: #3a3216; --note-ink: #f1e2b0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101614; --paper: #18211e; --ink: #e7eeea; --muted: #9aa8a1; --line: #2b3632; --accent: #3cc49b; --accent-ink: #06231a;
+  --wall: #0d1311; --bubble-in: #1d2824; --bubble-out: #144233; --btn: #1d2a25; --btn-ink: #6fdcb8; --note: #3a3216; --note-ink: #f1e2b0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 36px 48px; display: grid; gap: 32px; }
+.top { display: grid; gap: 10px; max-width: 720px; }
+.eyebrow { font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+h1 { font: 700 clamp(24px, 4vw, 34px)/1.15 var(--display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lead { margin: 0; color: var(--muted); font-size: 16px; max-width: 62ch; }
+.demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px 24px; align-items: start; }
+.demo { display: grid; gap: 12px; min-width: 0; }
+.demo h2 { font: 700 17px/1.25 var(--display); margin: 0; }
+.demo .who { margin: 0; color: var(--muted); font-size: 14px; min-height: 3em; }
+.phone {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 28px; overflow: hidden;
+  display: grid; grid-template-rows: auto 1fr auto; height: 600px; max-width: 100%;
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+.ph-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.ava { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font: 700 15px var(--display); flex: none; }
+.ph-head b { display: block; font-size: 15px; line-height: 1.2; }
+.ph-head small { color: var(--muted); font-size: 12.5px; }
+.chat {
+  background: var(--wall); overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; min-height: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--accent) 10%, transparent) 1px, transparent 1.4px); background-size: 18px 18px;
+}
+.day { align-self: center; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--paper) 75%, transparent); padding: 2px 10px; border-radius: 99px; }
+.msg { max-width: 86%; padding: 8px 11px 6px; border-radius: 14px; font-size: 14.5px; line-height: 1.42; position: relative; animation: pop .22s ease-out; overflow-wrap: anywhere; }
+.msg.in { align-self: flex-start; background: var(--bubble-in); border-bottom-left-radius: 5px; }
+.msg.out { align-self: flex-end; background: var(--bubble-out); border-bottom-right-radius: 5px; }
+.msg .t { display: block; text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.msg b { font-weight: 600; }
+.card { display: grid; gap: 2px; }
+.card .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.card .row { display: flex; gap: 6px; }
+.card .row span:first-child { color: var(--muted); min-width: 64px; }
+.kbd { align-self: flex-start; max-width: 86%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: -2px; animation: pop .22s ease-out; }
+.kbd button, .chips button {
+  font: 500 13.5px var(--body); color: var(--btn-ink); background: var(--btn); border: 1px solid color-mix(in srgb, var(--btn-ink) 25%, transparent);
+  border-radius: 10px; padding: 7px 11px; cursor: pointer; text-align: left;
+}
+.kbd button:hover, .chips button:hover { background: color-mix(in srgb, var(--btn-ink) 12%, var(--btn)); }
+.kbd button:disabled { opacity: .45; cursor: default; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sys { align-self: center; max-width: 92%; text-align: center; font-size: 12.5px; line-height: 1.4; color: var(--note-ink); background: var(--note); padding: 6px 10px; border-radius: 10px; animation: pop .22s ease-out; }
+.typing { align-self: flex-start; background: var(--bubble-in); border-radius: 14px; padding: 10px 12px; display: flex; gap: 4px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+.ph-foot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 8px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chips button { white-space: nowrap; flex: none; }
+.input { border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; color: var(--muted); font-size: 14px; }
+.replay { justify-self: start; font: 600 14px var(--body); color: var(--accent); background: none; border: 0; padding: 4px 0; cursor: pointer; }
+.replay:hover { text-decoration: underline; }
+.foot { color: var(--muted); font-size: 14px; max-width: 70ch; display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 18px; }
+.foot p { margin: 0; }
+@keyframes pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .msg, .kbd, .sys { animation: none; } .typing i { animation: none; } }
+@media (max-width: 480px) { .phone { height: 560px; } .wrap { padding-block: 24px 36px; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Автослот · пример для «Конкурента»</span>
+    <h1>Запись, напоминания и бот в Telegram или MAX</h1>
+    <p class="lead">Так это будет выглядеть у вас. Переписки ненастоящие, но цены и время взяты с вашего сайта. В двух правых телефонах можно нажимать кнопки, как это сделает клиент.</p>
+  </header>
+
+  <main class="demos">
+    <section class="demo">
+      <h2>Вам и мастерам</h2>
+      <p class="who">Новая запись, отмена и сводка на завтра приходят сразу. Мастер получает только свои записи.</p>
+      <div class="phone" id="owner">
+        <div class="ph-head"><div class="ava">А</div><div><b>Автослот · Конкурент</b><small>бот для сервиса</small></div></div>
+        <div class="chat" aria-live="polite"></div>
+        <div class="ph-foot"><div class="input">Сообщение</div></div>
+      </div>
+      <button class="replay" data-for="owner" type="button">Показать заново</button>
+    </section>
+
+    <section class="demo">
+      <h2>Клиенту за день до записи</h2>
+      <p class="who">Клиент записался на сайте и нажал «Напоминать в Telegram». Накануне ему приходит это.</p>
+      <div class="phone" id="client">
+        <div class="ph-head"><div class="ava">К</div><div><b>Конкурент</b><small>автосервис, ул. Коминтерна, 39Б</small></div></div>
+        <div class="chat" aria-live="polite"></div>
+        <div class="ph-foot"><div class="input">Сообщение</div></div>
+      </div>
+      <button class="replay" data-for="client" type="button">Показать заново</button>
+    </section>
+
+    <section class="demo">
+      <h2>Бот отвечает и записывает</h2>
+      <p class="who">Клиент пишет в любое время. Бот знает ваши цены и свободное время, сложный вопрос передаёт вам.</p>
+      <div class="phone" id="bot">
+        <div class="ph-head"><div class="ava">К</div><div><b>Конкурент</b><small>бот записи</small></div></div>
+        <div class="chat" aria-live="polite"></div>
+        <div class="ph-foot"><div class="chips" aria-label="Вопросы клиента"></div><div class="input">Нажмите на вопрос выше</div></div>
+      </div>
+      <button class="replay" data-for="bot" type="button">Начать заново</button>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Запись из бота сразу попадает в календарь кабинета, как запись с сайта. Если пост закрыт или время занято, бот его не предложит.</p>
+    <p>Напоминания приходят тем, кто подключил Telegram или MAX при записи. Остальным можно отправлять СМС, это отдельная плата за каждое сообщение.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  // Одна переписка в телефоне. run — номер показа: «Показать заново» начинает новый, старые шаги останавливаются
+  function Chat(id) {
+    const root = document.getElementById(id);
+    const box = root.querySelector(".chat");
+    const chips = root.querySelector(".chips");
+    let run = 0, clock = 0;
+    const alive = (r) => r === run;
+    const scroll = () => { box.scrollTop = box.scrollHeight; };
+    const add = (el) => { box.append(el); scroll(); return el; };
+    const time = () => { const m = clock++; return `${Math.floor(m / 60) + 10}:${String(m % 60).padStart(2, "0")}`; };
+    const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+    const api = {
+      start(startMin = 0) { run++; clock = startMin; box.innerHTML = ""; if (chips) chips.innerHTML = ""; return run; },
+      alive,
+      day(text) { const d = document.createElement("div"); d.className = "day"; d.textContent = text; add(d); },
+      sys(text) { const d = document.createElement("div"); d.className = "sys"; d.textContent = text; add(d); },
+      me(text) { const d = document.createElement("div"); d.className = "msg out"; d.innerHTML = `${esc(text)}<span class="t">${time()}</span>`; add(d); },
+      async bot(r, html, ms = 900) {
+        const t = document.createElement("div"); t.className = "typing"; t.setAttribute("aria-label", "печатает"); t.innerHTML = "<i></i><i></i><i></i>";
+        add(t); await wait(ms); t.remove();
+        if (!alive(r)) return false;
+        const d = document.createElement("div"); d.className = "msg in"; d.innerHTML = `${html}<span class="t">${time()}</span>`; add(d);
+        return true;
+      },
+      // Кнопки под сообщением бота; нажатая гасит остальные
+      buttons(r, list) {
+        if (!alive(r)) return;
+        const k = document.createElement("div"); k.className = "kbd";
+        for (const [label, fn] of list) {
+          const b = document.createElement("button"); b.type = "button"; b.textContent = label;
+          b.addEventListener("click", () => { if (!alive(r)) return; k.querySelectorAll("button").forEach((x) => (x.disabled = true)); fn(label); });
+          k.append(b);
+        }
+        add(k);
+      },
+      // Подсказки над полем ввода: «что спросить»
+      chips(r, list) {
+        if (!chips || !alive(r)) return;
+        chips.innerHTML = "";
+        for (const [label, fn] of list) {
+          const b = document.createElement("button"); b.type = "button"; b.textContent = label;
+          b.addEventListener("click", () => { if (!alive(r)) return; chips.innerHTML = ""; fn(label); });
+          chips.append(b);
+        }
+      },
+      wait,
+    };
+    return api;
+  }
+
+  /* ---------- 1. Вам и мастерам ---------- */
+  const owner = Chat("owner");
+  async function playOwner() {
+    const r = owner.start(2);
+    owner.day("Среда, 28 октября");
+    if (!(await owner.bot(r, `<div class="card"><span class="k">Новая запись с сайта</span><b>Диагностика электрооборудования</b>
+      <div class="row"><span>Когда</span><span>чт, 29 октября, 10:00</span></div>
+      <div class="row"><span>Пост</span><span>Пост 5 · Шарапов Иван</span></div>
+      <div class="row"><span>Клиент</span><span>Иван, Kia Rio</span></div>
+      <div class="row"><span>Цена</span><span>1 200 ₽</span></div></div>`, 700))) return;
+    owner.buttons(r, [
+      ["Открыть в календаре", () => owner.sys("В настоящем боте откроется календарь кабинета на этой записи")],
+      ["Позвонить клиенту", () => owner.sys("В настоящем боте откроется звонок на номер клиента")],
+    ]);
+    await owner.wait(1600);
+    if (!(await owner.bot(r, `<div class="card"><span class="k">Отмена</span><b>Шиномонтаж R16</b>
+      <div class="row"><span>Когда</span><span>пт, 30 октября, 11:00</span></div>
+      <div class="row"><span>Кто</span><span>клиент отменил сам</span></div></div>
+      <div style="margin-top:6px">Время снова свободно на сайте.</div>`))) return;
+    await owner.wait(1400);
+    if (!(await owner.bot(r, `Иван подтвердил запись: приедет завтра в 10:00 на диагностику электрооборудования.`))) return;
+    await owner.wait(1400);
+    owner.day("20:00");
+    await owner.bot(r, `<div class="card"><span class="k">Завтра, 29 октября</span>
+      <div class="row"><span>Пост 1</span><span>2 записи</span></div>
+      <div class="row"><span>Пост 3</span><span>3 записи</span></div>
+      <div class="row"><span>Пост 5</span><span>2 записи</span></div>
+      <div class="row"><span>Развал</span><span>4 записи</span></div>
+      <div class="row"><span>Итого</span><span>11 записей, от 24 600 ₽</span></div></div>`);
+  }
+
+  /* ---------- 2. Напоминание клиенту ---------- */
+  const client = Chat("client");
+  async function playClient() {
+    const r = client.start(0);
+    client.day("Среда, 28 октября");
+    if (!(await client.bot(r, `Иван, здравствуйте! Напоминаем: <b>завтра, 29 октября, в 10:00</b> вы записаны на диагностику электрооборудования.<br>Адрес: Нижний Новгород, ул. Коминтерна, 39Б.`, 700))) return;
+    client.buttons(r, [
+      ["Приеду", async (l) => {
+        client.me(l);
+        if (await client.bot(r, "Отлично, ждём вас завтра в 10:00. Если планы изменятся, напишите сюда.")) client.sys("Сергею пришло: «Иван подтвердил запись»");
+      }],
+      ["Перенести", async (l) => {
+        client.me(l);
+        if (!(await client.bot(r, "Выберите новое время на диагностику электрооборудования:"))) return;
+        client.buttons(r, ["чт 29, 14:00", "пт 30, 9:00", "пт 30, 12:00"].map((t) => [t, async (x) => {
+          client.me(x);
+          if (await client.bot(r, `Готово, перенесли на <b>${esc(x.replace("чт 29", "четверг, 29 октября").replace("пт 30", "пятницу, 30 октября"))}</b>. Накануне напомним.`))
+            client.sys("В календаре запись переехала сама, Сергей получил уведомление");
+        }]));
+      }],
+      ["Отменить", async (l) => {
+        client.me(l);
+        if (!(await client.bot(r, "Отменить запись на завтра, 10:00?"))) return;
+        client.buttons(r, [
+          ["Да, отменить", async (x) => { client.me(x); if (await client.bot(r, "Запись отменена. Будем рады видеть вас снова.")) client.sys("Время снова свободно на сайте, Сергею пришло уведомление"); }],
+          ["Нет, приеду", async (x) => { client.me(x); await client.bot(r, "Хорошо, ждём вас завтра в 10:00."); }],
+        ]);
+      }],
+    ]);
+  }
+
+  /* ---------- 3. Бот отвечает и записывает ---------- */
+  const bot = Chat("bot");
+  const DAY = "чт, 29 октября";
+  // Последний шаг любой записи: имя и машина, потом подтверждение
+  async function finish(r, what, when) {
+    if (!(await bot.bot(r, "Как вас зовут и какая машина?"))) return;
+    bot.chips(r, [["Андрей, Toyota RAV4", async (l) => {
+      bot.me(l);
+      if (!(await bot.bot(r, `Записали вас:<br><b>${esc(what)}</b><br>${DAY}, ${esc(when)}<br>Toyota RAV4<br>Адрес: ул. Коминтерна, 39Б. Накануне пришлём напоминание.`))) return;
+      bot.sys("Запись появилась в календаре кабинета, Сергею и мастеру пришло уведомление");
+      offer(r);
+    }]]);
+  }
+  const times = (r, what, list) => bot.buttons(r, list.map((t) => [t, (x) => { bot.me(x); finish(r, what, x); }]));
+  const questions = {
+    "Сколько стоит развал на кроссовер?": async (r) => {
+      if (!(await bot.bot(r, "Развал-схождение для кроссовера:<br>1 ось: 3 000 ₽<br>2 оси: 3 500 ₽<br>Делаем на 3D-стенде, около часа. Записать?"))) return;
+      bot.buttons(r, ["Записать, 2 оси", "Записать, 1 ось"].map((l) => [l, async (x) => {
+        bot.me(x);
+        const what = `Развал-схождение, кроссовер, ${x.endsWith("2 оси") ? "2 оси" : "1 ось"}`;
+        if (await bot.bot(r, `Завтра, ${DAY}, на стенде свободно:`)) times(r, what, ["9:00", "11:00", "15:00"]);
+      }]));
+    },
+    "Стучит спереди, когда поворачиваю": async (r) => {
+      if (!(await bot.bot(r, "Так бывает из-за ШРУСа, стойки или рулевого наконечника. Точно скажет мастер на осмотре.<br>Могу записать на <b>бесплатную диагностику подвески</b>, это около часа. Завтра свободно:", 1200))) return;
+      bot.buttons(r, [
+        ...["9:00", "14:00"].map((t) => [t, (x) => { bot.me(x); finish(r, "Диагностика подвески, бесплатно", x); }]),
+        ["Задать вопрос мастеру", async (x) => {
+          bot.me(x);
+          if (await bot.bot(r, "Передали ваш вопрос в сервис. Вам ответят здесь в рабочее время.")) { bot.sys("Сергею пришло: «Клиент спрашивает про стук спереди при повороте»"); offer(r); }
+        }],
+      ]);
+    },
+    "Сколько стоит шиномонтаж R16?": async (r) => {
+      if (!(await bot.bot(r, "Шиномонтаж R16:<br>седан: 3 600 ₽<br>кроссовер (R15–R17): 4 080 ₽<br>Какая у вас машина?"))) return;
+      bot.buttons(r, ["Седан", "Кроссовер"].map((l) => [l, async (x) => {
+        bot.me(x);
+        const what = x === "Седан" ? "Шиномонтаж R16, седан, 3 600 ₽" : "Шиномонтаж R15–R17, кроссовер, 4 080 ₽";
+        if (await bot.bot(r, `Завтра, ${DAY}, свободно:`)) times(r, what, ["10:00", "13:00", "16:00"]);
+      }]));
+    },
+  };
+  // Подсказки, что ещё спросить: после каждого ответа снова видны все вопросы
+  function offer(r) {
+    bot.chips(r, Object.keys(questions).map((q) => [q, (l) => { bot.me(l); questions[q](r); }]));
+  }
+  async function playBot() {
+    const r = bot.start(15);
+    bot.day("Среда, 28 октября");
+    if (!(await bot.bot(r, "Здравствуйте! Я бот автосервиса «Конкурент». Подскажу цены и свободное время, запишу на ремонт. Что вас интересует?", 600))) return;
+    offer(r);
+  }
+
+  const play = { owner: playOwner, client: playClient, bot: playBot };
+  document.querySelectorAll(".replay").forEach((b) => b.addEventListener("click", () => play[b.dataset.for]()));
+  playOwner(); playClient(); playBot();
+})();
+</script>
