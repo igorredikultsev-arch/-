@@ -21,11 +21,14 @@ export type CalBooking = {
   staffId: string; ownStaff: boolean; phone: string | null; phoneText: string | null; author: string;
 };
 export type CalNote = { id: string; title: string; startDate: string; endDate: string; staffId: string | null };
+/** Закрытое время в один день: сотрудник заболел, сервис или пост закрыт */
+export type CalClosure = { id: string; date: string; staffId: string | null; title: string };
 type Staff = { id: string; name: string; color: string };
 
 type Props = {
   view: CalView; days: number; date: string; today: string; nowMs: number; gmt: string; dates: string[]; monthStart: string; monthEnd: string;
   dayStarts: Record<string, number>; scrollMin: number; scrollEndMin: number; hidden: string[]; staff: Staff[]; bookings: CalBooking[]; notes: CalNote[];
+  closures: CalClosure[];
   explicitView: boolean;
   /** Вход мастера: только смотреть — ни записи, ни переноса, ни удаления */
   readOnly?: boolean;
@@ -135,6 +138,15 @@ export function Calendar(p: Props) {
     [p.bookings, temp, removed, hidden, moved],
   );
   const notes = p.notes.filter((n) => !removed.has(n.id) && !(n.staffId && hidden.has(n.staffId)));
+  const closures = p.closures.filter((c) => !(c.staffId && hidden.has(c.staffId)));
+  // Закрытое время: штриховка в цвет сотрудника (весь сервис — серая), ведёт на «Закрыть время», где его открывают снова
+  const closure = (c: CalClosure, cls: string) => {
+    const tone = c.staffId ? color(c.staffId) : "#70757a";
+    const style = { background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${tone} 22%, white) 0 6px, white 6px 12px)`, boxShadow: `inset 3px 0 0 ${tone}` };
+    return p.readOnly
+      ? <span key={c.id} title={c.title} className={`${cls} text-[#1f1f1f]`} style={style}>{c.title}</span>
+      : <Link key={c.id} href={`/cabinet/block?date=${c.date}`} title={c.title} className={`${cls} text-[#1f1f1f]`} style={style}>{c.title}</Link>;
+  };
 
   // Заголовок как в Google: «Октябрь 2026», «Окт. – нояб. 2026», в «Дне» — «22 октября 2026 г.»
   const a = p.dates[0], z = p.dates[p.dates.length - 1];
@@ -410,8 +422,8 @@ export function Calendar(p: Props) {
           {p.staff.map((s) => {
             const on = !hidden.has(s.id);
             return (
-              <li key={s.id}>
-                <label className="flex h-9 cursor-pointer items-center gap-3 rounded-full px-3 text-[14px] text-[#1f1f1f] hover:bg-[#e9eef6]">
+              <li key={s.id} className="group flex items-center">
+                <label className="flex h-9 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-full px-3 text-[14px] text-[#1f1f1f] hover:bg-[#e9eef6]">
                   <input type="checkbox" checked={on} onChange={() => toggleCal(s.id)} className="peer sr-only" />
                   <span className="grid size-[18px] shrink-0 place-items-center rounded-[3px] border-2 peer-focus-visible:ring-2 peer-focus-visible:ring-[#0b57d0]"
                     style={{ borderColor: s.color, background: on ? s.color : "transparent", color: textOn(s.color) }}>
@@ -419,6 +431,13 @@ export function Calendar(p: Props) {
                   </span>
                   <span className="truncate">{s.name}</span>
                 </label>
+                {/* Заболел, отпросился: закрыть запись на него с этого дня */}
+                {!p.readOnly && (
+                  <Link href={`/cabinet/block?date=${p.date < p.today ? p.today : p.date}&staff=${s.id}`} aria-label={`Закрыть запись: ${s.name}`}
+                    className="shrink-0 rounded-full px-2.5 py-1.5 text-[12px] font-medium text-[#444746] hover:bg-[#e9eef6]">
+                    Закрыть
+                  </Link>
+                )}
               </li>
             );
           })}
@@ -509,7 +528,7 @@ export function Calendar(p: Props) {
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white sm:mr-3 sm:mb-3 sm:rounded-2xl lg:mr-4 lg:mb-4">
           {p.view === "month" || isMultiWeek(p.view, p.days) ? (
-            <MonthGrid p={p} bookings={bookings} notes={notes} color={color} now={now}
+            <MonthGrid p={p} bookings={bookings} notes={notes} closures={closures} closure={closure} color={color} now={now}
               onDay={(d) => go("day", d)}
               onEvent={openEvent}
               onNote={(id, el) => { const r = el.getBoundingClientRect(); setCreate(null); setPop({ kind: "note", id, anchor: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } }); }}
@@ -538,9 +557,11 @@ export function Calendar(p: Props) {
                 <div className="flex w-14 shrink-0 items-end justify-end pb-1 pr-2 text-[10px] text-[#70757a]">{p.gmt}</div>
                 {p.dates.map((d) => {
                   const list = notes.filter((n) => n.startDate <= d && n.endDate >= d);
+                  const shut = closures.filter((c) => c.date === d);
                   return (
                     <div key={d} className="min-h-6 min-w-0 flex-1 cursor-pointer border-l border-[#dde3ea] py-0.5 pr-2"
                       onClick={(e) => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); openCreate(d, 540, 60, true, { left: r.left, right: r.right, top: r.top, bottom: r.bottom }); } }}>
+                      {shut.map((c) => closure(c, "mb-0.5 block h-[22px] w-full truncate rounded-[4px] px-2 text-left text-[12px] leading-[22px]"))}
                       {list.map((n) => (
                         <button key={n.id} type="button" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setCreate(null); setPop({ kind: "note", id: n.id, anchor: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } }); }}
                           className="mb-0.5 block h-[22px] w-full truncate rounded-[4px] px-2 text-left text-[12px]"
@@ -718,8 +739,9 @@ function DayColumn({ date, hour, p, bookings, color, now, preview, create, staff
 
 /* ---------- месяц ---------- */
 
-function MonthGrid({ p, bookings, notes, color, now, onDay, onEvent, onNote, onCreate }: {
-  p: Props; bookings: CalBooking[]; notes: CalNote[]; color: (id: string | null) => string; now: number;
+function MonthGrid({ p, bookings, notes, closures, closure, color, now, onDay, onEvent, onNote, onCreate }: {
+  p: Props; bookings: CalBooking[]; notes: CalNote[]; closures: CalClosure[]; closure: (c: CalClosure, cls: string) => React.ReactNode;
+  color: (id: string | null) => string; now: number;
   onDay: (d: string) => void; onEvent: (id: string, el: HTMLElement) => void; onNote: (id: string, el: HTMLElement) => void; onCreate: (d: string, el: HTMLElement) => void;
 }) {
   const weeks = p.dates.length / 7;
@@ -748,6 +770,7 @@ function MonthGrid({ p, bookings, notes, color, now, onDay, onEvent, onNote, onC
                 {dayNum(d) === 1 ? `${dayNum(d)} ${MONTHS_SHORT[monthIdx(d)]}` : dayNum(d)}
               </button>
               <div className="min-w-0 px-1 pb-1" onClick={(e) => { if (e.target === e.currentTarget) onCreate(d, e.currentTarget.parentElement!); }}>
+                {closures.filter((c) => c.date === d).map((c) => closure(c, "mb-px block h-5 w-full truncate rounded-[4px] px-1.5 text-left text-[12px] leading-5"))}
                 {all.slice(0, MAX).map((x) => x.kind === "note" ? (
                   <button key={x.n.id} type="button" onClick={(e) => onNote(x.n.id, e.currentTarget)}
                     className="mb-px block h-5 w-full truncate rounded-[4px] px-1.5 text-left text-[12px]"

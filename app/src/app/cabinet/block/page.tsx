@@ -2,25 +2,45 @@ import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDayLong, hhmm, isDateString, toLocal } from "@/lib/time";
 import { deleteBlock } from "../actions";
-import { Group, SubHead } from "../ui";
+import { Group, Notice, SubHead } from "../ui";
 import { BlockForm } from "./block-form";
+import { MoveButton } from "./move-button";
 
-export default async function BlockPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+export default async function BlockPage({ searchParams }: { searchParams: Promise<{ date?: string; staff?: string }> }) {
   const { business } = await requireOwner();
   const tz = business.timezone;
   const today = toLocal(Date.now(), tz).date;
-  const q = (await searchParams).date;
+  const sp = await searchParams;
+  const q = sp.date;
   const date = q && isDateString(q) && q >= today ? q : today;
   const [blocks, staff] = await Promise.all([
     db.block.findMany({ where: { businessId: business.id, endAt: { gt: new Date() } }, orderBy: { startAt: "asc" }, take: 30, include: { staff: { select: { name: true } } } }),
     db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } }),
   ]);
+  // Клиенты, которые остались записаны к закрытому сотруднику: предложить переставить их к свободным
+  const away = blocks.filter((b) => b.staffId);
+  const stuck = away.length
+    ? await db.booking.groupBy({
+        by: ["staffId"],
+        where: { businessId: business.id, status: "active", OR: away.map((b) => ({ staffId: b.staffId, startAt: { lt: b.endAt }, endAt: { gt: b.startAt } })) },
+        _count: true,
+      })
+    : [];
   return (
     <>
       <SubHead back={date === today ? "/cabinet" : `/cabinet?date=${date}`} backLabel={date === today ? "Сегодня" : "К дню"} title="Закрыть время">
         Свой ремонт, учёба, внеплановый выходной. На сайте это время нельзя будет выбрать.
       </SubHead>
-      <BlockForm today={today} date={date} posts={business.posts} staff={staff} />
+      <BlockForm today={today} date={date} posts={business.posts} staff={staff} pick={staff.some((x) => x.id === sp.staff) ? sp.staff : undefined} />
+      {stuck.map((g) => (
+        <div key={g.staffId} className="grid gap-2 px-[18px] pt-4 lg:max-w-2xl lg:px-0">
+          <Notice tone="warn">
+            <b>{staff.find((x) => x.id === g.staffId)?.name}</b>: на закрытое время уже записано клиентов: {g._count}. Их можно переставить к мастерам, которые в это время
+            свободны и делают эти услуги.
+            <div className="mt-2"><MoveButton staffId={g.staffId!} /></div>
+          </Notice>
+        </div>
+      ))}
       {blocks.length > 0 && (
         <section className="grid gap-2 px-[18px] pt-6 lg:max-w-2xl lg:px-0">
           <h2 className="text-[17px] font-bold">Уже закрыто</h2>

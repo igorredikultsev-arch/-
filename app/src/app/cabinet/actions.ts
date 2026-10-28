@@ -9,13 +9,14 @@ import { hit } from "@/lib/ratelimit";
 import { Prisma } from "@prisma/client";
 import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, serviceStaff, restoreBooking, updateOwnerBooking, moveBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
+import { freeStaff } from "@/lib/staff";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { OFFER_VERSION } from "@/lib/legal";
 import { imageMime, LOGO_MAX_BYTES } from "@/lib/logo";
 import { notifyBusiness, pushHostOk } from "@/lib/push";
 import { findPhone, normalizePhone } from "@/lib/phone";
-import { hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
+import { addDays, hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
 export type ActionResult = { ok?: boolean; error?: string; message?: string } | null;
 
@@ -333,28 +334,67 @@ export async function createBlock(_prev: ActionResult, f: FormData): Promise<Act
   const from = allDay ? 0 : parseHhmm(str(f, "from"));
   const to = allDay ? 24 * 60 : parseHhmm(str(f, "to"));
   if (from == null || to == null || to <= from) return { error: "Время «до» должно быть позже времени «с»" };
+  // Несколько дней подряд (больничный на неделю): по закрытию на каждый день, то же время
+  const days = Math.min(31, Math.max(1, Number(str(f, "days")) || 1));
   const kind = str(f, "scope");
   // Сотрудник (заболел) хранится как «один пост» с его staffId: прошлая версия сайта поймёт это как закрытый пост
   const staff = kind === "staff" ? await db.staff.findFirst({ where: { id: str(f, "staffId"), businessId: business.id }, select: { id: true, name: true } }) : null;
   if (kind === "staff" && !staff) return { error: "Выберите сотрудника" };
   const scope = kind === "one_post" || staff ? "one_post" : "all";
   const staffId = staff?.id ?? null;
-  const startAt = new Date(localToUtc(date, from, business.timezone));
-  const endAt = new Date(localToUtc(date, to, business.timezone));
-  // Повторное нажатие не создаёт второе такое же закрытие
-  const same = await db.block.findFirst({ where: { businessId: business.id, startAt, endAt, scope, staffId } });
-  if (same) return { ok: true, message: "Это время уже закрыто" };
-  await db.block.create({
-    data: { businessId: business.id, startAt, endAt, scope, staffId, reason: str(f, "reason").slice(0, 60) || null },
+  const reason = str(f, "reason").slice(0, 60) || null;
+  const ranges = Array.from({ length: days }, (_, i) => {
+    const d = addDays(date, i);
+    return { startAt: new Date(localToUtc(d, from, business.timezone)), endAt: new Date(localToUtc(d, to, business.timezone)) };
   });
-  await audit("block.create", { userId: user.id, businessId: business.id });
+  // Повторное нажатие не создаёт второе такое же закрытие
+  const same = await db.block.findMany({ where: { businessId: business.id, scope, staffId, startAt: { in: ranges.map((r) => r.startAt) } }, select: { startAt: true, endAt: true } });
+  const fresh = ranges.filter((r) => !same.some((x) => x.startAt.getTime() === r.startAt.getTime() && x.endAt.getTime() === r.endAt.getTime()));
+  if (!fresh.length) return { ok: true, message: "Это время уже закрыто" };
+  await db.block.createMany({ data: fresh.map((r) => ({ businessId: business.id, ...r, scope, staffId, reason })) });
+  await audit("block.create", { userId: user.id, businessId: business.id, details: { days: fresh.length } });
   revalidatePath("/cabinet", "layout");
+  const rows = staff || scope === "all"
+    ? (await Promise.all(ranges.map((r) => clashRows(business.id, business.timezone, r.startAt.getTime(), r.endAt.getTime(), staff?.id)))).flat()
+    : [];
   if (staff) {
-    const clash = clashNote(await clashRows(business.id, business.timezone, startAt.getTime(), endAt.getTime(), staff.id), "к этому сотруднику на это время");
-    return { ok: true, message: `${staff.name}: запись закрыта. Услуги, которые делают и другие, с сайта пойдут к ним.${clash}` };
+    const more = rows.length ? clashNote(rows, "к этому сотруднику на это время") + " Ниже можно переставить их к свободным мастерам." : "";
+    return { ok: true, message: `${staff.name}: запись закрыта. Услуги, которые делают и другие, с сайта пойдут к ним.${more}` };
   }
-  const clash = scope === "all" ? clashNote(await clashRows(business.id, business.timezone, startAt.getTime(), endAt.getTime()), "на это время") : "";
-  return { ok: true, message: `Время закрыто. На сайте оно стало недоступным.${clash}` };
+  return { ok: true, message: `Время закрыто. На сайте оно стало недоступным.${clashNote(rows, "на это время")}` };
+}
+
+/**
+ * Клиенты, записанные к закрытому сотруднику (заболел): переставить к свободным в то же время. Для услуг, закреплённых
+ * за мастерами, — только к ним; не к кому — запись остаётся, владелец решает сам (позвонить, перенести)
+ */
+export async function moveFromClosed(staffId: string): Promise<ActionResult> {
+  const { user, business } = await requireOwner();
+  const closed = await db.block.findMany({ where: { businessId: business.id, staffId, endAt: { gt: new Date() } }, select: { startAt: true, endAt: true } });
+  if (!closed.length) return { error: "Закрытие не найдено" };
+  const list = await db.booking.findMany({
+    where: { businessId: business.id, staffId, status: "active", OR: closed.map((c) => ({ startAt: { lt: c.endAt }, endAt: { gt: c.startAt } })) },
+    include: { service: { include: serviceStaff } },
+    orderBy: { startAt: "asc" },
+  });
+  let moved = 0;
+  const left: string[] = [];
+  for (const b of list) {
+    const to = await db.$transaction((tx) =>
+      freeStaff(tx, business.id, b.onStand, b.startAt, b.endAt, business.standPosts, { only: b.service?.staff.map((x) => x.id) ?? [], ignoreId: b.id }),
+    );
+    if (to && to !== staffId) {
+      await db.booking.update({ where: { id: b.id }, data: { staffId: to } });
+      moved++;
+    } else {
+      const l = toLocal(b.startAt.getTime(), business.timezone);
+      left.push(`${l.date.slice(8, 10)}.${l.date.slice(5, 7)} ${hhmm(l.minutes)} ${b.clientName || "без имени"}${b.clientPhone ? `, ${formatPhone(b.clientPhone)}` : ""}`);
+    }
+  }
+  await audit("booking.staff", { userId: user.id, businessId: business.id, details: { from: staffId, moved, left: left.length } });
+  revalidatePath("/cabinet", "layout");
+  if (!left.length) return { ok: true, message: moved ? `Переставлено: ${moved}. Все записи теперь у других мастеров.` : "Переставлять некого" };
+  return { ok: true, message: `Переставлено: ${moved}. Эти не к кому переставить, все заняты или услугу делает только этот мастер: ${left.join("; ")}. Позвоните клиентам или перенесите вручную.` };
 }
 
 export async function deleteBlock(id: string) {

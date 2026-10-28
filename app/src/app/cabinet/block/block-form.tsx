@@ -9,13 +9,14 @@ import { Result, SaveBar } from "../site/result";
 
 type Scope = "all" | "one_post" | "staff";
 
-export function BlockForm({ today, date: initial, posts, staff }: { today: string; date: string; posts: number; staff: { id: string; name: string }[] }) {
+/** pick — сотрудник, которого закрывают из календаря («Закрыть» у его имени) */
+export function BlockForm({ today, date: initial, posts, staff, pick }: { today: string; date: string; posts: number; staff: { id: string; name: string }[]; pick?: string }) {
   const [state, action, pending] = useActionState(createBlock, null);
   const [date, setDate] = useState(initial);
-  const [allDay, setAllDay] = useState(false);
+  const [allDay, setAllDay] = useState(!!pick);
   const [from, setFrom] = useState("13:00");
   const [to, setTo] = useState("14:00");
-  const [scope, setScope] = useState<Scope>("all");
+  const [scope, setScope] = useState<Scope>(pick ? "staff" : "all");
   const scopes: { value: Scope; label: string }[] = [
     { value: "all", label: "Весь сервис" },
     ...(posts > 1 ? [{ value: "one_post" as const, label: "Один пост" }] : []),
@@ -63,11 +64,18 @@ export function BlockForm({ today, date: initial, posts, staff }: { today: strin
       )}
       {scope === "staff" && (
         <Field label="Кого" htmlFor="bl-staff">
-          <select id="bl-staff" name="staffId" className={inputCls} defaultValue={staff[0]?.id}>
+          <select id="bl-staff" name="staffId" className={inputCls} defaultValue={pick ?? staff[0]?.id}>
             {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </Field>
       )}
+      <Field label="Сколько дней подряд" htmlFor="bl-days" hint="Например, больничный на неделю: каждый день закроется на это же время">
+        <select id="bl-days" name="days" defaultValue="1" className={inputCls}>
+          {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>{n === 1 ? "Только этот день" : `${n} ${n < 5 ? "дня" : "дней"}`}</option>
+          ))}
+        </select>
+      </Field>
       <Field label="Причина, видна только вам" htmlFor="bl-reason">
         <input id="bl-reason" name="reason" placeholder="Обед, свой ремонт, выходной" maxLength={60} className={inputCls} />
       </Field>

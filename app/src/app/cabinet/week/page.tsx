@@ -3,7 +3,7 @@ import { assignLanes, calendarLanes, isMultiWeek, MAX_RANGE_DAYS } from "@/lib/c
 import { loadCalendar } from "@/lib/cabinet";
 import { formatPhone } from "@/lib/phone";
 import { ensureStaff } from "@/lib/staff";
-import { addDays, isDateString, toLocal, weekdayOf } from "@/lib/time";
+import { addDays, hhmm, isDateString, toLocal, weekdayOf } from "@/lib/time";
 import { Calendar, type CalView } from "./calendar";
 
 // Календарь как Google: данные за видимые дни собираются здесь, всё остальное (перетаскивание, быстрая запись,
@@ -48,6 +48,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     cal.bookings.map((b) => ({ id: b.id, start: b.startAt.getTime(), end: b.endAt.getTime(), staffId: b.staffId, onStand: b.onStand })),
     lanes,
   );
+  // Закрытое время — полоской над сеткой в каждый его день: «Шарапов не принимает, весь день. Заболел»
+  const closures = cal.blocks.flatMap((b) =>
+    cal.days.flatMap((d) => {
+      const s = Math.max(b.startAt.getTime(), d.start), e = Math.min(b.endAt.getTime(), d.start + 86400000);
+      if (e <= s) return [];
+      const from = Math.round((s - d.start) / 60000), to = Math.round((e - d.start) / 60000);
+      const whole = d.win ? from <= d.win.openMin && to >= d.win.closeMin : from === 0 && to === 1440;
+      const who = b.staffId ? `${cal.staff.find((x) => x.id === b.staffId)?.name ?? "Сотрудник"} не принимает` : b.scope === "all" ? "Сервис закрыт" : "Закрыт один пост";
+      return [{ id: `${b.id}:${d.date}`, date: d.date, staffId: b.staffId, title: `${who}, ${whole ? "весь день" : `${hhmm(from)}-${hhmm(to)}`}${b.reason ? `. ${b.reason}` : ""}` }];
+    }),
+  );
   const open = cal.days.filter((d) => d.win).map((d) => d.win!.openMin);
   const close = cal.days.filter((d) => d.win).map((d) => d.win!.closeMin);
 
@@ -86,6 +97,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         author: b.source === "site" ? "Записался сам через сайт" : b.externalId ? "Перенесено из Google Календаря" : b.createdBy ? `Внёс: ${b.createdBy.name || formatPhone(b.createdBy.phone)}` : "Внесено в кабинете",
       }))}
       notes={cal.notes}
+      closures={closures}
       explicitView={!!sp.view}
     />
   );
