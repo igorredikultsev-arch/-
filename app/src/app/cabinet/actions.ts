@@ -7,7 +7,7 @@ import { firstIssue } from "@/lib/zod-ru";
 import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
 import { hit } from "@/lib/ratelimit";
 import { Prisma } from "@prisma/client";
-import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, restoreBooking, updateOwnerBooking, moveBooking, type OwnerWarning } from "@/lib/booking";
+import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, serviceStaff, restoreBooking, updateOwnerBooking, moveBooking, type OwnerWarning } from "@/lib/booking";
 import { formatPhone } from "@/lib/phone";
 import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
@@ -72,8 +72,8 @@ export async function setBookingStatus(
 }
 
 /** Записи в интервале для предупреждения: «05.10 10:00 Иван, +7 (912) …». */
-async function clashRows(businessId: string, tz: string, start: number, end: number) {
-  const list = await bookingsInRange(businessId, start, end);
+async function clashRows(businessId: string, tz: string, start: number, end: number, staffId?: string) {
+  const list = await bookingsInRange(businessId, start, end, staffId);
   return list.map((b) => {
     const l = toLocal(b.startAt.getTime(), tz);
     return `${l.date.slice(8, 10)}.${l.date.slice(5, 7)} ${hhmm(l.minutes)} ${b.clientName || "без имени"}${b.clientPhone ? `, ${formatPhone(b.clientPhone)}` : ""}`;
@@ -99,7 +99,7 @@ export async function ownerDaySlots(date: string, serviceId: string | null, cust
   const { business } = await requireOwner();
   if (!isDateString(date)) return [];
   const service = serviceId
-    ? await db.service.findFirst({ where: { id: serviceId, businessId: business.id } })
+    ? await db.service.findFirst({ where: { id: serviceId, businessId: business.id }, include: serviceStaff })
     : custom && custom.durationMin >= 10 && custom.durationMin <= 1440 ? { durationMin: custom.durationMin, onStand: !!custom.onStand } : null;
   if (!service) return [];
   const biz = await db.business.findUniqueOrThrow({ where: { id: business.id }, select: businessForSlotsSelect });
@@ -333,17 +333,26 @@ export async function createBlock(_prev: ActionResult, f: FormData): Promise<Act
   const from = allDay ? 0 : parseHhmm(str(f, "from"));
   const to = allDay ? 24 * 60 : parseHhmm(str(f, "to"));
   if (from == null || to == null || to <= from) return { error: "Время «до» должно быть позже времени «с»" };
-  const scope = str(f, "scope") === "one_post" ? "one_post" : "all";
+  const kind = str(f, "scope");
+  // Сотрудник (заболел) хранится как «один пост» с его staffId: прошлая версия сайта поймёт это как закрытый пост
+  const staff = kind === "staff" ? await db.staff.findFirst({ where: { id: str(f, "staffId"), businessId: business.id }, select: { id: true, name: true } }) : null;
+  if (kind === "staff" && !staff) return { error: "Выберите сотрудника" };
+  const scope = kind === "one_post" || staff ? "one_post" : "all";
+  const staffId = staff?.id ?? null;
   const startAt = new Date(localToUtc(date, from, business.timezone));
   const endAt = new Date(localToUtc(date, to, business.timezone));
   // Повторное нажатие не создаёт второе такое же закрытие
-  const same = await db.block.findFirst({ where: { businessId: business.id, startAt, endAt, scope } });
+  const same = await db.block.findFirst({ where: { businessId: business.id, startAt, endAt, scope, staffId } });
   if (same) return { ok: true, message: "Это время уже закрыто" };
   await db.block.create({
-    data: { businessId: business.id, startAt, endAt, scope, reason: str(f, "reason").slice(0, 60) || null },
+    data: { businessId: business.id, startAt, endAt, scope, staffId, reason: str(f, "reason").slice(0, 60) || null },
   });
   await audit("block.create", { userId: user.id, businessId: business.id });
   revalidatePath("/cabinet", "layout");
+  if (staff) {
+    const clash = clashNote(await clashRows(business.id, business.timezone, startAt.getTime(), endAt.getTime(), staff.id), "к этому сотруднику на это время");
+    return { ok: true, message: `${staff.name}: запись закрыта. Услуги, которые делают и другие, с сайта пойдут к ним.${clash}` };
+  }
   const clash = scope === "all" ? clashNote(await clashRows(business.id, business.timezone, startAt.getTime(), endAt.getTime()), "на это время") : "";
   return { ok: true, message: `Время закрыто. На сайте оно стало недоступным.${clash}` };
 }
@@ -366,7 +375,7 @@ const ServiceForm = z.object({
   isDiagnostic: z.boolean(),
   onStand: z.boolean(),
   featured: z.boolean(),
-  staffId: z.string().max(40).transform((v) => v || null),
+  staffIds: z.array(z.string().max(40)).max(50),
   active: z.boolean(),
 });
 
@@ -381,7 +390,7 @@ function readService(f: FormData) {
     isDiagnostic: f.get("isDiagnostic") === "on",
     onStand: f.get("onStand") === "on",
     featured: f.get("featured") === "on",
-    staffId: str(f, "staffId"),
+    staffIds: f.getAll("staffIds").filter((v): v is string => typeof v === "string" && !!v),
     active: f.get("active") === "on",
   });
 }
@@ -390,23 +399,28 @@ export async function saveService(id: string | null, _prev: ActionResult, f: For
   const { user, business } = await requireOwner();
   const p = readService(f);
   if (!p.success) return { error: firstIssue(p.error, LABELS) };
-  // Пост — только свой и не стенд (услуги на стенде идут на стенд)
-  if (p.data.staffId && !(await db.staff.count({ where: { id: p.data.staffId, businessId: business.id, onStand: false } }))) return { error: "Пост не найден" };
+  const { staffIds, ...data } = p.data;
+  // Мастера — только свои и не стенд (услуги на стенде идут на стенд)
+  const ids = [...new Set(staffIds)];
+  if (ids.length && (await db.staff.count({ where: { id: { in: ids }, businessId: business.id, onStand: false } })) !== ids.length) return { error: "Пост не найден" };
+  const staff = { set: ids.map((x) => ({ id: x })) };
   if (id) {
-    const r = await db.service.updateMany({ where: { id, businessId: business.id }, data: { ...p.data, description: p.data.description || null } });
+    const r = await db.service.updateMany({ where: { id, businessId: business.id }, data: { ...data, description: data.description || null } });
     if (!r.count) return { error: "Услуга не найдена" };
-    // «Так же для всего раздела»: шиномонтаж целиком на «Пост 1» одним нажатием
+    await db.service.update({ where: { id }, data: { staff } });
+    // «Так же для всего раздела»: шиномонтаж целиком на «Пост 1», двигатель на Ромашова и Шарапова одним нажатием
     if (f.get("staffForGroup") === "on") {
-      const group = p.data.category.split(" / ")[0];
-      await db.service.updateMany({
+      const group = data.category.split(" / ")[0];
+      const same = await db.service.findMany({
         where: { businessId: business.id, onStand: false, OR: [{ category: group }, { category: { startsWith: `${group} / ` } }] },
-        data: { staffId: p.data.staffId },
+        select: { id: true },
       });
+      await db.$transaction(same.map((x) => db.service.update({ where: { id: x.id }, data: { staff } })));
     }
   } else {
     const max = await db.service.aggregate({ where: { businessId: business.id }, _max: { sortOrder: true } });
     await db.service.create({
-      data: { ...p.data, description: p.data.description || null, businessId: business.id, sortOrder: (max._max.sortOrder ?? 0) + 1 },
+      data: { ...data, description: data.description || null, businessId: business.id, sortOrder: (max._max.sortOrder ?? 0) + 1, staff: { connect: staff.set } },
     });
   }
   await audit("service.save", { userId: user.id, businessId: business.id });

@@ -5,23 +5,35 @@ import { calendarLanes } from "./calendar";
 import { db } from "./db";
 
 /**
- * Первый сотрудник нужного вида (стенд или пост), у которого в это время нет записи. null — сотрудников нет
+ * Первый сотрудник нужного вида (стенд или пост), у которого в это время нет записи и который не закрыт. null — сотрудников нет
  * или все заняты (владелец записал сверх, это его решение): запись тогда без сотрудника, календарь разложит её сам.
+ * only — мастера услуги (двигатель — Ромашов или Шарапов): выбираем из них, а если все заняты — первого из них.
  */
-export async function freeStaff(tx: Prisma.TransactionClient, businessId: string, onStand: boolean, start: Date, end: Date, standPosts: number, ignoreId?: string): Promise<string | null> {
-  const staff = await tx.staff.findMany({ where: { businessId }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, onStand: true } });
-  const all = standPosts > 0 ? staff.filter((s) => s.onStand === onStand) : staff.filter((s) => !s.onStand);
+export async function freeStaff(
+  tx: Prisma.TransactionClient, businessId: string, onStand: boolean, start: Date, end: Date, standPosts: number,
+  opts: { only?: string[]; ignoreId?: string } = {},
+): Promise<string | null> {
+  const only = onStand ? [] : (opts.only ?? []);
+  const staff = await tx.staff.findMany({
+    where: { businessId, ...(only.length ? { id: { in: only } } : {}) },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true, onStand: true, _count: { select: { services: true } } },
+  });
+  const all = only.length ? staff : standPosts > 0 ? staff.filter((s) => s.onStand === onStand) : staff.filter((s) => !s.onStand);
   if (!all.length) return null;
   // Посты, за которыми закреплены услуги (шиномонтаж — «Пост 1»), занимаем последними: остальные услуги идут на любой пост,
   // но первыми на свободные другие, чтобы не отнимать закреплённый пост
-  const pinned = new Set((await tx.service.findMany({ where: { businessId, staffId: { not: null } }, select: { staffId: true } })).map((s) => s.staffId));
-  const kind = [...all.filter((s) => !pinned.has(s.id)), ...all.filter((s) => pinned.has(s.id))];
-  const busy = await tx.booking.findMany({
-    where: { businessId, staffId: { in: kind.map((s) => s.id) }, ...(ignoreId ? { id: { not: ignoreId } } : {}), status: { in: [...OCCUPYING] }, startAt: { lt: end }, endAt: { gt: start } },
-    select: { staffId: true },
-  });
-  const taken = new Set(busy.map((b) => b.staffId));
-  return kind.find((s) => !taken.has(s.id))?.id ?? null;
+  const kind = [...all.filter((s) => !s._count.services), ...all.filter((s) => s._count.services)];
+  const ids = kind.map((s) => s.id);
+  const [busy, away] = await Promise.all([
+    tx.booking.findMany({
+      where: { businessId, staffId: { in: ids }, ...(opts.ignoreId ? { id: { not: opts.ignoreId } } : {}), status: { in: [...OCCUPYING] }, startAt: { lt: end }, endAt: { gt: start } },
+      select: { staffId: true },
+    }),
+    tx.block.findMany({ where: { businessId, staffId: { in: ids }, startAt: { lt: end }, endAt: { gt: start } }, select: { staffId: true } }),
+  ]);
+  const taken = new Set([...busy, ...away].map((b) => b.staffId));
+  return kind.find((s) => !taken.has(s.id))?.id ?? (only.length ? kind[0].id : null);
 }
 
 /**

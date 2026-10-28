@@ -38,7 +38,7 @@ export function ExceptionForm({ today }: { today: string }) {
   );
 }
 
-type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; featured: boolean; staffId: string | null; active: boolean };
+type Svc = { id: string; name: string; category: string; description: string | null; priceFrom: number; priceExact: boolean; durationMin: number; isDiagnostic: boolean; onStand: boolean; featured: boolean; staff: { id: string }[]; active: boolean };
 
 const DURATIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 
@@ -70,18 +70,28 @@ export function ServiceForm({ service, categories, standPosts = 0, posts = [] }:
         <datalist id="cats">{categories.map((c) => <option key={c} value={c} />)}</datalist>
       </Field>
       {posts.length > 1 && (
-        <Field label="Делается на посту" htmlFor="sv-staff" hint="Например, шиномонтаж только на «Пост 1»: с сайта на него запишут, только когда свободен этот пост. Услуги на стенде развала идут на стенд">
-          <select id="sv-staff" name="staffId" defaultValue={service?.staffId ?? ""} className={inputCls}>
-            <option value="">На любом свободном</option>
-            {posts.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+        // fieldset, а не Field: внутри несколько галочек, а Field — это один <label>
+        <fieldset className="grid gap-1.5">
+          <legend className="mb-1.5 text-[13px] font-semibold text-zinc-600">Кто делает</legend>
+          <span className="-mt-1 mb-1 text-xs text-zinc-500">
+            Отметьте, если услугу делают не все. Например, электрику только Шарапов, двигатель Ромашов или Шарапов: с сайта запишут, когда свободен кто-то из
+            отмеченных. Ничего не отмечено — на любом свободном посту. Услуги на стенде развала идут на стенд
+          </span>
+          <div className="grid gap-1 rounded-2xl border border-zinc-200 bg-white p-1">
+            {posts.map((p) => (
+              <label key={p.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl px-3 hover:bg-zinc-50">
+                <input type="checkbox" name="staffIds" value={p.id} defaultChecked={service?.staff.some((x) => x.id === p.id)} className="size-5 accent-accent" />
+                <span className="text-[15px]">{p.name}</span>
+              </label>
+            ))}
+          </div>
           {service && (
             <label className="mt-2 flex cursor-pointer items-center gap-3 text-[15px]">
               <input type="checkbox" name="staffForGroup" className="size-5 accent-accent" />
               Так же для всего раздела «{service.category.split(" / ")[0]}»
             </label>
           )}
-        </Field>
+        </fieldset>
       )}
       <div className="grid gap-1 rounded-2xl border border-zinc-200 bg-white p-1">
         <label className="flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3 hover:bg-zinc-50">

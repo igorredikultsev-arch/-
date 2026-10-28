@@ -10,7 +10,7 @@ export const getSiteBusiness = cache(async (key: string) => {
   return db.business.findFirst({
     where,
     include: {
-      services: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] },
+      services: { where: { active: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }], include: { staff: { select: { id: true } } } },
       hours: { orderBy: { weekday: "asc" } },
       exceptions: true,
     },

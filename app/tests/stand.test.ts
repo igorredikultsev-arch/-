@@ -75,7 +75,7 @@ describe("услуга, закреплённая за постом (шиномо
     const biz = await makeBusiness({ posts: 5, onlinePosts: 5 });
     await ensureStaff({ id: biz.id, posts: 5, standPosts: 0 });
     const post1 = await db.staff.findFirstOrThrow({ where: { businessId: biz.id }, orderBy: { sortOrder: "asc" } });
-    const tire = await db.service.update({ where: { id: biz.services[0].id }, data: { staffId: post1.id } });
+    const tire = await db.service.update({ where: { id: biz.services[0].id }, data: { staff: { connect: { id: post1.id } } }, include: { staff: { select: { id: true } } } });
     const other = await db.service.create({ data: { businessId: biz.id, category: "ТО", name: "Замена масла", priceFrom: 1000, durationMin: 60 } });
     const first = await createSiteBooking(site(biz.id, other.id, 1));
     expect(first.staffId).not.toBe(post1.id);
@@ -85,5 +85,73 @@ describe("услуга, закреплённая за постом (шиномо
     const b = await db.business.findUniqueOrThrow({ where: { id: biz.id }, select: businessForSlotsSelect });
     expect((await getDaySlots(b, DATE, tire, NOW)).find((s) => s.time === "10:00")!.free).toBe(false);
     expect((await getDaySlots(b, DATE, other, NOW)).find((s) => s.time === "10:00")!.free).toBe(true);
+  });
+});
+
+describe("услуги Ромашова и Шарапова, закрытие сотрудника", () => {
+  async function konkurent() {
+    const biz = await makeBusiness({ posts: 5, onlinePosts: 5 });
+    await ensureStaff({ id: biz.id, posts: 5, standPosts: 0 });
+    const posts = await db.staff.findMany({ where: { businessId: biz.id }, orderBy: { sortOrder: "asc" } });
+    const [romashov, sharapov] = [posts[2], posts[4]];
+    const svc = (name: string, ids: string[]) =>
+      db.service.create({
+        data: { businessId: biz.id, category: "Диагностика", name, priceFrom: 1500, durationMin: 60, staff: { connect: ids.map((id) => ({ id })) } },
+        include: { staff: { select: { id: true } } },
+      });
+    const engine = await svc("Диагностика двигателя", [romashov.id, sharapov.id]);
+    const electric = await svc("Диагностика электрооборудования", [sharapov.id]);
+    const b = await db.business.findUniqueOrThrow({ where: { id: biz.id }, select: businessForSlotsSelect });
+    const at10 = async (s: typeof engine) => (await getDaySlots(b, DATE, s, NOW)).find((x) => x.time === "10:00")!.free;
+    return { biz, romashov, sharapov, engine, electric, at10 };
+  }
+
+  it("двигатель на 10:00: две машины встают к Ромашову и Шарапову, третья — нет", async () => {
+    const { biz, romashov, sharapov, engine, at10 } = await konkurent();
+    const results = await Promise.allSettled(Array.from({ length: 3 }, (_, i) => createSiteBooking(site(biz.id, engine.id, i))));
+    const made = results.flatMap((r) => (r.status === "fulfilled" ? [r.value.staffId] : []));
+    expect(made.sort()).toEqual([romashov.id, sharapov.id].sort());
+    expect(await at10(engine)).toBe(false);
+  });
+
+  it("электрика только у Шарапова: занят он — окно занято, хотя Ромашов свободен", async () => {
+    const { biz, sharapov, engine, electric, at10 } = await konkurent();
+    const first = await createSiteBooking(site(biz.id, electric.id, 1));
+    expect(first.staffId).toBe(sharapov.id);
+    expect(await at10(electric)).toBe(false);
+    expect(await at10(engine)).toBe(true);
+  });
+
+  it("Шарапов закрыт на день: электрика недоступна, двигатель идёт к Ромашову, общих мест на одно меньше", async () => {
+    const { biz, romashov, sharapov, engine, electric, at10 } = await konkurent();
+    await db.block.create({
+      data: { businessId: biz.id, scope: "one_post", staffId: sharapov.id, startAt: new Date(localToUtc(DATE, 0, TZ)), endAt: new Date(localToUtc(DATE, 1440, TZ)) },
+    });
+    expect(await at10(electric)).toBe(false);
+    expect((await createSiteBooking(site(biz.id, engine.id, 1))).staffId).toBe(romashov.id);
+    // Пять постов, Шарапов закрыт, Ромашов занят: на любую услугу остаётся три места
+    const any = biz.services[0];
+    const results = await Promise.allSettled(Array.from({ length: 5 }, (_, i) => createSiteBooking(site(biz.id, any.id, 10 + i))));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
+    expect(await db.booking.count({ where: { businessId: biz.id, staffId: sharapov.id } })).toBe(0);
+  });
+});
+
+describe("несколько машин с одного номера", () => {
+  it("три будущие записи можно, четвёртую нет; прошедшие и отменённые не считаются", async () => {
+    const biz = await makeBusiness({ posts: 3, onlinePosts: 3 });
+    const phone = "+79990002222";
+    const book = (date: string, time: string, nowMs = NOW) =>
+      createSiteBooking({ businessId: biz.id, serviceId: biz.services[0].id, date, time, clientName: "Иван", clientPhone: phone, car: `Kia ${time}`, nowMs, maxActivePerPhone: 3 });
+    // Прошлый визит: запись так и осталась «активной», но время прошло
+    await db.booking.create({
+      data: { businessId: biz.id, serviceName: "Шиномонтаж", source: "site", clientPhone: phone, cancelToken: "old", startAt: new Date(NOW - 86400000), endAt: new Date(NOW - 86400000 + 3600000) },
+    });
+    const first = await book(DATE, "10:00");
+    await book(DATE, "11:00");
+    await book("2026-10-11", "10:00");
+    await expect(book("2026-10-12", "10:00")).rejects.toMatchObject({ code: "too_many" });
+    await db.booking.update({ where: { id: first.id }, data: { status: "cancelled" } });
+    await expect(book("2026-10-12", "10:00")).resolves.toBeTruthy();
   });
 });

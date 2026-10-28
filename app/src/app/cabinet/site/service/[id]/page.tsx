@@ -8,9 +8,9 @@ import { ServiceForm } from "../../forms";
 export default async function ServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { business } = await requireOwner();
   const id = (await params).id;
-  const service = id === "new" ? null : await db.service.findFirst({ where: { id, businessId: business.id } });
+  const service = id === "new" ? null : await db.service.findFirst({ where: { id, businessId: business.id }, include: { staff: { select: { id: true } } } });
   if (id !== "new" && !service) notFound();
-  // Посты (не стенды) — за каким закрепить услугу: шиномонтаж только на «Пост 1»
+  // Посты и мастера (не стенды) — кто делает услугу: шиномонтаж только на «Пост 1», двигатель — Ромашов или Шарапов
   const posts = await db.staff.findMany({ where: { businessId: business.id, onStand: false }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } });
   const categories = (await db.service.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true } })).map((c) => c.category);
   return (

@@ -4,15 +4,23 @@ import { useActionState, useState } from "react";
 import { keepValues } from "@/lib/keep-form";
 import { createBlock } from "../actions";
 import { DatePick, TimeSelect } from "../pickers";
-import { Choice, Field, inputCls } from "../ui";
+import { Field, inputCls } from "../ui";
 import { Result, SaveBar } from "../site/result";
 
-export function BlockForm({ today, date: initial, posts }: { today: string; date: string; posts: number }) {
+type Scope = "all" | "one_post" | "staff";
+
+export function BlockForm({ today, date: initial, posts, staff }: { today: string; date: string; posts: number; staff: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(createBlock, null);
   const [date, setDate] = useState(initial);
   const [allDay, setAllDay] = useState(false);
   const [from, setFrom] = useState("13:00");
   const [to, setTo] = useState("14:00");
+  const [scope, setScope] = useState<Scope>("all");
+  const scopes: { value: Scope; label: string }[] = [
+    { value: "all", label: "Весь сервис" },
+    ...(posts > 1 ? [{ value: "one_post" as const, label: "Один пост" }] : []),
+    ...(staff.length ? [{ value: "staff" as const, label: "Сотрудника" }] : []),
+  ];
   return (
     <form onSubmit={keepValues(action)} className="grid gap-5 px-[18px] lg:max-w-2xl lg:px-0">
       <DatePick name="date" min={today} value={date} onChange={setDate} />
@@ -29,8 +37,36 @@ export function BlockForm({ today, date: initial, posts }: { today: string; date
           <TimeSelect name="to" value={to} onChange={setTo} label="Закрыть до" end />
         </div>
       )}
-      {posts > 1 && (
-        <Choice name="scope" legend="Что закрыть" value="all" options={[{ value: "all", label: "Весь сервис" }, { value: "one_post", label: "Один пост" }]} hint="Один пост: остальные продолжают принимать записи" />
+      {scopes.length > 1 && (
+        <fieldset className="grid gap-2">
+          <legend className="mb-2 text-[15px] font-semibold">Что закрыть</legend>
+          <input type="hidden" name="scope" value={scope} />
+          <div className="flex flex-wrap gap-2">
+            {scopes.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={scope === o.value}
+                onClick={() => setScope(o.value)}
+                className={`inline-flex min-h-11 items-center rounded-xl border px-4 text-[15px] font-medium ${scope === o.value ? "border-ink bg-ink text-white" : "border-zinc-300 bg-white"}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[13px] leading-snug text-zinc-500">
+            {scope === "staff"
+              ? "Сотрудник заболел или отпросился: его пост не принимает записи, а услуги, которые делают и другие, пойдут к ним"
+              : "Один пост: остальные продолжают принимать записи"}
+          </p>
+        </fieldset>
+      )}
+      {scope === "staff" && (
+        <Field label="Кого" htmlFor="bl-staff">
+          <select id="bl-staff" name="staffId" className={inputCls} defaultValue={staff[0]?.id}>
+            {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
       )}
       <Field label="Причина, видна только вам" htmlFor="bl-reason">
         <input id="bl-reason" name="reason" placeholder="Обед, свой ремонт, выходной" maxLength={60} className={inputCls} />

@@ -157,6 +157,7 @@ model Staff {
   notes      CalendarNote[]
   services   Service[]
   masters    User[]
+  blocks     Block[]
 
   @@index([businessId, sortOrder])
 }
@@ -207,9 +208,9 @@ model Service {
   onStand      Boolean   @default(false)
   /// На главном экране сайта: кнопка, которая сразу открывает выбор времени (акция, «бесплатная диагностика»)
   featured     Boolean   @default(false)
-  /// Делается только на этом посту (шиномонтаж — только «Пост 1»); пусто — на любом
-  staffId      String?
-  staff        Staff?    @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  /// Кто делает: только эти посты или мастера (электрику — только Шарапов, двигатель — Ромашов или Шарапов); пусто — любой.
+  /// Столбец Service.staffId (один пост) остался в базе для прошлой версии сайта, удалить следующим выпуском
+  staff        Staff[]
   sortOrder    Int       @default(0)
   active       Boolean   @default(true)
   bookings     Booking[]
@@ -302,6 +303,10 @@ model Block {
   startAt    DateTime
   endAt      DateTime
   scope      BlockScope @default(all)
+  /// Закрыт сотрудник (заболел): его пост не принимает записи, его услуги идут к другим. scope тогда one_post —
+  /// прошлая версия сайта поймёт это как «закрыт один пост»
+  staffId    String?
+  staff      Staff?     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   reason     String?
   createdAt  DateTime   @default(now())
 

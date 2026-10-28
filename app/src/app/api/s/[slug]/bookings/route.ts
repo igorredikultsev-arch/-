@@ -28,9 +28,9 @@ const Body = z.object({
   website: z.string().optional(), // ловушка для ботов: люди это поле не видят
 });
 
-// Одна будущая запись на номер в одном сервисе: с одного телефона нельзя занять всё расписание.
-// Вторую машину записывают по телефону или после первого визита
-const MAX_ACTIVE_PER_PHONE = 1;
+// Не больше трёх будущих записей на номер в одном сервисе: две-три машины записать можно, а занять с одного
+// телефона всё расписание — нет. Прошедшие и отменённые записи не считаются
+const MAX_ACTIVE_PER_PHONE = 3;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const biz = await publicBusiness((await ctx.params).slug);

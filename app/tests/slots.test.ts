@@ -334,11 +334,17 @@ describe("услуга на одном посту", () => {
 
   it("занят свой пост — окно занято, хотя другие посты свободны", () => {
     const busy = [{ start: at(600), end: at(660) }];
-    expect(free(daySlots(input({ bookings: busy, pinnedBusy: busy })))).toEqual(["09:00", "11:00"]);
+    expect(free(daySlots(input({ bookings: busy, pinnedBusy: [busy] })))).toEqual(["09:00", "11:00"]);
+  });
+  it("услуга у двух мастеров (Ромашов или Шарапов): окно свободно, пока свободен хотя бы один", () => {
+    const a = [{ start: at(600), end: at(660) }];
+    const b = [{ start: at(600), end: at(720) }];
+    expect(free(daySlots(input({ bookings: [...a, ...b], pinnedBusy: [a, []] })))).toEqual(["09:00", "10:00", "11:00"]);
+    expect(free(daySlots(input({ bookings: [...a, ...b], pinnedBusy: [a, b] })))).toEqual(["09:00", "11:00"]); // в 11 Ромашов уже свободен
   });
   it("заняты другие посты, свой свободен — окно свободно; без закрепления считается как раньше", () => {
     const others = Array.from({ length: 4 }, () => ({ start: at(600), end: at(660) }));
-    expect(free(daySlots(input({ bookings: others, pinnedBusy: [] })))).toEqual(["09:00", "10:00", "11:00"]);
+    expect(free(daySlots(input({ bookings: others, pinnedBusy: [[]] })))).toEqual(["09:00", "10:00", "11:00"]);
     expect(free(daySlots(input({ bookings: [...others, { start: at(600), end: at(660) }] })))).toEqual(["09:00", "11:00"]);
   });
 });

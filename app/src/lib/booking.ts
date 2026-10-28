@@ -48,18 +48,21 @@ async function loadRange(tx: Tx, businessId: string, firstDate: string, lastDate
     }),
     tx.block.findMany({
       where: { businessId, startAt: { gte: from, lt: to }, endAt: { gt: from } },
-      select: { startAt: true, endAt: true, scope: true },
+      select: { startAt: true, endAt: true, scope: true, staffId: true, staff: { select: { onStand: true } } },
     }),
   ]);
   const iv = (r: { startAt: Date; endAt: Date }): Interval => ({ start: r.startAt.getTime(), end: r.endAt.getTime() });
   const busy = (r: { startAt: Date; endAt: Date; onStand: boolean }): Busy => ({ ...iv(r), stand: r.onStand });
+  // Сотрудник закрыт (заболел) — как запись на нём весь этот промежуток: его пост или стенд занят, его услуги идут к другим
+  const away = blocks.flatMap((b) => (b.staffId && b.staff ? [{ ...b, onStand: b.staff.onStand, staffId: b.staffId }] : []));
+  const taken = [...bookings, ...away];
   return {
-    bookings: bookings.map(busy),
+    bookings: taken.map(busy),
     siteBookings: bookings.filter((b) => b.source === "site").map(busy),
     blocksAll: blocks.filter((b) => b.scope === "all").map(iv),
-    blocksOnePost: blocks.filter((b) => b.scope === "one_post").map(iv),
-    /** Записи на конкретном посту: для услуг, закреплённых за постом */
-    onStaff: (staffId: string) => bookings.filter((b) => b.staffId === staffId).map(iv),
+    blocksOnePost: blocks.filter((b) => b.scope === "one_post" && !b.staffId).map(iv),
+    /** Записи и закрытия у конкретного сотрудника: для услуг, закреплённых за ним */
+    onStaff: (staffId: string) => taken.filter((b) => b.staffId === staffId).map(iv),
   };
 }
 
@@ -89,10 +92,14 @@ export const businessForSlotsSelect = {
   exceptions: true,
 } satisfies Prisma.BusinessSelect;
 
-/** Услуга для расчёта окон: длительность, стенд развала, закреплённый пост. Просто число — длительность услуги на любом посту. */
-export type SlotService = number | { durationMin: number; onStand?: boolean; staffId?: string | null };
+/** Услуга для расчёта окон: длительность, стенд развала, кто её делает. Просто число — длительность услуги на любом посту. */
+export type SlotService = number | { durationMin: number; onStand?: boolean; staff?: { id: string }[] };
 const svc = (s: SlotService) =>
-  typeof s === "number" ? { durationMin: s, onStand: false, staffId: null } : { durationMin: s.durationMin, onStand: !!s.onStand, staffId: s.onStand ? null : (s.staffId ?? null) };
+  typeof s === "number" ? { durationMin: s, onStand: false, staffIds: [] } : { durationMin: s.durationMin, onStand: !!s.onStand, staffIds: s.onStand ? [] : (s.staff ?? []).map((x) => x.id) };
+/** Занятость мастеров услуги; услуга ни за кем не закреплена — undefined, подойдёт любой пост */
+const pinned = (occ: { onStaff: (id: string) => Interval[] }, staffIds: string[]) => (staffIds.length ? staffIds.map(occ.onStaff) : undefined);
+/** Связь услуги с мастерами: подгружать вместе с услугой для записи */
+export const serviceStaff = { staff: { select: { id: true } } } satisfies Prisma.ServiceInclude;
 
 export async function getDaySlots(
   biz: BusinessForSlots,
@@ -101,7 +108,7 @@ export async function getDaySlots(
   nowMs = Date.now(),
   tx: Tx = db,
 ): Promise<Slot[]> {
-  const { durationMin, onStand, staffId } = svc(service);
+  const { durationMin, onStand, staffIds } = svc(service);
   if (!inHorizon(date, nowMs, biz.timezone, biz.horizonDays)) return [];
   const window = resolveDayWindow(date, biz.hours, biz.exceptions);
   if (!window) return [];
@@ -117,7 +124,7 @@ export async function getDaySlots(
     standPosts: biz.standPosts,
     onStand,
     ...occ,
-    pinnedBusy: staffId ? occ.onStaff(staffId) : undefined,
+    pinnedBusy: pinned(occ, staffIds),
     nowMs,
     minLeadMin: biz.minLeadMin,
   });
@@ -149,7 +156,7 @@ export type DaySummary = { date: string; closed: boolean; free: number; ended?: 
 
 /** Сводка по дням горизонта для полоски дат: выходной или сколько свободных окон. Один запрос к базе. */
 export async function getHorizonSummary(biz: BusinessForSlots, service: SlotService, nowMs = Date.now()): Promise<DaySummary[]> {
-  const { durationMin, onStand, staffId } = svc(service);
+  const { durationMin, onStand, staffIds } = svc(service);
   const dates = horizonDates(nowMs, biz.timezone, biz.horizonDays);
   const occ = await loadRange(db, biz.id, dates[0], dates[dates.length - 1], biz.timezone);
   return dates.map((date) => {
@@ -157,7 +164,7 @@ export async function getHorizonSummary(biz: BusinessForSlots, service: SlotServ
     if (!window) return { date, closed: true, free: 0 };
     const slots = daySlots({
       date, tz: biz.timezone, window, durationMin, stepMin: biz.slotStepMin, posts: biz.posts, onlinePosts: biz.onlinePosts,
-      standPosts: biz.standPosts, onStand, ...occ, pinnedBusy: staffId ? occ.onStaff(staffId) : undefined, nowMs, minLeadMin: biz.minLeadMin,
+      standPosts: biz.standPosts, onStand, ...occ, pinnedBusy: pinned(occ, staffIds), nowMs, minLeadMin: biz.minLeadMin,
     });
     // «Поздно» — только сегодня и только когда окна были, но время уже вышло (а не услуга длиннее рабочего дня)
     const ended = slots.length === 0 && date === dates[0] && daySlots({
@@ -201,7 +208,7 @@ export async function createSiteBooking(input: SiteBookingInput) {
   return db.$transaction(async (tx) => {
     await lockBusiness(tx, input.businessId);
     const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
-    const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId, active: true } });
+    const service = await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId, active: true }, include: serviceStaff });
     if (!biz || !service) throw new BookingError("not_found", "Сервис или услуга не найдены");
     const pd = !input.withoutPersonalData;
     // Повтор той же записи (ответ сервера потерялся в плохой сети, клиент нажал «Записаться» ещё раз):
@@ -222,7 +229,9 @@ export async function createSiteBooking(input: SiteBookingInput) {
         where: { businessId: input.businessId, clientPhone: input.clientPhone, status: "active", startAt: { gt: new Date(nowMs) } },
       });
       if (active >= input.maxActivePerPhone) {
-        throw new BookingError("too_many", "На этот номер уже есть запись в этом сервисе. Чтобы записать ещё одну машину, позвоните в сервис");
+        throw new BookingError("too_many", input.maxActivePerPhone === 1
+          ? "На этот номер уже есть запись в этом сервисе. Чтобы записать ещё одну машину, позвоните в сервис"
+          : `На этот номер уже ${input.maxActivePerPhone} записи в этом сервисе. Чтобы записать ещё машину, позвоните в сервис`);
       }
     }
     // Дважды за год не приехал — онлайн запись с этого номера закрыта, записаться можно по телефону.
@@ -242,8 +251,8 @@ export async function createSiteBooking(input: SiteBookingInput) {
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
-        // Услуга закреплена за постом — на него (окно выше уже проверено по этому посту)
-        staffId: (!service.onStand && service.staffId) || (await freeStaff(tx, input.businessId, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts)),
+        // Услуга закреплена за мастерами — к свободному из них (окно выше уже проверено по ним)
+        staffId: await freeStaff(tx, input.businessId, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, { only: service.staff.map((x) => x.id) }),
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         source: "site",
@@ -318,7 +327,7 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
     // Своя запись без услуги: название, длительность и стенд вписал владелец (как событие в календаре)
     const service = input.custom
       ? { id: null, name: input.custom.title, priceFrom: null, durationMin: input.custom.durationMin, onStand: !!input.custom.onStand }
-      : await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId } });
+      : await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId }, include: serviceStaff });
     if (!biz || !service) throw new BookingError("not_found", "Услуга не найдена");
     const start = localToUtc(input.date, input.startMin, biz.timezone);
     const slot = { start, end: start + service.durationMin * 60000 };
@@ -333,8 +342,8 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
-        // Пост выбран вручную — он; иначе закреплённый за услугой; иначе первый свободный
-        staffId: input.staffId ?? (("staffId" in service && !service.onStand && service.staffId) || (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts))),
+        // Пост выбран вручную — он; иначе свободный из мастеров услуги; иначе первый свободный
+        staffId: input.staffId ?? (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, { only: "staff" in service ? service.staff.map((x) => x.id) : [] })),
         createdById: input.createdById ?? null,
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
@@ -360,7 +369,7 @@ export async function updateOwnerBooking(input: OwnerBookingInput & { id: string
     const b = await tx.booking.findFirst({ where: { id: input.id, businessId: input.businessId } });
     const biz = await tx.business.findUnique({ where: { id: input.businessId }, select: businessForSlotsSelect });
     if (!b || !biz) throw new BookingError("not_found", "Запись не найдена");
-    const found = input.serviceId ? await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId } }) : null;
+    const found = input.serviceId ? await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId }, include: serviceStaff }) : null;
     // Услугу могли удалить из списка: запись с ней остаётся как была, меняется только время и пост
     const kept = input.serviceId && !found && input.serviceId === b.serviceId
       ? { id: b.serviceId, name: b.serviceName, priceFrom: b.priceFrom, durationMin: input.custom?.durationMin ?? (b.endAt.getTime() - b.startAt.getTime()) / 60000, onStand: b.onStand }
@@ -380,8 +389,8 @@ export async function updateOwnerBooking(input: OwnerBookingInput & { id: string
         serviceName: service.name,
         priceFrom: service.priceFrom,
         onStand: service.onStand,
-        // Пост выбран вручную — он; иначе закреплённый за услугой; иначе первый свободный
-        staffId: input.staffId ?? (("staffId" in service && !service.onStand && service.staffId) || (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, b.id))),
+        // Пост выбран вручную — он; иначе свободный из мастеров услуги; иначе первый свободный
+        staffId: input.staffId ?? (await freeStaff(tx, biz.id, service.onStand, new Date(slot.start), new Date(slot.end), biz.standPosts, { only: service === found ? found.staff.map((x) => x.id) : [], ignoreId: b.id })),
         startAt: new Date(slot.start),
         endAt: new Date(slot.end),
         clientName: input.clientName || null,
@@ -426,9 +435,9 @@ export async function restoreBooking(id: string, businessId: string, force = fal
 }
 
 /** Активные записи, которые попадают в интервал: для предупреждения при закрытии времени и праздниках. */
-export async function bookingsInRange(businessId: string, start: number, end: number) {
+export async function bookingsInRange(businessId: string, start: number, end: number, staffId?: string) {
   return db.booking.findMany({
-    where: { businessId, status: "active", startAt: { gte: new Date(start - 86400000), lt: new Date(end) }, endAt: { gt: new Date(start) } },
+    where: { businessId, status: "active", ...(staffId ? { staffId } : {}), startAt: { gte: new Date(start - 86400000), lt: new Date(end) }, endAt: { gt: new Date(start) } },
     orderBy: { startAt: "asc" },
     select: { id: true, startAt: true, clientName: true, clientPhone: true, serviceName: true },
   });

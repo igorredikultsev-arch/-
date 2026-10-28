@@ -11,13 +11,16 @@ export default async function BlockPage({ searchParams }: { searchParams: Promis
   const today = toLocal(Date.now(), tz).date;
   const q = (await searchParams).date;
   const date = q && isDateString(q) && q >= today ? q : today;
-  const blocks = await db.block.findMany({ where: { businessId: business.id, endAt: { gt: new Date() } }, orderBy: { startAt: "asc" }, take: 30 });
+  const [blocks, staff] = await Promise.all([
+    db.block.findMany({ where: { businessId: business.id, endAt: { gt: new Date() } }, orderBy: { startAt: "asc" }, take: 30, include: { staff: { select: { name: true } } } }),
+    db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } }),
+  ]);
   return (
     <>
       <SubHead back={date === today ? "/cabinet" : `/cabinet?date=${date}`} backLabel={date === today ? "Сегодня" : "К дню"} title="Закрыть время">
         Свой ремонт, учёба, внеплановый выходной. На сайте это время нельзя будет выбрать.
       </SubHead>
-      <BlockForm today={today} date={date} posts={business.posts} />
+      <BlockForm today={today} date={date} posts={business.posts} staff={staff} />
       {blocks.length > 0 && (
         <section className="grid gap-2 px-[18px] pt-6 lg:max-w-2xl lg:px-0">
           <h2 className="text-[17px] font-bold">Уже закрыто</h2>
@@ -31,7 +34,7 @@ export default async function BlockPage({ searchParams }: { searchParams: Promis
                 <div className="text-[14px]">
                   <b className="text-[15.5px]">{formatDayLong(s.date)}</b>
                   <div className="text-zinc-500">
-                    {whole ? "весь день" : `${hhmm(s.minutes)}-${hhmm(e.minutes)}`}, {b.scope === "all" ? "весь сервис" : "один пост"}
+                    {whole ? "весь день" : `${hhmm(s.minutes)}-${hhmm(e.minutes)}`}, {b.staff ? b.staff.name : b.scope === "all" ? "весь сервис" : "один пост"}
                     {b.reason ? `. ${b.reason}` : ""}
                   </div>
                 </div>
