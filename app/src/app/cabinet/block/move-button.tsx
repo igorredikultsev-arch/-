@@ -10,7 +10,7 @@ export function MoveButton({ staffId }: { staffId: string }) {
   return (
     <form action={action} className="grid gap-2">
       <button disabled={pending} className="min-h-11 rounded-xl bg-white px-4 text-[14.5px] font-semibold ring-1 ring-orange-200 hover:bg-orange-100">
-        {pending ? "Переставляем…" : "Переставить к свободным мастерам"}
+        {pending ? "Переставляем…" : "Переставить на свободные посты"}
       </button>
       <Result state={state} />
     </form>

@@ -2,6 +2,7 @@ import { DeleteService } from "./delete-service";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ensureStaff } from "@/lib/staff";
 import { SubHead } from "../../../ui";
 import { ServiceForm } from "../../forms";
 
@@ -10,6 +11,7 @@ export default async function ServicePage({ params }: { params: Promise<{ id: st
   const id = (await params).id;
   const service = id === "new" ? null : await db.service.findFirst({ where: { id, businessId: business.id }, include: { staff: { select: { id: true } } } });
   if (id !== "new" && !service) notFound();
+  await ensureStaff(business);
   // Посты и мастера (не стенды) — кто делает услугу: шиномонтаж только на «Пост 1», двигатель — Ромашов или Шарапов
   const posts = await db.staff.findMany({ where: { businessId: business.id, onStand: false }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } });
   const categories = (await db.service.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true } })).map((c) => c.category);

@@ -7,20 +7,19 @@ import { DatePick, TimeSelect } from "../pickers";
 import { Field, inputCls } from "../ui";
 import { Result, SaveBar } from "../site/result";
 
-type Scope = "all" | "one_post" | "staff";
+type Scope = "all" | "one_post";
 
-/** pick — сотрудник, которого закрывают из календаря («Закрыть» у его имени) */
-export function BlockForm({ today, date: initial, posts, staff, pick }: { today: string; date: string; posts: number; staff: { id: string; name: string }[]; pick?: string }) {
+/** staff — посты (колонки календаря); pick — пост, который закрывают из календаря («Закрыть» у его имени) */
+export function BlockForm({ today, date: initial, staff, pick }: { today: string; date: string; staff: { id: string; name: string }[]; pick?: string }) {
   const [state, action, pending] = useActionState(createBlock, null);
   const [date, setDate] = useState(initial);
   const [allDay, setAllDay] = useState(!!pick);
   const [from, setFrom] = useState("13:00");
   const [to, setTo] = useState("14:00");
-  const [scope, setScope] = useState<Scope>(pick ? "staff" : "all");
+  const [scope, setScope] = useState<Scope>(pick ? "one_post" : "all");
   const scopes: { value: Scope; label: string }[] = [
     { value: "all", label: "Весь сервис" },
-    ...(posts > 1 ? [{ value: "one_post" as const, label: "Один пост" }] : []),
-    ...(staff.length ? [{ value: "staff" as const, label: "Сотрудника" }] : []),
+    ...(staff.length > 1 ? [{ value: "one_post" as const, label: "Один пост" }] : []),
   ];
   return (
     <form onSubmit={keepValues(action)} className="grid gap-5 px-[18px] lg:max-w-2xl lg:px-0">
@@ -56,14 +55,14 @@ export function BlockForm({ today, date: initial, posts, staff, pick }: { today:
             ))}
           </div>
           <p className="text-[13px] leading-snug text-zinc-500">
-            {scope === "staff"
-              ? "Сотрудник заболел или отпросился: его пост не принимает записи, а услуги, которые делают и другие, пойдут к ним"
-              : "Один пост: остальные продолжают принимать записи"}
+            {scope === "one_post"
+              ? "Например, мастер заболел: этот пост не принимает записи, услуги, которые делает только он, недоступны, а остальные пойдут на другие посты"
+              : "Сервис не принимает записи совсем"}
           </p>
         </fieldset>
       )}
-      {scope === "staff" && (
-        <Field label="Кого" htmlFor="bl-staff">
+      {scope === "one_post" && (
+        <Field label="Какой пост" htmlFor="bl-staff">
           <select id="bl-staff" name="staffId" className={inputCls} defaultValue={pick ?? staff[0]?.id}>
             {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>

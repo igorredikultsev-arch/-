@@ -1,5 +1,6 @@
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ensureStaff } from "@/lib/staff";
 import { formatDayLong, hhmm, isDateString, toLocal } from "@/lib/time";
 import { deleteBlock } from "../actions";
 import { Group, Notice, SubHead } from "../ui";
@@ -11,6 +12,8 @@ export default async function BlockPage({ searchParams }: { searchParams: Promis
   const tz = business.timezone;
   const today = toLocal(Date.now(), tz).date;
   const sp = await searchParams;
+  // Посты как колонки календаря: «Один пост» выбирается из них, даже если календарь ещё не открывали
+  await ensureStaff(business);
   const q = sp.date;
   const date = q && isDateString(q) && q >= today ? q : today;
   const [blocks, staff] = await Promise.all([
@@ -31,11 +34,11 @@ export default async function BlockPage({ searchParams }: { searchParams: Promis
       <SubHead back={date === today ? "/cabinet" : `/cabinet?date=${date}`} backLabel={date === today ? "Сегодня" : "К дню"} title="Закрыть время">
         Свой ремонт, учёба, внеплановый выходной. На сайте это время нельзя будет выбрать.
       </SubHead>
-      <BlockForm today={today} date={date} posts={business.posts} staff={staff} pick={staff.some((x) => x.id === sp.staff) ? sp.staff : undefined} />
+      <BlockForm today={today} date={date} staff={staff} pick={staff.some((x) => x.id === sp.staff) ? sp.staff : undefined} />
       {stuck.map((g) => (
         <div key={g.staffId} className="grid gap-2 px-[18px] pt-4 lg:max-w-2xl lg:px-0">
           <Notice tone="warn">
-            <b>{staff.find((x) => x.id === g.staffId)?.name}</b>: на закрытое время уже записано клиентов: {g._count}. Их можно переставить к мастерам, которые в это время
+            <b>{staff.find((x) => x.id === g.staffId)?.name}</b>: на закрытое время уже записано клиентов: {g._count}. Их можно переставить на посты, которые в это время
             свободны и делают эти услуги.
             <div className="mt-2"><MoveButton staffId={g.staffId!} /></div>
           </Notice>

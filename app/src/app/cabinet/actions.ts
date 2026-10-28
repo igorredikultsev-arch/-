@@ -337,10 +337,11 @@ export async function createBlock(_prev: ActionResult, f: FormData): Promise<Act
   // Несколько дней подряд (больничный на неделю): по закрытию на каждый день, то же время
   const days = Math.min(31, Math.max(1, Number(str(f, "days")) || 1));
   const kind = str(f, "scope");
-  // Сотрудник (заболел) хранится как «один пост» с его staffId: прошлая версия сайта поймёт это как закрытый пост
-  const staff = kind === "staff" ? await db.staff.findFirst({ where: { id: str(f, "staffId"), businessId: business.id }, select: { id: true, name: true } }) : null;
-  if (kind === "staff" && !staff) return { error: "Выберите сотрудника" };
-  const scope = kind === "one_post" || staff ? "one_post" : "all";
+  // Один пост — всегда конкретный (мастер заболел): его staffId, чтобы его услуги не записывались. scope one_post —
+  // прошлая версия сайта поймёт это как закрытый пост
+  const staff = kind !== "all" ? await db.staff.findFirst({ where: { id: str(f, "staffId"), businessId: business.id }, select: { id: true, name: true } }) : null;
+  if (kind !== "all" && !staff) return { error: "Выберите пост" };
+  const scope = staff ? "one_post" : "all";
   const staffId = staff?.id ?? null;
   const reason = str(f, "reason").slice(0, 60) || null;
   const ranges = Array.from({ length: days }, (_, i) => {
@@ -358,8 +359,8 @@ export async function createBlock(_prev: ActionResult, f: FormData): Promise<Act
     ? (await Promise.all(ranges.map((r) => clashRows(business.id, business.timezone, r.startAt.getTime(), r.endAt.getTime(), staff?.id)))).flat()
     : [];
   if (staff) {
-    const more = rows.length ? clashNote(rows, "к этому сотруднику на это время") + " Ниже можно переставить их к свободным мастерам." : "";
-    return { ok: true, message: `${staff.name}: запись закрыта. Услуги, которые делают и другие, с сайта пойдут к ним.${more}` };
+    const more = rows.length ? clashNote(rows, "на этот пост на это время") + " Ниже можно переставить их на свободные посты." : "";
+    return { ok: true, message: `${staff.name}: запись закрыта. Услуги, которые делают и другие посты, с сайта пойдут к ним.${more}` };
   }
   return { ok: true, message: `Время закрыто. На сайте оно стало недоступным.${clashNote(rows, "на это время")}` };
 }
@@ -393,8 +394,8 @@ export async function moveFromClosed(staffId: string): Promise<ActionResult> {
   }
   await audit("booking.staff", { userId: user.id, businessId: business.id, details: { from: staffId, moved, left: left.length } });
   revalidatePath("/cabinet", "layout");
-  if (!left.length) return { ok: true, message: moved ? `Переставлено: ${moved}. Все записи теперь у других мастеров.` : "Переставлять некого" };
-  return { ok: true, message: `Переставлено: ${moved}. Эти не к кому переставить, все заняты или услугу делает только этот мастер: ${left.join("; ")}. Позвоните клиентам или перенесите вручную.` };
+  if (!left.length) return { ok: true, message: moved ? `Переставлено: ${moved}. Все записи теперь на других постах.` : "Переставлять некого" };
+  return { ok: true, message: `Переставлено: ${moved}. Эти некуда переставить, все посты заняты или услугу делает только этот пост: ${left.join("; ")}. Позвоните клиентам или перенесите вручную.` };
 }
 
 export async function deleteBlock(id: string) {
