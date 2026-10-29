@@ -13,7 +13,7 @@ const tabs = [
 ];
 
 const isOn = (href: string, path: string) =>
-  href === "/cabinet" ? path === "/cabinet" || path.startsWith("/cabinet/b/")
+  href === "/cabinet" ? path === "/cabinet" || path.startsWith("/cabinet/b/") || path === "/cabinet/recent"
   : href === "/cabinet/more" ? path.startsWith("/cabinet/more") || path.startsWith("/cabinet/block") || path.startsWith("/cabinet/stats")
   : path.startsWith(href);
 

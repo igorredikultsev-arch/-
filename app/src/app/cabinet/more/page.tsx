@@ -1,4 +1,4 @@
-import { Bell, ChartBar, ChatCircleText, DeviceMobile, FileText, Key, LockSimple, SignOut, Wallet } from "@phosphor-icons/react/dist/ssr";
+import { Bell, ChartBar, ChatCircleText, ClockCounterClockwise, DeviceMobile, FileText, Key, LockSimple, SignOut, Wallet } from "@phosphor-icons/react/dist/ssr";
 import { logoutAction } from "@/app/login/actions";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -31,6 +31,7 @@ export default async function MorePage() {
       <PageHead title="Ещё" kicker={business.name} />
       <div className="grid gap-5 px-3.5 lg:px-0">
         <Group>
+          <MenuRow href="/cabinet/recent" icon={<ClockCounterClockwise size={22} />} title="Новые записи с сайта" value="Свежие сверху, если уведомление смахнули" />
           <MenuRow href="/cabinet/stats" icon={<ChartBar size={22} />} title="Статистика"
             value={fromSite ? `За 30 дней ${fromSite} ${plural(fromSite, "запись", "записи", "записей")} с сайта` : "Сколько записей приносит сайт"} />
         </Group>

@@ -67,6 +67,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             {day.stats.revenue > 0 && <>, около {day.stats.revenue.toLocaleString("ru-RU")} ₽</>}
           </p>
         )}
+        <Link href="/cabinet/recent" className="mt-2 inline-flex min-h-10 items-center gap-1 text-[14.5px] font-semibold text-accent">
+          Новые записи с сайта <CaretRight size={16} />
+        </Link>
         {noPush && (
           <Link href="/cabinet/more/push" className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-orange-50 px-3.5 py-3 text-[14px] font-semibold text-orange-900">
             Включите уведомления, чтобы сразу узнавать о новых записях <CaretRight size={16} className="shrink-0" />
