@@ -39,6 +39,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
   const firstStaff = edit?.staffId ?? initialStaff;
   const [custom, setCustomMode] = useState(edit?.custom ?? true);
   const [title, setTitle] = useState(edit?.title ?? "");
+  // Длительность: у своей записи — выбранная, у услуги — по услуге, пока не поменяли поле «до»
   const [length, setLength] = useState(edit?.length ?? 60);
   const [staffId, setStaffId] = useState(staff.some((m) => m.id === firstStaff) ? firstStaff : "");
   const [onStand, setOnStand] = useState(staff.find((m) => m.id === firstStaff)?.onStand ?? false);
@@ -93,7 +94,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
     setError(null);
     start(async () => {
       // Сбой сети или сервера: введённое остаётся в форме, можно нажать ещё раз
-      const what = custom ? { title, durationMin: length, onStand } : { serviceId };
+      const what = custom ? { title, durationMin: length, onStand } : { serviceId, durationMin: length };
       const who = staffId ? { staffId } : {};
       // Запись одним полем: телефон сервер найдёт в тексте
       const data = { ...what, ...who, date, time, force, ...(custom ? {} : { name, phone, comment }) };
@@ -110,7 +111,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
         {services.length > 0 && (
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-200/70 p-1" role="group" aria-label="Как записать">
             {[{ v: true, l: "Написать текстом" }, { v: false, l: "Из списка услуг" }].map((o) => (
-              <button key={o.l} type="button" aria-pressed={custom === o.v} onClick={() => setCustomMode(o.v)}
+              <button key={o.l} type="button" aria-pressed={custom === o.v} onClick={() => { setCustomMode(o.v); if (!o.v && service) setLength(service.durationMin); }}
                 className={`h-10 rounded-lg text-[14.5px] font-semibold ${custom === o.v ? "bg-white shadow-sm" : "text-zinc-600"}`}>
                 {o.l}
               </button>
@@ -148,7 +149,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
           {services.map((s) => {
             const on = s.id === serviceId;
             return (
-              <button key={s.id} type="button" aria-pressed={on} onClick={() => setServiceId(s.id)}
+              <button key={s.id} type="button" aria-pressed={on} onClick={() => { setServiceId(s.id); setLength(s.durationMin); }}
                 className={`flex min-h-13 w-full items-center gap-3 px-4 py-2.5 text-left ${on ? "bg-orange-50" : "hover:bg-zinc-50"}`}>
                 <span className={`grid size-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-accent bg-accent text-white" : "border-zinc-300"}`}>
                   {on && <Check size={14} weight="bold" />}
@@ -223,13 +224,12 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
             <div className="w-24">
               <TimeField id="nb-from" value={time} onChange={(v) => { setTime(v); setOtherTime(!!v && !slots?.some((s) => s.time === v)); }} label="Начало" />
             </div>
-            {custom && (
-              <>
-                <label htmlFor="nb-to" className="shrink-0 text-[14.5px] text-zinc-600">до</label>
-                <div className="w-24"><TimeField id="nb-to" value={endText} onChange={setEnd} label="Конец" end /></div>
-              </>
-            )}
+            <label htmlFor="nb-to" className="shrink-0 text-[14.5px] text-zinc-600">до</label>
+            <div className="w-24"><TimeField id="nb-to" value={endText} onChange={setEnd} label="Конец" end /></div>
           </div>
+          {!custom && service && time && length !== service.durationMin && (
+            <p className="text-[13px] text-zinc-500">{dur(length)} вместо обычных {dur(service.durationMin)}</p>
+          )}
         </Step>
 
         {!custom && <Step n={4} title="Клиент">
@@ -259,7 +259,7 @@ export function NewBookingForm({ services, staff = [], standPosts = 0, today, in
           <button type="submit" disabled={pending || !ready} className={`${btnPrimary} w-full flex-col gap-0 leading-tight`}>
             <span>{pending ? (edit ? "Сохраняем…" : "Записываем…") : !time ? "Выберите время" : custom && title.trim().length < 2 ? "Напишите, кого записываем" : `${edit ? "Сохранить" : "Записать"}: ${f.weekday}, ${f.day} ${f.month}, ${time}`}</span>
             {time && !pending && (custom ? title.trim() : service?.name) && (
-              <span className="line-clamp-1 text-[13px] font-medium opacity-80">{custom ? `${title.trim()}, ${dur(length)}` : service!.name}</span>
+              <span className="line-clamp-1 text-[13px] font-medium opacity-80">{`${custom ? title.trim() : service!.name}, ${dur(length)}`}</span>
             )}
           </button>
         )}

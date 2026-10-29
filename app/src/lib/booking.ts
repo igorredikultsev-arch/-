@@ -275,6 +275,8 @@ export type OwnerBookingInput = {
   /** Услуга из списка или своя запись текстом (custom): что делаем, сколько длится, на стенде ли развала */
   serviceId?: string;
   custom?: { title: string; durationMin: number; onStand?: boolean };
+  /** Услуга из списка, но дольше или короче обычного: машину оставили на полдня («Конкурент», 29 октября) */
+  durationMin?: number;
   /** К какому сотруднику; не задан — к первому свободному */
   staffId?: string;
   /** Кто внёс запись в кабинете */
@@ -330,7 +332,7 @@ export async function createOwnerBooking(input: OwnerBookingInput) {
       : await tx.service.findFirst({ where: { id: input.serviceId, businessId: input.businessId }, include: serviceStaff });
     if (!biz || !service) throw new BookingError("not_found", "Услуга не найдена");
     const start = localToUtc(input.date, input.startMin, biz.timezone);
-    const slot = { start, end: start + service.durationMin * 60000 };
+    const slot = { start, end: start + (input.custom ? service.durationMin : input.durationMin ?? service.durationMin) * 60000 };
     const warning = await checkCapacity(tx, biz, input.date, slot, service.onStand);
     if (warning && !input.force) {
       return { booking: null, warning };
@@ -379,7 +381,7 @@ export async function updateOwnerBooking(input: OwnerBookingInput & { id: string
       : found ?? kept;
     if (!service) throw new BookingError("not_found", "Услуга не найдена");
     const start = localToUtc(input.date, input.startMin, biz.timezone);
-    const slot = { start, end: start + service.durationMin * 60000 };
+    const slot = { start, end: start + (input.custom && !input.serviceId ? service.durationMin : input.durationMin ?? service.durationMin) * 60000 };
     const warning = b.status === "active" || b.status === "done" ? await checkCapacity(tx, biz, input.date, slot, service.onStand, b.id) : null;
     if (warning && !input.force) return { booking: null, warning };
     const booking = await tx.booking.update({

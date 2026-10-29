@@ -110,4 +110,17 @@ describe("посты как колонки календаря", () => {
     expect(clash.booking).toBeNull();
     expect(clash.warning).toMatchObject({ load: 1, posts: 1 });
   });
+
+  it("запись с услугой можно сделать дольше обычного: машину оставили на полдня", async () => {
+    const biz = await makeBusiness({ posts: 1, onlinePosts: 1 });
+    const svc = biz.services[0];
+    const len = (b: { startAt: Date; endAt: Date } | null) => (b!.endAt.getTime() - b!.startAt.getTime()) / 60000;
+    const made = await createOwnerBooking({ businessId: biz.id, serviceId: svc.id, date: DATE, startMin: 600 });
+    expect(len(made.booking)).toBe(svc.durationMin);
+    const longer = await updateOwnerBooking({ id: made.booking!.id, businessId: biz.id, serviceId: svc.id, durationMin: 180, date: DATE, startMin: 600 });
+    expect(longer.booking).toMatchObject({ serviceId: svc.id, serviceName: svc.name });
+    expect(len(longer.booking)).toBe(180);
+    const fresh = await createOwnerBooking({ businessId: biz.id, serviceId: svc.id, durationMin: 240, date: DATE, startMin: 840, force: true });
+    expect(len(fresh.booking)).toBe(240);
+  });
 });

@@ -171,6 +171,8 @@ async function parseBooking(input: z.input<typeof NewBooking>, businessId: strin
       staffId: staff?.id,
       date: p.data.date,
       startMin: parseHhmm(p.data.time)!,
+      // У услуги из списка длительность можно поменять полем «до»
+      durationMin: custom ? undefined : p.data.durationMin,
       clientName: custom ? undefined : p.data.name?.trim(),
       clientPhone: phone ?? undefined,
       comment: custom ? undefined : p.data.comment?.trim(),
