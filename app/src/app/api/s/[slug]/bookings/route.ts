@@ -92,7 +92,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       withoutPersonalData: biz.status === "demo",
     });
     // Владельцу — уведомление на телефон (без имени и телефона клиента), уже после ответа клиенту
-    if (biz.status !== "demo" && !booking.repeated) after(() => notifyBusiness(biz.id, newBookingMessage(booking, biz.timezone)).then(() => {}));
+    if (biz.status !== "demo" && !booking.repeated) after(() => notifyBusiness(biz.id, newBookingMessage(booking, biz.timezone), { staffId: booking.staffId }).then(() => {}));
     return json({ token: booking.cancelToken }, 201);
   } catch (e) {
     if (e instanceof BookingError) return json({ error: e.message, code: e.code }, e.code === "slot_taken" || e.code === "too_many" || e.code === "no_shows" ? 409 : 400);

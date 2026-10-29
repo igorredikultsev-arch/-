@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
-import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, verifyPassword } from "@/lib/auth";
+import { audit, endOtherSessions, hashPassword, passwordProblem, requireOwner, requireViewer, verifyPassword } from "@/lib/auth";
 import { hit } from "@/lib/ratelimit";
 import { Prisma } from "@prisma/client";
 import { BookingError, bookingsInRange, createOwnerBooking, getDaySlots, businessForSlotsSelect, serviceStaff, restoreBooking, updateOwnerBooking, moveBooking, type OwnerWarning } from "@/lib/booking";
@@ -663,7 +663,7 @@ const PushSub = z.object({
 
 /** Телефон владельца подписался на уведомления кабинета. */
 export async function savePushSubscription(raw: unknown): Promise<ActionResult> {
-  const { user, business, asAdmin } = await requireOwner();
+  const { user, business, asAdmin } = await requireViewer();
   if (asAdmin) return { error: "Уведомления включает сам владелец на своём телефоне" };
   const p = PushSub.safeParse(raw);
   if (!p.success) return { error: "Не получилось включить уведомления. Обновите страницу и попробуйте ещё раз" };
@@ -673,8 +673,8 @@ export async function savePushSubscription(raw: unknown): Promise<ActionResult> 
     create: { endpoint, p256dh: keys.p256dh, auth: keys.auth, userId: user.id, businessId: business.id },
     update: { p256dh: keys.p256dh, auth: keys.auth, userId: user.id, businessId: business.id },
   });
-  // Не больше 10 устройств на сервис: самые старые подписки уходят
-  const extra = await db.pushSubscription.findMany({ where: { businessId: business.id }, orderBy: { createdAt: "desc" }, skip: 10, select: { id: true } });
+  // Не больше 30 устройств на сервис (владелец и мастера): самые старые подписки уходят
+  const extra = await db.pushSubscription.findMany({ where: { businessId: business.id }, orderBy: { createdAt: "desc" }, skip: 30, select: { id: true } });
   if (extra.length) await db.pushSubscription.deleteMany({ where: { id: { in: extra.map((x) => x.id) } } });
   await audit("push.subscribe", { userId: user.id, businessId: business.id });
   revalidatePath("/cabinet", "layout");
@@ -682,17 +682,18 @@ export async function savePushSubscription(raw: unknown): Promise<ActionResult> 
 }
 
 export async function removePushSubscription(endpoint: string): Promise<ActionResult> {
-  const { business } = await requireOwner();
+  const { business } = await requireViewer();
   await db.pushSubscription.deleteMany({ where: { endpoint, businessId: business.id } });
   revalidatePath("/cabinet", "layout");
   return { ok: true };
 }
 
-/** Проверочное уведомление на все телефоны владельца (и при подключении из админки). */
+/** Проверочное уведомление на все телефоны владельца (и при подключении из админки), мастеру — на его телефоны. */
 export async function testPush(): Promise<ActionResult> {
-  const { business } = await requireOwner();
-  if (!(await hit(`push:test:${business.id}`, 10, 3600))) return { error: "Проверка уже была много раз за этот час. Попробуйте позже" };
-  const r = await notifyBusiness(business.id, { title: "Уведомления работают", body: "Так будут приходить новые записи и отмены", url: "/cabinet", tag: "test" });
+  const { user, business, readOnly } = await requireViewer();
+  const key = readOnly ? user.id : business.id;
+  if (!(await hit(`push:test:${key}`, 10, 3600))) return { error: "Проверка уже была много раз за этот час. Попробуйте позже" };
+  const r = await notifyBusiness(business.id, { title: "Уведомления работают", body: readOnly ? "Так будут приходить записи на ваш пост и отмены" : "Так будут приходить новые записи и отмены", url: readOnly ? "/cabinet/week" : "/cabinet", tag: "test" }, readOnly ? { userId: user.id } : {});
   if (!r.sent) return { error: "Нет телефонов с включёнными уведомлениями" };
   return {
     ok: true,

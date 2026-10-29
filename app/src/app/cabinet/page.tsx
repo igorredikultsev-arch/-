@@ -3,6 +3,7 @@ import { CaretLeft, CaretRight, LockSimple, Phone } from "@phosphor-icons/react/
 import { requireOwner } from "@/lib/auth";
 import { loadDayForOwner, partOfDay, timeline } from "@/lib/cabinet";
 import { db } from "@/lib/db";
+import { ownerDevices } from "@/lib/push";
 import { addDays, formatDayLong, formatDayShort, hhmm, isDateString, toLocal } from "@/lib/time";
 import { Card, PageHead, Tag } from "./ui";
 
@@ -41,7 +42,7 @@ const STATUS_LABEL = { cancelled: "отменена", no_show: "не приех�
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const { business, asAdmin } = await requireOwner();
   const tz = business.timezone;
-  const noPush = !asAdmin && business.status !== "demo" && (await db.pushSubscription.count({ where: { businessId: business.id } })) === 0;
+  const noPush = !asAdmin && business.status !== "demo" && (await ownerDevices(business.id)) === 0;
   const today = toLocal(Date.now(), tz).date;
   const q = (await searchParams).date;
   const date = q && isDateString(q) ? q : today;

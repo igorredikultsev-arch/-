@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
+  Bell, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DeviceMobile, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
 } from "@phosphor-icons/react";
 import { googleLayout, isMultiWeek, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
@@ -448,6 +448,13 @@ export function Calendar(p: Props) {
           <>
         <Link href="/cabinet/week/staff" className="flex h-9 items-center gap-3 rounded-full px-3 text-[14px] text-[#444746] hover:bg-[#e9eef6]"><Gear size={18} /> Посты и цвета</Link>
         <Link href="/cabinet/week/staff#import" className="flex h-9 items-center gap-3 rounded-full px-3 text-[14px] text-[#444746] hover:bg-[#e9eef6]"><DownloadSimple size={18} /> Перенести из Google</Link>
+          </>
+        )}
+        {/* У мастера нет раздела «Ещё»: уведомления и установка на экран — отсюда */}
+        {p.readOnly && (
+          <>
+        <Link href="/cabinet/more/push" className="flex h-9 items-center gap-3 rounded-full px-3 text-[14px] text-[#444746] hover:bg-[#e9eef6]"><Bell size={18} /> Уведомления</Link>
+        <Link href="/cabinet/more/install" className="flex h-9 items-center gap-3 rounded-full px-3 text-[14px] text-[#444746] hover:bg-[#e9eef6]"><DeviceMobile size={18} /> Кабинет на экране</Link>
           </>
         )}
       </div>

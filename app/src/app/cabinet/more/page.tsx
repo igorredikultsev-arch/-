@@ -2,6 +2,7 @@ import { Bell, ChartBar, ChatCircleText, DeviceMobile, FileText, Key, LockSimple
 import { logoutAction } from "@/app/login/actions";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ownerDevices } from "@/lib/push";
 import { formatPhone } from "@/lib/phone";
 import { MONTHLY_PRICE, rub } from "@/lib/pricing";
 import { plural } from "@/lib/digest";
@@ -12,7 +13,7 @@ import { Group, MenuRow, PageHead } from "../ui";
 
 export default async function MorePage() {
   const { user, business, asAdmin } = await requireOwner();
-  const devices = await db.pushSubscription.count({ where: { businessId: business.id } });
+  const devices = await ownerDevices(business.id);
   // Для строки «Статистика»: записи с сайта за 30 дней, как на самом экране статистики
   const today = toLocal(Date.now(), business.timezone).date;
   const fromSite = await db.booking.count({

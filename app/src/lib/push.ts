@@ -28,9 +28,15 @@ function subject() {
   return email ? `mailto:${email}` : process.env.APP_URL || "https://avtoslot.ru";
 }
 
-/** Разослать уведомление на все устройства владельца. Ошибки не мешают записи: только пишутся в журнал. */
-export async function notifyBusiness(businessId: string, msg: PushMessage): Promise<{ sent: number; removed: number }> {
-  const subs = await db.pushSubscription.findMany({ where: { businessId } });
+/**
+ * Разослать уведомление. Владелец получает всё; мастер — только записи своего поста (staffId записи);
+ * userId — только устройствам этого человека (проверка). Ошибки не мешают записи: только пишутся в журнал.
+ */
+export async function notifyBusiness(businessId: string, msg: PushMessage, to: { staffId?: string | null; userId?: string } = {}): Promise<{ sent: number; removed: number }> {
+  const who = to.userId
+    ? { userId: to.userId }
+    : { OR: [{ user: { role: { not: "master" as const } } }, ...(to.staffId ? [{ user: { role: "master" as const, staffId: to.staffId } }] : [])] };
+  const subs = await db.pushSubscription.findMany({ where: { businessId, ...who } });
   if (!subs.length) return { sent: 0, removed: 0 };
   const keys = await vapidKeys();
   let sent = 0;
@@ -64,6 +70,9 @@ const when = (startAt: Date, tz: string) => {
 };
 
 /** «Новая запись: пт, 10 октября, 10:00» и услуга. Без имени и телефона клиента. */
+/** Устройства владельца (без мастеров): для счётчиков «Телефонов с уведомлениями». */
+export const ownerDevices = (businessId: string) => db.pushSubscription.count({ where: { businessId, user: { role: { not: "master" } } } });
+
 export function newBookingMessage(b: { id: string; startAt: Date; serviceName: string }, tz: string): PushMessage {
   return { title: `Новая запись: ${when(b.startAt, tz)}`, body: b.serviceName, url: `/cabinet/b/${b.id}`, tag: `b-${b.id}` };
 }
