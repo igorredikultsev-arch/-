@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { firstIssue } from "@/lib/zod-ru";
@@ -14,7 +15,7 @@ import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { OFFER_VERSION } from "@/lib/legal";
 import { imageMime, LOGO_MAX_BYTES } from "@/lib/logo";
-import { notifyBusiness, pushHostOk } from "@/lib/push";
+import { masterMessage, notifyBusiness, notifyMaster, pushHostOk } from "@/lib/push";
 import { findPhone, normalizePhone } from "@/lib/phone";
 import { addDays, hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
@@ -37,6 +38,25 @@ async function ownBooking(id: string) {
 }
 
 /* ---------- записи ---------- */
+
+type Seen = { staffId: string | null; startAt: Date; status: string; serviceId: string | null; serviceName: string };
+
+/**
+ * Мастерам — о записи, которую поставил, перенёс или отменил владелец: новому посту «новая», прежнему «убрали»
+ * или «отменили», тому же посту «перенесли». Только о будущих записях; отправка после ответа, запись не ждёт.
+ */
+function tellMasters(businessId: string, tz: string, was: Seen | null, now: Seen | null) {
+  const on = (b: Seen | null) => (b && b.status === "active" && b.startAt.getTime() > Date.now() ? b.staffId : null);
+  const [from, to] = [on(was), on(now)];
+  if (!from && !to) return;
+  after(async () => {
+    const jobs: Promise<unknown>[] = [];
+    if (to && to !== from) jobs.push(notifyMaster(businessId, to, masterMessage("new", now!, tz)));
+    if (from && from !== to) jobs.push(notifyMaster(businessId, from, masterMessage(now?.status === "cancelled" ? "cancelled" : "removed", was!, tz)));
+    if (to && to === from && now!.startAt.getTime() !== was!.startAt.getTime()) jobs.push(notifyMaster(businessId, to, masterMessage("moved", now!, tz, was!.startAt)));
+    await Promise.all(jobs);
+  });
+}
 
 /** Текст предупреждения, когда запись не помещается: вне часов, на обеде или закрытом времени, все посты заняты. */
 function warningText(w: OwnerWarning) {
@@ -68,6 +88,7 @@ export async function setBookingStatus(
       data: { status, ...(status === "cancelled" ? { cancelledAt: new Date(), cancelledBy: "owner" } : { cancelledAt: null, cancelledBy: null }) },
     });
   }
+  tellMasters(business.id, business.timezone, booking, { ...booking, status });
   await audit("booking.status", { userId: user.id, businessId: business.id, details: { id, status } });
   revalidatePath("/cabinet", "layout");
 }
@@ -178,6 +199,7 @@ export async function ownerCreateBooking(input: z.input<typeof NewBooking>): Pro
     return bookingError(e);
   }
   if (!res.booking) return { warning: warningText(res.warning!) };
+  tellMasters(business.id, business.timezone, null, res.booking);
   await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: res.booking.id } });
   revalidatePath("/cabinet", "layout");
   return { id: res.booking.id };
@@ -188,6 +210,7 @@ export async function ownerUpdateBooking(id: string, input: z.input<typeof NewBo
   const { user, business } = await requireOwner();
   const parsed = await parseBooking(input, business.id);
   if (!parsed.data) return { error: parsed.error };
+  const was = await db.booking.findFirst({ where: { id, businessId: business.id } });
   let res: Awaited<ReturnType<typeof updateOwnerBooking>>;
   try {
     res = await updateOwnerBooking({ ...parsed.data, id });
@@ -195,6 +218,7 @@ export async function ownerUpdateBooking(id: string, input: z.input<typeof NewBo
     return bookingError(e);
   }
   if (!res.booking) return { warning: warningText(res.warning!).replace("Всё равно записать?", "Всё равно сохранить?") };
+  tellMasters(business.id, business.timezone, was, res.booking);
   await audit("booking.update_owner", { userId: user.id, businessId: business.id, details: { id } });
   revalidatePath("/cabinet", "layout");
   return { id };
@@ -238,6 +262,7 @@ export async function calendarCreate(input: z.input<typeof CalCreate>): Promise<
       clientPhone: findPhone(d.title) ?? undefined,
       force: true,
     });
+    tellMasters(business.id, business.timezone, null, r.booking!);
     await audit("booking.create_owner", { userId: user.id, businessId: business.id, details: { id: r.booking!.id, from: "calendar" } });
     revalidatePath("/cabinet", "layout");
     return { id: r.booking!.id };
@@ -253,11 +278,13 @@ export async function calendarMove(id: string, date: string, startMin: number, d
     return { error: "Не получилось перенести запись" };
   }
   const start = localToUtc(date, startMin, business.timezone);
+  const was = await db.booking.findFirst({ where: { id, businessId: business.id } });
   try {
     await moveBooking(business.id, id, start, start + durationMin * 60000);
   } catch (e) {
     return bookingError(e);
   }
+  if (was) tellMasters(business.id, business.timezone, was, { ...was, startAt: new Date(start) });
   await audit("booking.move", { userId: user.id, businessId: business.id, details: { id } });
   revalidatePath("/cabinet", "layout");
   return {};
@@ -287,7 +314,9 @@ export async function setBookingStaff(id: string, staffId: string | null) {
   const { user, business } = await requireOwner();
   const staff = staffId ? await db.staff.findFirst({ where: { id: staffId, businessId: business.id }, select: { id: true } }) : null;
   if (staffId && !staff) return { error: "Сотрудник не найден" };
+  const was = await db.booking.findFirst({ where: { id, businessId: business.id } });
   await db.booking.updateMany({ where: { id, businessId: business.id }, data: { staffId: staff?.id ?? null } });
+  if (was) tellMasters(business.id, business.timezone, was, { ...was, staffId: staff?.id ?? null });
   await audit("booking.staff", { userId: user.id, businessId: business.id, details: { id } });
   revalidatePath("/cabinet", "layout");
   return { ok: true };
@@ -386,6 +415,7 @@ export async function moveFromClosed(staffId: string): Promise<ActionResult> {
     );
     if (to && to !== staffId) {
       await db.booking.update({ where: { id: b.id }, data: { staffId: to } });
+      tellMasters(business.id, business.timezone, b, { ...b, staffId: to });
       moved++;
     } else {
       const l = toLocal(b.startAt.getTime(), business.timezone);

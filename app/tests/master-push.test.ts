@@ -12,7 +12,7 @@ vi.mock("web-push", () => ({
 }));
 
 import { db } from "@/lib/db";
-import { notifyBusiness, ownerDevices } from "@/lib/push";
+import { masterMessage, notifyBusiness, notifyMaster, ownerDevices } from "@/lib/push";
 import { makeBusiness, resetDb } from "./helpers";
 
 const msg = { title: "Новая запись", body: "Диагностика", url: "/cabinet" };
@@ -44,6 +44,23 @@ describe("уведомления мастерам", () => {
     await notifyBusiness(biz.id, msg);
     expect(sentTo).toEqual(["https://push.example/owner"]);
     expect(await ownerDevices(biz.id)).toBe(1);
+  });
+
+  it("запись поставил владелец: только мастеру поста, владельцу не шлём", async () => {
+    const { biz, p5 } = await setup();
+    await notifyMaster(biz.id, p5.id, msg);
+    expect(sentTo).toEqual(["https://push.example/m5"]);
+  });
+
+  it("своя запись без услуги: её текст (там бывают имя и телефон) в уведомление не идёт", () => {
+    const startAt = new Date("2026-10-30T07:00:00Z");
+    const own = masterMessage("new", { startAt, serviceId: null, serviceName: "Иванов +79991234567 колодки" }, "Europe/Moscow");
+    expect(own.body).toBe("Подробности в календаре");
+    expect(JSON.stringify(own)).not.toContain("Иванов");
+    const moved = masterMessage("moved", { startAt, serviceId: "s1", serviceName: "Диагностика" }, "Europe/Moscow", new Date("2026-10-30T06:00:00Z"));
+    expect(moved.title).toContain("Запись перенесли");
+    expect(moved.body).toMatch(/^Диагностика\. Было .*09:00$/);
+    expect(moved.url).toBe("/cabinet/week?date=2026-10-30");
   });
 
   it("проверка мастера: только на его телефон", async () => {

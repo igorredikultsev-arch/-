@@ -36,7 +36,14 @@ export async function notifyBusiness(businessId: string, msg: PushMessage, to: {
   const who = to.userId
     ? { userId: to.userId }
     : { OR: [{ user: { role: { not: "master" as const } } }, ...(to.staffId ? [{ user: { role: "master" as const, staffId: to.staffId } }] : [])] };
-  const subs = await db.pushSubscription.findMany({ where: { businessId, ...who } });
+  return send({ businessId, ...who }, msg);
+}
+
+/** Только мастеру поста: запись поставил или изменил владелец, ему самому слать незачем. */
+export const notifyMaster = (businessId: string, staffId: string, msg: PushMessage) => send({ businessId, user: { role: "master", staffId } }, msg);
+
+async function send(where: NonNullable<Parameters<typeof db.pushSubscription.findMany>[0]>["where"], msg: PushMessage): Promise<{ sent: number; removed: number }> {
+  const subs = await db.pushSubscription.findMany({ where });
   if (!subs.length) return { sent: 0, removed: 0 };
   const keys = await vapidKeys();
   let sent = 0;
@@ -75,6 +82,20 @@ export const ownerDevices = (businessId: string) => db.pushSubscription.count({ 
 
 export function newBookingMessage(b: { id: string; startAt: Date; serviceName: string }, tz: string): PushMessage {
   return { title: `Новая запись: ${when(b.startAt, tz)}`, body: b.serviceName, url: `/cabinet/b/${b.id}`, tag: `b-${b.id}` };
+}
+
+/**
+ * Мастеру о записи, которую изменил владелец. Своя запись без услуги — это текст владельца, в нём бывают имя
+ * и телефон клиента, поэтому её название в уведомление не идёт.
+ */
+export function masterMessage(kind: "new" | "moved" | "removed" | "cancelled", b: { startAt: Date; serviceId: string | null; serviceName: string }, tz: string, was?: Date): PushMessage {
+  const what = b.serviceId ? b.serviceName : "Подробности в календаре";
+  const title = { new: "Новая запись", moved: "Запись перенесли", removed: "Запись убрали с вашего поста", cancelled: "Запись отменили" }[kind];
+  return {
+    title: `${title}: ${when(b.startAt, tz)}`,
+    body: kind === "moved" && was ? `${what}. Было ${when(was, tz)}` : what,
+    url: `/cabinet/week?date=${toLocal(b.startAt.getTime(), tz).date}`,
+  };
 }
 
 export function cancelledMessage(b: { id: string; startAt: Date; serviceName: string }, tz: string): PushMessage {
