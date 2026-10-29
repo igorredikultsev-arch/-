@@ -410,10 +410,11 @@ export async function updateOwnerBooking(input: OwnerBookingInput & { id: string
  * Перетаскивание в календаре: новое время и длительность, без проверки постов — календарь в свободной форме,
  * как в Google. Сайт видит новое время сразу: запись занимает пост там, куда её поставили.
  */
-export async function moveBooking(businessId: string, id: string, start: number, end: number) {
+export async function moveBooking(businessId: string, id: string, start: number, end: number,
+  extra: { staffId?: string | null; serviceName?: string; clientName?: null; car?: null; clientPhone?: string | null } = {}) {
   return db.$transaction(async (tx) => {
     await lockBusiness(tx, businessId);
-    const r = await tx.booking.updateMany({ where: { id, businessId }, data: { startAt: new Date(start), endAt: new Date(end) } });
+    const r = await tx.booking.updateMany({ where: { id, businessId }, data: { startAt: new Date(start), endAt: new Date(end), ...extra } });
     if (!r.count) throw new BookingError("not_found", "Запись не найдена");
   }, TX_OPTIONS);
 }

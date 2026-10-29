@@ -12,23 +12,27 @@ import {
 } from "@phosphor-icons/react";
 import { googleLayout, isMultiWeek, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
-import { calendarCreate, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
+import { calendarCreate, calendarEdit, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
 
 export type CalView = "day" | "3days" | "week" | "month" | "custom";
 /** Сколько дней можно выделить в мини-календаре: больше — столбцы слишком узкие */
 export type CalBooking = {
   id: string; start: number; end: number; title: string; status: "active" | "done" | "no_show" | "cancelled"; site: boolean;
   staffId: string; ownStaff: boolean; phone: string | null; phoneText: string | null; author: string;
+  /** Своя запись одним полем (без услуги): в окне изменения меняется и текст */
+  custom: boolean;
 };
 export type CalNote = { id: string; title: string; startDate: string; endDate: string; staffId: string | null };
-/** Закрытое время в один день: сотрудник заболел, сервис или пост закрыт */
-export type CalClosure = { id: string; date: string; staffId: string | null; title: string };
+/** Закрытое время в один день: сотрудник заболел, сервис или пост закрыт. from/to — минуты дня для сетки, all — весь сервис */
+export type CalClosure = { id: string; date: string; staffId: string | null; title: string; from: number; to: number; all: boolean };
 type Staff = { id: string; name: string; color: string };
 
 type Props = {
   view: CalView; days: number; date: string; today: string; nowMs: number; gmt: string; dates: string[]; monthStart: string; monthEnd: string;
   dayStarts: Record<string, number>; scrollMin: number; scrollEndMin: number; hidden: string[]; staff: Staff[]; bookings: CalBooking[]; notes: CalNote[];
   closures: CalClosure[];
+  /** Сервис не работает: выходной по графику или «Не работаем» */
+  offDays: string[];
   explicitView: boolean;
   /** Вход мастера: только смотреть — ни записи, ни переноса, ни удаления */
   readOnly?: boolean;
@@ -63,6 +67,9 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const pastBg = (c: string) => `color-mix(in srgb, ${c} 34%, white)`;
 /** Будущие чуть приглушены: на сетке с десятком записей полные цвета Google режут глаз. */
 const calmBg = (c: string) => `color-mix(in srgb, ${c} 86%, white)`;
+/** Закрытое время: штриховка в цвет сотрудника, весь сервис — серая. */
+const hatch = (tone: string) => ({ background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${tone} 22%, white) 0 6px, white 6px 12px)`, boxShadow: `inset 3px 0 0 ${tone}` });
+const OFF_BG = "repeating-linear-gradient(135deg, #e8eaed 0 6px, #f1f3f4 6px 12px)";
 /** Шрифт как в Google Календаре: тоньше и спокойнее шрифта кабинета. */
 const GOOGLE_FONT = 'Roboto, "Google Sans", "Segoe UI", Arial, sans-serif';
 
@@ -141,8 +148,7 @@ export function Calendar(p: Props) {
   const closures = p.closures.filter((c) => !(c.staffId && hidden.has(c.staffId)));
   // Закрытое время: штриховка в цвет сотрудника (весь сервис — серая), ведёт на «Закрыть время», где его открывают снова
   const closure = (c: CalClosure, cls: string) => {
-    const tone = c.staffId ? color(c.staffId) : "#70757a";
-    const style = { background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${tone} 22%, white) 0 6px, white 6px 12px)`, boxShadow: `inset 3px 0 0 ${tone}` };
+    const style = hatch(c.staffId ? color(c.staffId) : "#70757a");
     return p.readOnly
       ? <span key={c.id} title={c.title} className={`${cls} text-[#1f1f1f]`} style={style}>{c.title}</span>
       : <Link key={c.id} href={`/cabinet/block?date=${c.date}`} title={c.title} className={`${cls} text-[#1f1f1f]`} style={style}>{c.title}</Link>;
@@ -181,7 +187,7 @@ export function Calendar(p: Props) {
     if (!t) return "Напишите, кого записываем";
     const tmp: CalBooking = {
       id: `tmp-${Date.now()}`, start: (p.dayStarts[c.date] ?? 0) + c.start * 60000, end: (p.dayStarts[c.date] ?? 0) + (c.start + c.dur) * 60000,
-      title: t, status: "active", site: false, staffId: c.staffId || p.staff[0]?.id || "", ownStaff: !!c.staffId, phone: null, phoneText: null, author: "",
+      title: t, status: "active", site: false, staffId: c.staffId || p.staff[0]?.id || "", ownStaff: !!c.staffId, phone: null, phoneText: null, author: "", custom: true,
     };
     if (!c.allDay && p.dayStarts[c.date] != null) setTemp((x) => [...x, tmp]);
     setCreate(null);
@@ -568,6 +574,7 @@ export function Calendar(p: Props) {
                   return (
                     <div key={d} className="min-h-6 min-w-0 flex-1 cursor-pointer border-l border-[#dde3ea] py-0.5 pr-2"
                       onClick={(e) => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); openCreate(d, 540, 60, true, { left: r.left, right: r.right, top: r.top, bottom: r.bottom }); } }}>
+                      {p.offDays.includes(d) && <span className="mb-0.5 block h-[22px] truncate rounded-[4px] px-2 text-[12px] font-medium leading-[22px] text-[#444746]" style={{ background: OFF_BG }}>Выходной</span>}
                       {shut.map((c) => closure(c, "mb-0.5 block h-[22px] w-full truncate rounded-[4px] px-2 text-left text-[12px] leading-[22px]"))}
                       {list.map((n) => (
                         <button key={n.id} type="button" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setCreate(null); setPop({ kind: "note", id: n.id, anchor: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } }); }}
@@ -589,7 +596,7 @@ export function Calendar(p: Props) {
                     ))}
                   </div>
                   {p.dates.map((d) => (
-                    <DayColumn key={d} date={d} hour={hour} p={p} bookings={bookings} color={color} now={now} preview={preview} create={create} staffById={staffById}
+                    <DayColumn key={d} date={d} hour={hour} p={p} bookings={bookings} closures={closures} color={color} now={now} preview={preview} create={create} staffById={staffById}
                       register={(el) => { if (el) cols.current.set(d, el); else cols.current.delete(d); }}
                       onDown={beginDrag} onOpen={openEvent} />
                   ))}
@@ -637,7 +644,13 @@ export function Calendar(p: Props) {
                 router.refresh();
               });
             }}
-            onStaff={(staffId) => startTransition(async () => { await setBookingStaff(b.id, staffId); router.refresh(); })} />
+            onStaff={(staffId) => startTransition(async () => { await setBookingStaff(b.id, staffId); router.refresh(); })}
+            onEdit={(d) => startTransition(async () => {
+              const r = await calendarEdit(b.id, d).catch(() => ({ error: "Не получилось сохранить. Проверьте интернет" }));
+              if (r.error) setToast({ text: r.error });
+              else { setPop(null); setToast({ text: "Запись сохранена" }); }
+              router.refresh();
+            })} />
         );
       })()}
       {pop?.kind === "note" && (() => {
@@ -671,8 +684,8 @@ export function Calendar(p: Props) {
 
 /* ---------- колонка дня ---------- */
 
-function DayColumn({ date, hour, p, bookings, color, now, preview, create, staffById, register, onDown, onOpen }: {
-  date: string; hour: number; p: Props; bookings: CalBooking[]; color: (id: string | null) => string; now: number; preview: Preview | null; create: Create | null;
+function DayColumn({ date, hour, p, bookings, closures, color, now, preview, create, staffById, register, onDown, onOpen }: {
+  date: string; hour: number; p: Props; bookings: CalBooking[]; closures: CalClosure[]; color: (id: string | null) => string; now: number; preview: Preview | null; create: Create | null;
   staffById: Map<string, Staff>; register: (el: HTMLDivElement | null) => void; onDown: (e: React.PointerEvent, b: CalBooking | null, mode: Drag["mode"]) => void;
   onOpen: (id: string, el: HTMLElement) => void;
 }) {
@@ -685,14 +698,33 @@ function DayColumn({ date, hour, p, bookings, color, now, preview, create, staff
       return e > 0 && s < 1440 ? { b, s: Math.max(0, s), e: Math.min(1440, e), dragging: false } : null;
     })
     .filter((x): x is NonNullable<typeof x> => !!x);
-  const layout = googleLayout(items.map((x) => ({ id: x.b.id, start: x.s * 60000, end: x.e * 60000 })));
+  // Закрытое время сотрудника или поста встаёт в сетку рядом с записями, как событие; весь сервис — подложкой на всю ширину
+  const shut = closures.filter((c) => c.date === date && c.to > c.from);
+  const layout = googleLayout([
+    ...items.map((x) => ({ id: x.b.id, start: x.s * 60000, end: x.e * 60000 })),
+    ...shut.filter((c) => !c.all).map((c) => ({ id: `x:${c.id}`, start: c.from * 60000, end: c.to * 60000 })),
+  ]);
   const nowMin = (now - ds) / 60000;
+  const off = p.offDays.includes(date);
   const ghost = create && !create.allDay && create.date === date ? create : preview && !preview.id && preview.date === date ? { start: preview.start, dur: preview.dur } : null;
 
   return (
     <div ref={register} className="relative min-w-0 flex-1 border-l border-[#dde3ea]"
       style={{ backgroundImage: "linear-gradient(#dde3ea 1px, transparent 1px)", backgroundSize: `100% ${hour}px` }}
       onPointerDown={(e) => { if (e.target === e.currentTarget) onDown(e, null, "create"); }}>
+      {off && <div className="pointer-events-none absolute inset-0" style={{ background: OFF_BG, opacity: 0.7 }} />}
+      {shut.map((c) => {
+        const pos = c.all ? { left: 0, width: 1, z: 0 } : layout.get(`x:${c.id}`)!;
+        const style = {
+          ...hatch(c.staffId ? color(c.staffId) : "#70757a"),
+          top: (c.from / 60) * hour, height: Math.max(16, ((c.to - c.from) / 60) * hour - 1),
+          left: `calc((100% - 10px) * ${pos.left})`, width: `calc((100% - 10px) * ${pos.width})`, zIndex: pos.z,
+        };
+        const cls = "absolute overflow-hidden rounded-[5px] border border-white px-1.5 py-0.5 text-[12px] leading-[15px] text-[#1f1f1f]";
+        return p.readOnly
+          ? <div key={c.id} title={c.title} className={cls} style={style}>{c.title}</div>
+          : <Link key={c.id} href={`/cabinet/block?date=${c.date}`} title={c.title} className={cls} style={style} onPointerDown={(e) => e.stopPropagation()}>{c.title}</Link>;
+      })}
       {items.map(({ b, s, e, dragging }) => {
         const pos = layout.get(b.id)!;
         const dur = e - s;
@@ -777,6 +809,7 @@ function MonthGrid({ p, bookings, notes, closures, closure, color, now, onDay, o
                 {dayNum(d) === 1 ? `${dayNum(d)} ${MONTHS_SHORT[monthIdx(d)]}` : dayNum(d)}
               </button>
               <div className="min-w-0 px-1 pb-1" onClick={(e) => { if (e.target === e.currentTarget) onCreate(d, e.currentTarget.parentElement!); }}>
+                {p.offDays.includes(d) && <span className="mb-px block h-5 truncate rounded-[4px] px-1.5 text-[12px] font-medium leading-5 text-[#444746]" style={{ background: OFF_BG }}>Выходной</span>}
                 {closures.filter((c) => c.date === d).map((c) => closure(c, "mb-px block h-5 w-full truncate rounded-[4px] px-1.5 text-left text-[12px] leading-5"))}
                 {all.slice(0, MAX).map((x) => x.kind === "note" ? (
                   <button key={x.n.id} type="button" onClick={(e) => onNote(x.n.id, e.currentTarget)}
@@ -967,19 +1000,81 @@ function CreatePopover({ c, setC, staff, save }: { c: Create; setC: (c: Create |
   );
 }
 
-function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onStaff, readOnly }: {
-  readOnly?: boolean; b: CalBooking; anchor: Anchor; staff: Staff[]; color: string; dayStarts: Record<string, number>; close: () => void; onDelete: () => void; onStaff: (id: string | null) => void;
+type EditData = { date: string; startMin: number; durationMin: number; staffId: string | null; title?: string };
+/** Время для выпадающего списка: шаг 15 минут и текущее значение, если оно не на шаге (запись с сайта на 12:10) */
+const timeOptions = (list: number[], cur: number) => (list.includes(cur) ? list : [...list, cur].sort((x, y) => x - y));
+
+function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onStaff, onEdit, readOnly }: {
+  readOnly?: boolean; b: CalBooking; anchor: Anchor; staff: Staff[]; color: string; dayStarts: Record<string, number>; close: () => void; onDelete: () => void;
+  onStaff: (id: string | null) => void; onEdit: (d: EditData) => void;
 }) {
   const date = Object.keys(dayStarts).find((d) => b.start >= dayStarts[d] && b.start < dayStarts[d] + 86400000) ?? Object.keys(dayStarts)[0];
   const ds = dayStarts[date];
-  const when = `${longDate(date)} ⋅ ${hhmm(Math.round((b.start - ds) / 60000))}–${hhmm(Math.min(1440, Math.round((b.end - ds) / 60000)))}`;
+  const s0 = Math.round((b.start - ds) / 60000), e0 = Math.min(1440, Math.round((b.end - ds) / 60000));
+  const when = `${longDate(date)} ⋅ ${hhmm(s0)}–${hhmm(e0)}`;
   const icon = "grid size-10 place-items-center rounded-full text-[#444746] hover:bg-black/5";
+  // Изменение прямо в окне, как в Google: день, время с и до, пост; у своей записи и текст. Остальное — «Другие параметры»
+  const [ed, setEd] = useState<{ title: string; date: string; start: number; end: number; staffId: string } | null>(null);
+  if (ed) {
+    const field = "h-9 rounded-md bg-[#e1e5ea]/70 px-2 hover:bg-[#dde3ea]";
+    return (
+      <Floating anchor={anchor} width={448} close={close} label="Изменить запись">
+        <div className="flex justify-end px-3 pt-2">
+          <button type="button" aria-label="Закрыть" onClick={close} className={icon}><X size={20} /></button>
+        </div>
+        <form className="px-6 pb-5" onSubmit={(e) => {
+          e.preventDefault();
+          onEdit({ date: ed.date, startMin: ed.start, durationMin: ed.end - ed.start, staffId: ed.staffId || null, ...(b.custom ? { title: ed.title } : {}) });
+        }}>
+          {b.custom ? (
+            <input data-autofocus value={ed.title} onChange={(e) => setEd({ ...ed, title: e.target.value })} maxLength={400} aria-label="Запись"
+              className="w-full border-b border-[#747775] bg-transparent pb-1.5 pl-1 text-[22px] outline-none focus:border-b-2 focus:border-[#0b57d0]" />
+          ) : (
+            <h2 className="break-words pl-1 text-[22px] leading-7">{b.title}</h2>
+          )}
+          <div className="mt-4 grid gap-3 text-[14px]">
+            <div className="flex items-start gap-4">
+              <Clock size={20} className="mt-2 shrink-0 text-[#444746]" />
+              <div className="grid gap-2">
+                <input type="date" aria-label="День" value={ed.date} onChange={(e) => e.target.value && setEd({ ...ed, date: e.target.value })} className={`${field} w-fit`} />
+                <div className="flex items-center gap-2">
+                  <select aria-label="Начало" value={ed.start} className={field}
+                    onChange={(e) => { const s = Number(e.target.value); setEd({ ...ed, start: s, end: Math.min(1440, s + (ed.end - ed.start)) }); }}>
+                    {timeOptions(TIMES, ed.start).map((t) => <option key={t} value={t}>{hhmm(t)}</option>)}
+                  </select>
+                  –
+                  <select aria-label="Конец" value={ed.end} onChange={(e) => setEd({ ...ed, end: Number(e.target.value) })} className={field}>
+                    {timeOptions([...TIMES, 1440], ed.end).filter((t) => t >= ed.start + SNAP).map((t) => <option key={t} value={t}>{hhmm(t)}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <CalendarBlank size={20} className="shrink-0 text-[#444746]" />
+              <span className="relative flex items-center">
+                <i className="pointer-events-none absolute left-2.5 size-3 rounded-full" style={{ background: staff.find((s) => s.id === ed.staffId)?.color ?? color }} />
+                <select aria-label="Пост" value={ed.staffId} onChange={(e) => setEd({ ...ed, staffId: e.target.value })} className={`${field} pl-7`}>
+                  {!b.ownStaff && <option value="">{staff.find((s) => s.id === b.staffId)?.name ?? "Любой свободный"}</option>}
+                  {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </span>
+            </div>
+          </div>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Link href={`/cabinet/b/${b.id}/edit`} className="h-10 rounded-full px-4 text-[14px] font-medium leading-10 text-[#0b57d0] hover:bg-[#0b57d0]/10">Другие параметры</Link>
+            <button className="h-10 rounded-full bg-[#0b57d0] px-6 text-[14px] font-medium text-white hover:shadow-md">Сохранить</button>
+          </div>
+        </form>
+      </Floating>
+    );
+  }
   return (
     <Floating anchor={anchor} width={448} close={close} label="Запись">
       <div className="flex justify-end gap-0.5 px-2 pt-2">
         {!readOnly && (
           <>
-            <Link href={`/cabinet/b/${b.id}/edit`} aria-label="Изменить" title="Изменить" className={icon}><PencilSimple size={20} /></Link>
+            <button type="button" aria-label="Изменить" title="Изменить" className={icon}
+              onClick={() => setEd({ title: b.title, date, start: s0, end: Math.max(e0, s0 + SNAP), staffId: b.ownStaff ? b.staffId : "" })}><PencilSimple size={20} /></button>
             <button type="button" aria-label="Удалить" title="Удалить" onClick={onDelete} className={icon}><Trash size={20} /></button>
             <Link href={`/cabinet/b/${b.id}`} aria-label="Подробнее" title="Подробнее: выполнена, не приехал" className={icon}><DotsThreeVertical size={20} weight="bold" /></Link>
           </>

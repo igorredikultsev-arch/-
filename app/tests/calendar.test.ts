@@ -1,6 +1,6 @@
 // Календарь кабинета (22 октября): колонки сотрудников, раскладка записей, автоназначение мастера.
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { createOwnerBooking, createSiteBooking, updateOwnerBooking } from "@/lib/booking";
+import { createOwnerBooking, createSiteBooking, moveBooking, updateOwnerBooking } from "@/lib/booking";
 import { assignLanes, calendarLanes, sideBySide } from "@/lib/calendar";
 import { db } from "@/lib/db";
 import { findPhone } from "@/lib/phone";
@@ -122,5 +122,16 @@ describe("посты как колонки календаря", () => {
     expect(len(longer.booking)).toBe(180);
     const fresh = await createOwnerBooking({ businessId: biz.id, serviceId: svc.id, durationMin: 240, date: DATE, startMin: 840, force: true });
     expect(len(fresh.booking)).toBe(240);
+  });
+
+  it("окно изменения в календаре: время с и до, пост и текст одним сохранением", async () => {
+    const biz = await makeBusiness({ posts: 2, onlinePosts: 2 });
+    const p2 = await db.staff.create({ data: { businessId: biz.id, name: "Пост 2", color: "#2563eb" } });
+    const made = await createOwnerBooking({ businessId: biz.id, custom: { title: "Колодки", durationMin: 60 }, date: DATE, startMin: 600 });
+    const start = localToUtc(DATE, 720, TZ);
+    await moveBooking(biz.id, made.booking!.id, start, start + 150 * 60000, { staffId: p2.id, serviceName: "Колодки и диски", clientName: null, car: null });
+    const b = await db.booking.findUniqueOrThrow({ where: { id: made.booking!.id } });
+    expect(b).toMatchObject({ staffId: p2.id, serviceName: "Колодки и диски" });
+    expect([b.startAt.getTime(), b.endAt.getTime()]).toEqual([start, start + 150 * 60000]);
   });
 });

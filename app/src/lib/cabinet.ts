@@ -139,7 +139,7 @@ export async function loadCalendar(business: Business, dates: string[]) {
       orderBy: { startAt: "asc" },
       select: {
         id: true, startAt: true, endAt: true, status: true, source: true, serviceName: true, clientName: true, car: true, clientPhone: true,
-        staffId: true, onStand: true, externalId: true, createdBy: { select: { name: true, phone: true } },
+        staffId: true, onStand: true, externalId: true, serviceId: true, createdBy: { select: { name: true, phone: true } },
       },
     }),
     db.block.findMany({ where: { businessId: business.id, startAt: { gte: new Date(from - 86400000), lt: new Date(to) }, endAt: { gt: new Date(from) } } }),

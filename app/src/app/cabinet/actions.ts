@@ -292,6 +292,35 @@ export async function calendarMove(id: string, date: string, startMin: number, d
   return {};
 }
 
+/**
+ * Окно изменения в календаре, как в Google («Конкурент», 29 октября): день, время с и до, пост, у своей записи и текст.
+ * Без предупреждений о занятых постах, как при перетаскивании. Услуга, имя и телефон записи с сайта остаются как есть.
+ */
+export async function calendarEdit(id: string, d: { date: string; startMin: number; durationMin: number; staffId: string | null; title?: string }): Promise<{ error?: string }> {
+  const { user, business } = await requireOwner();
+  if (!isDateString(d.date) || !Number.isInteger(d.startMin) || !Number.isInteger(d.durationMin) || d.startMin < 0 || d.startMin > 1439 || d.durationMin < 15 || d.startMin + d.durationMin > 1440) {
+    return { error: "Проверьте время: конец позже начала, в пределах суток" };
+  }
+  const was = await db.booking.findFirst({ where: { id, businessId: business.id } });
+  if (!was) return { error: "Запись не найдена" };
+  const staff = d.staffId ? await db.staff.findFirst({ where: { id: d.staffId, businessId: business.id }, select: { id: true } }) : null;
+  if (d.staffId && !staff) return { error: "Сотрудник не найден" };
+  const title = was.serviceId ? undefined : d.title?.trim().slice(0, 400);
+  if (title === "") return { error: "Напишите, кого записываем" };
+  // Своя запись одним полем: имя и машина старых записей уже в тексте, телефон ищется в нём
+  const text = title ? { serviceName: title, clientName: null, car: null, clientPhone: findPhone(title) ?? was.clientPhone } : {};
+  const start = localToUtc(d.date, d.startMin, business.timezone);
+  try {
+    await moveBooking(business.id, id, start, start + d.durationMin * 60000, { staffId: staff?.id ?? null, ...text });
+  } catch (e) {
+    return bookingError(e);
+  }
+  tellMasters(business.id, business.timezone, was, { ...was, startAt: new Date(start), staffId: staff?.id ?? null, serviceName: title ?? was.serviceName });
+  await audit("booking.update_owner", { userId: user.id, businessId: business.id, details: { id, from: "calendar" } });
+  revalidatePath("/cabinet", "layout");
+  return {};
+}
+
 /** Удалить запись на весь день или поменять её текст и пост. */
 export async function noteUpdate(id: string, data: { title: string; staffId: string | null; date: string; endDate: string } | null): Promise<{ error?: string }> {
   const { user, business } = await requireOwner();

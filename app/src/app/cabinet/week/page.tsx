@@ -56,7 +56,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       const from = Math.round((s - d.start) / 60000), to = Math.round((e - d.start) / 60000);
       const whole = d.win ? from <= d.win.openMin && to >= d.win.closeMin : from === 0 && to === 1440;
       const who = b.staffId ? `${cal.staff.find((x) => x.id === b.staffId)?.name ?? "Сотрудник"} не принимает` : b.scope === "all" ? "Сервис закрыт" : "Закрыт один пост";
-      return [{ id: `${b.id}:${d.date}`, date: d.date, staffId: b.staffId, title: `${who}, ${whole ? "весь день" : `${hhmm(from)}-${hhmm(to)}`}${b.reason ? `. ${b.reason}` : ""}` }];
+      // В сетке закрытый весь день — по часам работы, а не с полуночи
+      const [gFrom, gTo] = whole && d.win ? [d.win.openMin, d.win.closeMin] : [from, to];
+      return [{
+        id: `${b.id}:${d.date}`, date: d.date, staffId: b.staffId, all: !b.staffId && b.scope === "all", from: gFrom, to: gTo,
+        title: `${who}, ${whole ? "весь день" : `${hhmm(from)}-${hhmm(to)}`}${b.reason ? `. ${b.reason}` : ""}`,
+      }];
     }),
   );
   const open = cal.days.filter((d) => d.win).map((d) => d.win!.openMin);
@@ -90,6 +95,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         title: [b.serviceName, b.clientName, b.car].filter(Boolean).join(", "),
         status: b.status,
         site: b.source === "site",
+        custom: !b.serviceId,
         staffId: laneOf.get(b.id) ?? lanes[0]?.id ?? "",
         ownStaff: !!b.staffId,
         phone: b.clientPhone,
@@ -98,6 +104,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       }))}
       notes={cal.notes}
       closures={closures}
+      // Выходной по графику или «Не работаем» в этот день: в календаре заливается серым, чтобы не записали по ошибке
+      offDays={cal.days.filter((d) => !d.win).map((d) => d.date)}
       explicitView={!!sp.view}
     />
   );
