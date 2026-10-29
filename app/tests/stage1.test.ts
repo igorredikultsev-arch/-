@@ -32,8 +32,9 @@ function pages(dir: string): string[] {
 describe("каждая страница админки и кабинета сама проверяет вход", () => {
   // Проверка в layout не спасает: при переходах layout не перерисовывается (документация Next.js, «Layouts and auth checks»)
   const root = path.resolve(import.meta.dirname, "../src/app");
-  // Календарь открыт и мастеру (вход только на просмотр): там requireViewer, который для всех, кроме мастера, — requireOwner
-  const viewerPages = new Set(["cabinet/week/page.tsx"]);
+  // Календарь, уведомления и установка на экран открыты и мастеру (вход только на просмотр): там requireViewer,
+  // который для всех, кроме мастера, — requireOwner
+  const viewerPages = new Set(["cabinet/week/page.tsx", "cabinet/more/push/page.tsx", "cabinet/more/install/page.tsx"]);
   for (const [dir, fn] of [["admin", "requireAdmin()"], ["cabinet", "requireOwner()"]] as const) {
     for (const file of pages(path.join(root, dir))) {
       const rel = path.relative(root, file).replaceAll("\\", "/");
