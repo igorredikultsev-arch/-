@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { brandContacts } from "@/lib/brand";
 import { processor } from "@/lib/legal";
-import { GUARANTEE_DAYS, MONTHLY_PRICE, SETUP_PRICE, rub } from "@/lib/pricing";
+import { GUARANTEE_DAYS, MONTHLY_PRICE, REVIEW_PRICE, SETUP_PRICE, rub } from "@/lib/pricing";
 import "./landing.css";
 
 // Контакты и реквизиты берутся из .env на сервере, поэтому страница собирается при каждом запросе
@@ -161,7 +161,7 @@ export default function Home() {
               <div className="grid gap-8 sm:grid-cols-2">
                 <div className="grid gap-1">
                   <p className="price-num">{rub(SETUP_PRICE)}</p>
-                  <p className="text-zinc-300">подключение, в него входит первый месяц</p>
+                  <p className="text-zinc-300">подключение, в него входит первый месяц. {rub(REVIEW_PRICE)}, если оставите отзыв и разрешите показывать ваш сайт как пример</p>
                 </div>
                 <div className="grid gap-1">
                   <p className="price-num">{rub(MONTHLY_PRICE)}</p>

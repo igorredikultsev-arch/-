@@ -80,7 +80,7 @@ describe("импорт демо из таблицы", () => {
     const b = { name: "Ось", slug: "os", rating: null, yandexMapsUrl: null, status: "demo" };
     const first = outreach(b, "https://avtoslot.ru/s/os");
     expect(first.split("\n")).toContain("https://avtoslot.ru/s/os");
-    expect(first).toMatch(/3\s500\s₽.*990\s₽/s);
+    expect(first).toMatch(/от 15\s000\s₽.*990\s₽/s);
     expect(first).not.toMatch(/[:—–]\s/);
     expect(first).not.toMatch(/Игорь|Автослот/);
     expect(first.split(/\s+/).length).toBeLessThanOrEqual(40);
@@ -98,15 +98,14 @@ describe("импорт демо из таблицы", () => {
     expect(reply).toContain("оформление");
     expect(reply).not.toMatch(/₽/);
     expect(demoReply({ ...b, status: "active" }, "https://x")).not.toMatch(/оформлени/);
-    expect(priceText({ early: true })).toMatch(/3\s500\s₽.*990\s₽.*первых 10.*верну/s);
-    expect(priceText()).not.toMatch(/первых/);
+    expect(priceText()).toMatch(/20\s000\s₽.*990\s₽.*отзыв.*15\s000\s₽.*7 дней.*верну/s);
     const [second, last] = followUps(b, "https://avtoslot.ru/s/os", { now: Date.UTC(2026, 9, 6) });
     expect(second.split("\n")).toContain("https://avtoslot.ru/s/os");
-    expect(second).toMatch(/3\s500\s₽/);
+    expect(second).toMatch(/от 15\s000\s₽/);
     expect(last).toMatch(/Последний раз/);
     expect(last).toMatch(/сезона/);
     expect(followUps(b, "https://x", { now: Date.UTC(2026, 6, 1) })[1]).not.toMatch(/сезон/);
-    for (const m of [reply, priceText({ early: true }), second, last, afterDemo(), ...demoFollowUps(b), ...REPLIES.map((r) => r.text)]) expect(m).not.toMatch(/[—–]/);
+    for (const m of [reply, priceText(), second, last, afterDemo(), ...demoFollowUps(b), ...REPLIES.map((r) => r.text)]) expect(m).not.toMatch(/[—–]/);
     // Ответы на возражения без ссылок и без обещаний, что все начнут записываться
     for (const r of REPLIES) expect(r.text).not.toMatch(/https?:|все (начнут|будут)/);
   });

@@ -4,7 +4,6 @@ import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { earlyPrice } from "@/lib/business";
 import { afterDemo, demoFollowUps, demoMessage, demoReply, emailSubject, FOLLOW_UP_DAYS, followUps, priceText, REPLIES } from "@/lib/outreach";
 import { deviceText, summaryText, timesText, viewSummaries, whenText, type ViewSummary } from "@/lib/demo-views";
 import { formatPhone } from "@/lib/phone";
@@ -125,7 +124,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
   const masters = b.users.filter((u) => u.role === "master");
   const payBlocked = connectFirst({ status: b.status, owners: owners.length });
   const loginUrl = `${process.env.APP_URL || "http://localhost:3000"}/login`;
-  const [siteBookings, early] = await Promise.all([db.booking.count({ where: { businessId: id, source: "site" } }), earlyPrice()]);
+  const siteBookings = await db.booking.count({ where: { businessId: id, source: "site" } });
   const facts: [string, React.ReactNode][] = [
     ["Телефон", formatPhone(b.phone)],
     ["Записей", `${b._count.bookings}, с сайта ${siteBookings}`],
@@ -183,7 +182,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
               {b.status === "demo" && lead === "asked" && (
                 <Card title="Ответили на вопрос: отправьте демо">
                   <CopyBox label="Сообщение со ссылкой. Если ответили подробно, начните с ответа на их слова" rows={10} text={demoReply(b, siteUrl)} />
-                  <CopyBox label="Если спросят цену" rows={8} text={priceText({ early })} />
+                  <CopyBox label="Если спросят цену" rows={8} text={priceText()} />
                   <h3 className="mt-2 text-[15px] font-bold">Если ответили без «да»</h3>
                   <p className="text-[13px] text-zinc-500">Не спорьте и не обещайте, что все начнут записываться онлайн. Согласитесь и скажите про тех, кого сервис сейчас теряет.</p>
                   {REPLIES.map((r) => <CopyBox key={r.when} label={`Ответили ${r.when}`} rows={r.text.length > 250 ? 11 : 7} text={r.text} />)}
@@ -192,7 +191,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
               )}
               {b.status === "demo" && lead !== "new" && lead !== "asked" && lead !== "refused" && (
                 <Card title="Демо отправлено">
-                  <CopyBox label="Если спросят цену" rows={8} text={priceText({ early })} />
+                  <CopyBox label="Если спросят цену" rows={8} text={priceText()} />
                   {views && <CopyBox label="Если открыли демо и молчат" rows={5} text={afterDemo()} />}
                   <CopyBox label="Сообщение с демо, если нужно отправить ещё раз" rows={8} text={demoMessage(b.lead?.firstMessage, b, siteUrl)} />
                   <p className="text-[13px] text-zinc-500">Ответили «нет» — поставьте «Отказ» и больше не пишите.</p>

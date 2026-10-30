@@ -5,7 +5,7 @@ import { addPayment, createMasterLogin, importServices, saveInfo, saveLead, save
 import { LEAD_LABEL, THEMES } from "../../labels";
 import { btn, CopyBox, F, inp, Result } from "../../ui";
 import { keepValues } from "@/lib/keep-form";
-import { MONTHLY_PRICE, rub, SETUP_PRICE } from "@/lib/pricing";
+import { GUARANTEE_DAYS, MONTHLY_PRICE, REVIEW_PRICE, rub, SETUP_PRICE } from "@/lib/pricing";
 import { ZONES } from "@/lib/timezone";
 
 type Info = {
@@ -89,8 +89,8 @@ export function LeadForm({ id, lead }: { id: string; lead: { status: string; cha
 export function TrialForm({ id, loginUrl, siteUrl, hasOwner }: { id: string; loginUrl: string; siteUrl: string; hasOwner: boolean }) {
   const [state, action, pending] = useActionState(startTrial.bind(null, id), null);
   const [phone, setPhone] = useState("");
-  const paid = `Подключение ${rub(SETUP_PRICE)}, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц. Если за 2 недели не понравится — верну деньги.`;
-  const drive = `7 бесплатных дней начнём считать с дня, когда сайт заработает для клиентов. Подключение ${rub(SETUP_PRICE)} после тест-драйва, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц.`;
+  const paid = `Подключение ${rub(SETUP_PRICE)}, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц. Со скидкой за отзыв ${rub(REVIEW_PRICE)}. Если за ${GUARANTEE_DAYS} дней не понравится — верну деньги.`;
+  const drive = `7 бесплатных дней начнём считать с дня, когда сайт заработает для клиентов. Подключение ${rub(SETUP_PRICE)} (со скидкой за отзыв ${rub(REVIEW_PRICE)}) после тест-драйва, в него входит первый месяц, дальше ${rub(MONTHLY_PRICE)} в месяц.`;
   return (
     <form onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -152,7 +152,7 @@ export function PaymentForm({ id }: { id: string }) {
   return (
     <form ref={ref} onSubmit={keepValues(action)} className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-4">
-        <F label="Сумма, ₽" id="p-amount"><input id="p-amount" name="amount" inputMode="numeric" required className={inp} placeholder={String(SETUP_PRICE)} /></F>
+        <F label="Сумма, ₽" id="p-amount"><input id="p-amount" name="amount" inputMode="numeric" required className={inp} placeholder={String(REVIEW_PRICE)} /></F>
         <F label="За что" id="p-purpose" className="sm:col-span-2"><input id="p-purpose" name="purpose" className={inp} placeholder="Подключение и 1 месяц" /></F>
         <F label="Продлить на, мес" id="p-months" hint="0 — без продления"><input id="p-months" name="months" type="number" min={0} max={24} defaultValue={1} className={inp} /></F>
       </div>

@@ -6,7 +6,7 @@ import { rknDraft } from "@/lib/rkn";
 const pr: Processor = { name: "Иванов Иван Иванович", inn: "590000000000", email: "igor@yandex.ru" };
 const op = { name: "ИП Петров П. П.", inn: "590000000001", address: "г. Пермь, ул. Ленина, 1", phone: "+7 900 000-00-00" };
 const flat = (s: { h?: string; p: string[] }[]) => s.map((x) => [x.h, ...x.p].join("\n")).join("\n");
-const offer = flat(offerText(pr, { setup: "3 500 ₽", setupService: "2 510 ₽", monthly: "990 ₽", guaranteeDays: 14, graceDays: 7 }));
+const offer = flat(offerText(pr, { setup: "20 000 ₽", setupService: "19 010 ₽", review: "15 000 ₽", reviewService: "14 010 ₽", monthly: "990 ₽", guaranteeDays: 7, graceDays: 7 }));
 const consent = flat(consentText(op, "Ось", pr));
 const privacy = flat(privacyText(op, "Ось", pr));
 const own = flat(ownPrivacyText(pr));
@@ -28,7 +28,9 @@ describe("документы", () => {
   });
 
   it("оферта: разовая услуга и абонентская плата, умысел, суд в Перми, реквизиты", () => {
-    expect(offer).toMatch(/2 510 ₽/);
+    expect(offer).toMatch(/19 010 ₽/);
+    expect(offer).toMatch(/15 000 ₽.*14 010 ₽/);
+    expect(offer).toMatch(/согласована с Заказчиком индивидуально.*в мессенджере/);
     expect(offer).toMatch(/ст\. 429\.4/);
     expect(offer).toMatch(/умышленному нарушению/);
     expect(offer).toMatch(/г\. Перми/);
