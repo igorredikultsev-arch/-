@@ -223,7 +223,8 @@ describe("горизонт записи", () => {
   });
 });
 
-import { layoutLanes } from "@/lib/cabinet";
+import { postLoad } from "@/lib/cabinet";
+import { calendarLanes } from "@/lib/calendar";
 
 describe("dayLanes", () => {
   const input = (over = {}) => ({ date: DATE, tz: TZ, window: { openMin: h(10), closeMin: h(18) }, posts: 2, bookings: [], blocksAll: [], blocksOnePost: [], ...over });
@@ -248,22 +249,21 @@ describe("dayLanes", () => {
   });
 });
 
-describe("layoutLanes", () => {
-  it("раскладывает пересекающиеся записи по разным постам, а последовательные — на один", () => {
-    const lanes = layoutLanes(2, { start: 0, end: 100 }, [
-      { start: 0, end: 30, kind: "site" },
-      { start: 10, end: 40, kind: "owner" },
-      { start: 30, end: 50, kind: "site" },
+describe("загрузка постов на «Сегодня»", () => {
+  const staff = [{ id: "a", name: "Андронов", color: "#0b8043", onStand: false }, { id: "b", name: "Щелоков", color: "#7986cb", onStand: false }];
+  const it_ = (id: string, start: number, end: number, staffId: string | null, closed = false) => ({ id, start, end, staffId, onStand: false, closed });
+  it("строка на каждый пост его цветом, запись и закрытое время — в строке своего поста", () => {
+    const { rows, laneOf } = postLoad(calendarLanes(staff, 2, 0), { start: 0, end: 100 }, [
+      it_("1", 0, 30, "b"), it_("2", 10, 40, null), it_("x", 50, 60, "b", true),
     ]);
-    expect(lanes[0].map((x) => x.startPct)).toEqual([0, 30]);
-    expect(lanes[1].map((x) => x.startPct)).toEqual([10]);
+    expect(rows.map((r) => [r.name, r.color])).toEqual([["Андронов", "#0b8043"], ["Щелоков", "#7986cb"]]);
+    expect(rows[1].items.map((x) => [x.startPct, x.closed])).toEqual([[0, false], [50, true]]);
+    // Без поста — на свободный
+    expect(laneOf.get("2")).toBe("a");
   });
-  it("перебор постов помечается как overflow", () => {
-    const lanes = layoutLanes(1, { start: 0, end: 100 }, [
-      { start: 0, end: 30, kind: "site" },
-      { start: 10, end: 40, kind: "owner" },
-    ]);
-    expect(lanes[0][1].overflow).toBe(true);
+  it("две записи одного поста в одно время помечаются", () => {
+    const { rows } = postLoad(calendarLanes(staff, 2, 0), { start: 0, end: 100 }, [it_("1", 0, 30, "a"), it_("2", 10, 40, "a")]);
+    expect(rows[0].items.map((x) => x.overflow)).toEqual([false, true]);
   });
 });
 

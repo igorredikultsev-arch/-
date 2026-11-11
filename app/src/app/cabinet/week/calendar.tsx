@@ -10,7 +10,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } 
 import {
   Bell, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DeviceMobile, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
 } from "@phosphor-icons/react";
-import { googleLayout, isMultiWeek, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
+import { columnLayout, isMultiWeek, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
 import { calendarCreate, calendarEdit, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
 
@@ -700,9 +700,11 @@ function DayColumn({ date, hour, p, bookings, closures, color, now, preview, cre
     .filter((x): x is NonNullable<typeof x> => !!x);
   // Закрытое время сотрудника или поста встаёт в сетку рядом с записями, как событие; весь сервис — подложкой на всю ширину
   const shut = closures.filter((c) => c.date === date && c.to > c.from);
-  const layout = googleLayout([
-    ...items.map((x) => ({ id: x.b.id, start: x.s * 60000, end: x.e * 60000 })),
-    ...shut.filter((c) => !c.all).map((c) => ({ id: `x:${c.id}`, start: c.from * 60000, end: c.to * 60000 })),
+  // Столбик записи — по порядку её поста: записи одного поста друг под другом, закрытое время мастера в его столбике
+  const lane = (id: string | null) => { const i = p.staff.findIndex((x) => x.id === id); return i < 0 ? p.staff.length : i; };
+  const layout = columnLayout([
+    ...items.map((x) => ({ id: x.b.id, start: x.s * 60000, end: x.e * 60000, lane: lane(x.b.staffId) })),
+    ...shut.filter((c) => !c.all).map((c) => ({ id: `x:${c.id}`, start: c.from * 60000, end: c.to * 60000, lane: lane(c.staffId) })),
   ]);
   const nowMin = (now - ds) / 60000;
   const off = p.offDays.includes(date);

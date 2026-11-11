@@ -1,8 +1,8 @@
-// Календарь как Google (22 октября): раскладка записей, перенос из Google Календаря, перетаскивание.
+// Календарь как Google (22 октября; раскладка без наложений — 11 ноября): раскладка записей, перенос из Google Календаря, перетаскивание.
 import { deflateRawSync } from "node:zlib";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createOwnerBooking, moveBooking } from "@/lib/booking";
-import { googleLayout } from "@/lib/calendar";
+import { columnLayout, type Placed } from "@/lib/calendar";
 import { importCalendars, matchStaff, readCalendars } from "@/lib/calendar-import";
 import { db } from "@/lib/db";
 import { parseIcs } from "@/lib/ics";
@@ -11,48 +11,61 @@ import { unzip } from "@/lib/unzip";
 import { makeBusiness, resetDb } from "./helpers";
 
 const M = 60000;
-const ev = (id: string, from: number, to: number) => ({ id, start: from * M, end: to * M });
+const ev = (id: string, from: number, to: number, lane = 0) => ({ id, start: from * M, end: to * M, lane });
+/** Плашки не закрывают друг друга: у пересекающихся по времени нет общей ширины. */
+const noCover = (evs: ReturnType<typeof ev>[], l: Map<string, Placed>) => {
+  for (const a of evs) for (const b of evs) {
+    if (a === b || !(a.start < b.end && b.start < a.end)) continue;
+    const pa = l.get(a.id)!, pb = l.get(b.id)!;
+    expect(pa.left + pa.width <= pb.left + 1e-9 || pb.left + pb.width <= pa.left + 1e-9, `${a.id} и ${b.id} накладываются`).toBe(true);
+  }
+};
 
-describe("раскладка как в Google", () => {
-  it("одна запись — во всю ширину", () => {
-    expect(googleLayout([ev("a", 540, 600)]).get("a")).toMatchObject({ left: 0, width: 1 });
-  });
-
-  it("начались одновременно — рядом, левая заходит под правую, правая сверху", () => {
-    const l = googleLayout([ev("a", 540, 1140), ev("b", 540, 720)]);
-    expect(l.get("a")).toMatchObject({ left: 0, width: 0.85 });
-    expect(l.get("b")).toMatchObject({ left: 0.5, width: 0.5 });
-    expect(l.get("b")!.z).toBeGreaterThan(l.get("a")!.z);
-  });
-
-  it("началась позже — внутрь идущей со сдвигом и до правого края", () => {
-    const l = googleLayout([ev("long", 540, 1140), ev("later", 660, 720)]);
-    expect(l.get("long")).toMatchObject({ left: 0, width: 1 });
-    expect(l.get("later")!.left).toBeCloseTo(0.049);
-    expect(l.get("later")!.left + l.get("later")!.width).toBeCloseTo(1);
-    expect(l.get("later")!.z).toBeGreaterThan(l.get("long")!.z);
-  });
-
-  it("день клиента из Google (17 записей): места и ширина как на его скриншоте", () => {
-    const h = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
-    // название, начало, конец, левый край и ширина у Google (доли колонки; NaN — край не виден)
-    const day: [string, string, string, number, number][] = [
-      ["грета", "09:00", "19:00", 0, NaN], ["к252ае", "09:00", "17:45", 0.168, NaN], ["туарег", "09:00", "12:00", 0.333, NaN], ["Солярис", "09:00", "11:00", 0.5, NaN],
-      ["ламода", "09:00", "10:00", 0.667, 0.33], ["Спортаж", "10:00", "11:30", 0.607, 0.39], ["Гранта", "11:00", "14:00", 0.411, 0.33], ["ламодаШ", "11:00", "12:00", 0.804, 0.19],
-      ["ЛОГАН", "11:30", "12:30", 0.607, NaN], ["L200", "12:00", "19:00", 0.217, 0.33], ["Калина", "12:00", "14:00", 0.804, 0.19], ["калина1", "14:00", "16:00", 0.266, NaN],
-      ["йЗО", "14:00", "15:30", 0.509, 0.49], ["МЛ", "15:30", "16:30", 0.511, 0.41], ["Форд", "16:00", "17:30", 0.264, 0.41], ["Спортейдж", "16:00", "17:00", 0.755, 0.24], ["Рапид", "17:30", "18:30", 0.266, 0.73],
-    ];
-    const l = googleLayout(day.map(([id, a, b]) => ev(id, h(a), h(b))));
-    for (const [id, , , left, width] of day) {
-      expect(Math.abs(l.get(id)!.left - left), `${id}: левый край`).toBeLessThan(0.02);
-      if (!Number.isNaN(width)) expect(Math.abs(l.get(id)!.width - width), `${id}: ширина`).toBeLessThan(0.07);
-    }
-  });
-
-  it("не пересекаются — каждая во всю ширину", () => {
-    const l = googleLayout([ev("a", 540, 600), ev("b", 600, 660)]);
-    expect(l.get("a")!.width).toBe(1);
+describe("раскладка записей без наложений", () => {
+  it("одна запись и записи не в одно время — во всю ширину", () => {
+    const l = columnLayout([ev("a", 540, 600), ev("b", 600, 660)]);
+    expect(l.get("a")).toMatchObject({ left: 0, width: 1 });
     expect(l.get("b")).toMatchObject({ left: 0, width: 1 });
+  });
+
+  it("столбики по порядку постов, записи одного поста друг под другом", () => {
+    const evs = [ev("p3", 540, 600, 2), ev("p1a", 540, 600, 0), ev("p1b", 600, 660, 0), ev("p2", 570, 690, 1)];
+    const l = columnLayout(evs);
+    expect([l.get("p1a")!.left, l.get("p2")!.left, l.get("p3")!.left]).toEqual([0, 1 / 3, 2 / 3]);
+    expect(l.get("p1b")!.left).toBe(0);
+    noCover(evs, l);
+  });
+
+  it("справа свободно — плашка шире", () => {
+    const l = columnLayout([ev("a", 540, 600, 0), ev("b", 540, 720, 1), ev("c", 660, 720, 0)]);
+    expect(l.get("a")).toMatchObject({ left: 0, width: 0.5 });
+    // У поста 2 после 12:00 пусто, но столбик поста 1 занят — c остаётся в своём
+    expect(l.get("c")).toMatchObject({ left: 0, width: 0.5 });
+    // y — вторая запись поста 1 поверх длинной: свой столбик, и правее до 12:00 свободно (x уже кончилась)
+    const free = columnLayout([ev("long", 540, 1140, 0), ev("x", 540, 600, 1), ev("y", 660, 720, 0)]);
+    expect(free.get("x")).toMatchObject({ left: 2 / 3, width: 1 / 3 });
+    expect(free.get("y")).toMatchObject({ left: 1 / 3, width: 2 / 3 });
+  });
+
+  it("две записи одного поста в одно время — рядом, а не друг на друге", () => {
+    const evs = [ev("a", 540, 660, 0), ev("b", 600, 720, 0)];
+    const l = columnLayout(evs);
+    expect(l.get("a")!.width).toBe(0.5);
+    noCover(evs, l);
+  });
+
+  it("загруженный день клиента (17 записей, 6 постов): ни одна запись не закрыта другой", () => {
+    const h = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
+    const day: [string, string, string][] = [
+      ["грета", "09:00", "19:00"], ["к252ае", "09:00", "17:45"], ["туарег", "09:00", "12:00"], ["Солярис", "09:00", "11:00"],
+      ["ламода", "09:00", "10:00"], ["Спортаж", "10:00", "11:30"], ["Гранта", "11:00", "14:00"], ["ламодаШ", "11:00", "12:00"],
+      ["ЛОГАН", "11:30", "12:30"], ["L200", "12:00", "19:00"], ["Калина", "12:00", "14:00"], ["калина1", "14:00", "16:00"],
+      ["йЗО", "14:00", "15:30"], ["МЛ", "15:30", "16:30"], ["Форд", "16:00", "17:30"], ["Спортейдж", "16:00", "17:00"], ["Рапид", "17:30", "18:30"],
+    ];
+    const evs = day.map(([id, a, b], i) => ev(id, h(a), h(b), i % 6));
+    const l = columnLayout(evs);
+    noCover(evs, l);
+    for (const e of evs) expect(l.get(e.id)!.left + l.get(e.id)!.width).toBeLessThanOrEqual(1 + 1e-9);
   });
 });
 

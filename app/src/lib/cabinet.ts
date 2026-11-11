@@ -1,31 +1,36 @@
 // Данные для кабинета владельца: день по постам, неделя.
 import type { Block, Booking, Business } from "@prisma/client";
 import { db } from "./db";
+import { assignLanes, calendarLanes, type Lane } from "./calendar";
 import { dayBounds, resolveDayWindow } from "./slots";
 import { addDays, toLocal } from "./time";
 
-export type LaneItem = { kind: "site" | "owner" | "one_post"; startPct: number; widthPct: number; overflow?: boolean };
+export type LoadItem = { startPct: number; widthPct: number; closed: boolean; overflow: boolean };
+export type LoadRow = { id: string; name: string; color: string; items: LoadItem[] };
 
-/** Раскладывает записи и закрытия одного поста по дорожкам «Пост 1…N» жадно по времени начала. */
-export function layoutLanes(
-  posts: number,
+/**
+ * «Загрузка постов»: строка на каждый пост (сотрудника) его цветом, как колонки календаря. Запись без поста — на свободный пост
+ * своего вида. overflow — запись легла поверх другой на том же посту.
+ */
+export function postLoad(
+  lanes: Lane[],
   window: { start: number; end: number },
-  items: { start: number; end: number; kind: LaneItem["kind"] }[],
-): LaneItem[][] {
-  const lanes: LaneItem[][] = Array.from({ length: Math.max(posts, 1) }, () => []);
-  const busyUntil = new Array(lanes.length).fill(-Infinity);
+  items: { id: string; start: number; end: number; staffId: string | null; onStand: boolean; closed: boolean }[],
+): { rows: LoadRow[]; laneOf: Map<string, string> } {
+  const laneOf = assignLanes(items, lanes);
   const span = Math.max(window.end - window.start, 1);
-  for (const it of [...items].sort((a, b) => a.start - b.start)) {
-    let lane = busyUntil.findIndex((t) => t <= it.start);
-    const overflow = lane === -1;
-    if (overflow) lane = lanes.length - 1;
-    busyUntil[lane] = Math.max(busyUntil[lane], it.end);
-    const s = Math.max(it.start, window.start);
-    const e = Math.min(it.end, window.end);
-    if (e <= s) continue;
-    lanes[lane].push({ kind: it.kind, startPct: ((s - window.start) / span) * 100, widthPct: ((e - s) / span) * 100, overflow });
-  }
-  return lanes;
+  const rows = lanes.map((l) => {
+    const mine = items.filter((it) => laneOf.get(it.id) === l.id).sort((a, b) => a.start - b.start);
+    const out: LoadItem[] = [];
+    mine.forEach((it, i) => {
+      const s = Math.max(it.start, window.start), e = Math.min(it.end, window.end);
+      if (e <= s) return;
+      const overflow = !it.closed && mine.some((o, j) => j < i && !o.closed && o.end > it.start);
+      out.push({ startPct: ((s - window.start) / span) * 100, widthPct: ((e - s) / span) * 100, closed: it.closed, overflow });
+    });
+    return { id: l.id, name: l.name, color: l.color, items: out };
+  });
+  return { rows, laneOf };
 }
 
 export type DayData = Awaited<ReturnType<typeof loadDayForOwner>>;
@@ -53,14 +58,20 @@ export async function loadDayForOwner(business: Business, date: string) {
   const window = { start: bounds.start + openMin * 60000, end: bounds.start + closeMin * 60000 };
   // Точнее через localToUtc, но в России нет перехода на летнее время, а для полосы загрузки этого достаточно
   const active = bookings.filter((b) => b.status === "active" || b.status === "done");
-  const lanes = layoutLanes(business.posts, window, [
-    ...active.map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime(), kind: b.source })),
-    ...blocks.filter((b) => b.scope === "one_post").map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime(), kind: "one_post" as const })),
+  const staff = await db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, color: true, onStand: true } });
+  const lanes = calendarLanes(staff, business.posts, business.standPosts);
+  const load = postLoad(lanes, window, [
+    ...active.map((b) => ({ id: b.id, start: b.startAt.getTime(), end: b.endAt.getTime(), staffId: b.staffId, onStand: b.onStand, closed: false })),
+    // Закрытое время сотрудника — в его строке; закрытый один пост без сотрудника — на свободный пост
+    ...blocks.filter((b) => b.staffId || b.scope === "one_post").map((b) => ({ id: `x:${b.id}`, start: b.startAt.getTime(), end: b.endAt.getTime(), staffId: b.staffId, onStand: false, closed: true })),
   ]);
+  // Кто делает запись — в списке под временем, цветом поста, как в календаре
+  const laneById = new Map(lanes.map((l) => [l.id, l]));
+  const postOf = (bookingId: string) => { const l = laneById.get(load.laneOf.get(bookingId) ?? ""); return l ? { name: l.name, color: l.color } : null; };
   const span = window.end - window.start;
   const lunch = win?.breakFrom != null && win.breakTo != null ? { start: bounds.start + win.breakFrom * 60000, end: bounds.start + win.breakTo * 60000 } : null;
   const closedAll = [
-    ...blocks.filter((b) => b.scope === "all").map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime() })),
+    ...blocks.filter((b) => b.scope === "all" && !b.staffId).map((b) => ({ start: b.startAt.getTime(), end: b.endAt.getTime() })),
     ...(lunch ? [lunch] : []),
   ]
     .map((b) => {
@@ -80,7 +91,8 @@ export async function loadDayForOwner(business: Business, date: string) {
     lunch,
     bookings,
     blocks,
-    lanes,
+    rows: load.rows,
+    postOf,
     closedAll,
     nowPct,
     stats: {

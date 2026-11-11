@@ -28,6 +28,15 @@ export const GOOGLE_COLORS = [
   { hex: "#c0ca33", name: "Авокадо" },
   { hex: "#795548", name: "Какао" },
   { hex: "#616161", name: "Графит" },
+  // Остальные цвета Google (Сергей, 11 ноября: «светло-зелёный, серый»). В конце: у уже заведённых постов цвета не меняются
+  { hex: "#7cb342", name: "Фисташковый" },
+  { hex: "#a79b8e", name: "Берёза" },
+  { hex: "#d81b60", name: "Вишнёвый цвет" },
+  { hex: "#4285f4", name: "Кобальт" },
+  { hex: "#9e69af", name: "Аметист" },
+  { hex: "#e4c441", name: "Цитрон" },
+  { hex: "#b39ddb", name: "Глициния" },
+  { hex: "#f09300", name: "Манго" },
 ] as const;
 export const STAFF_COLORS = GOOGLE_COLORS.map((c) => c.hex);
 const STAND_COLOR = "#616161";
@@ -85,118 +94,34 @@ export function assignLanes<T extends CalItem>(items: T[], lanes: Lane[]): Map<s
   return out;
 }
 
-/**
- * Записи, которые пересекаются по времени, встают рядом, как в Google Календаре: у каждой номер столбика
- * внутри группы и число столбиков в группе.
- */
-export function sideBySide<T extends { id: string; start: number; end: number }>(items: T[]): Map<string, { col: number; cols: number }> {
-  const out = new Map<string, { col: number; cols: number }>();
-  const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end);
-  let group: { it: T; col: number }[] = [];
-  let groupEnd = -Infinity;
-  const flush = () => {
-    const cols = Math.max(0, ...group.map((g) => g.col)) + 1;
-    for (const g of group) out.set(g.it.id, { col: g.col, cols });
-    group = [];
-  };
-  for (const it of sorted) {
-    if (group.length && it.start >= groupEnd) { flush(); groupEnd = -Infinity; }
-    const colEnds: number[] = [];
-    for (const g of group) colEnds[g.col] = Math.max(colEnds[g.col] ?? -Infinity, g.it.end);
-    let col = colEnds.findIndex((e) => e <= it.start);
-    if (col === -1) col = colEnds.length;
-    group.push({ it, col });
-    groupEnd = Math.max(groupEnd, it.end);
-  }
-  if (group.length) flush();
-  return out;
-}
-
 /** Место записи в колонке дня: доли ширины колонки и порядок наложения (больше — выше). */
 export type Placed = { left: number; width: number; z: number };
 
-/** Записи, начавшиеся в пределах получаса, встают рядом; начавшаяся позже ложится внутрь идущей со сдвигом. */
-const STACK_MS = 30 * 60000;
-/** Сдвиг вложенной записи от левого края той, внутрь которой она легла (у Google ~24 px на колонку 490 px). */
-const INDENT = 0.049;
-/** Плашка, справа от которой в это время есть другая, шире своей доли: соседка перекрывает её часть. */
-const WIDE = 1.7;
-/** Длинные записи (от 2,5 часа) во вложенной группе стоят левее остальных. */
-const LONG_MS = 2.5 * 3600000;
-
 /**
- * Раскладка как в Google Календаре. Правило подобрано по скриншоту календаря клиента (17 записей за день,
- * расхождение с Google — доли процента ширины):
- * - записи дня, связанные пересечениями, делят колонку на столько долей, сколько колонок им нужно;
- * - начавшиеся почти одновременно (в пределах получаса) встают рядом, каждая плашка в 1,7 доли, если правее
- *   в это время что-то есть, иначе до правого края;
- * - начавшаяся позже идущих ложится внутрь той из них, что кончится позже всех (самая левая полоса не в счёт),
- *   со сдвигом вправо; такие записи делят оставшуюся справа ширину поровну, длинные левее;
- * - выше лежит та, что правее.
- * Ширину никто не задаёт — она получается из времени записей.
+ * Раскладка записей дня без наложений: пересекающиеся записи встают рядом столбиками, у каждого поста свой столбик
+ * по порядку постов (lane — номер поста), и записи одного поста идут в нём друг под другом. Две записи одного поста
+ * в одно время — ещё столбик рядом. Справа свободно — плашка шире, до первой соседки, как в Google.
+ * Раньше раскладывали лесенкой, как Google при сдвинутом начале: в загруженный день записи закрывали друг друга (Сергей, 11 ноября).
  */
-export function googleLayout<T extends { id: string; start: number; end: number }>(items: T[]): Map<string, Placed> {
-  type Node = { it: T; group: Group; slot: number; l: number; r: number };
-  type Group = { parent: Node | null; members: Node[]; slots: Node[][]; l: number; r: number; cols: number };
-  const overlap = (a: { start: number; end: number }, b: { start: number; end: number }) => a.start < b.end && b.start < a.end;
+export function columnLayout<T extends { id: string; start: number; end: number; lane: number }>(items: T[]): Map<string, Placed> {
+  const overlap = (a: T, b: T) => a.start < b.end && b.start < a.end;
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end || a.id.localeCompare(b.id));
   const out = new Map<string, Placed>();
-  let i = 0;
-  while (i < sorted.length) {
-    // Связанные пересечениями записи раскладываются вместе
-    const cluster = [sorted[i]];
+  for (let i = 0; i < sorted.length;) {
+    // Связанные пересечениями записи делят ширину колонки вместе
+    const group = [sorted[i]];
     let end = sorted[i].end;
-    for (i++; i < sorted.length && sorted[i].start < end; i++) { cluster.push(sorted[i]); end = Math.max(end, sorted[i].end); }
+    for (i++; i < sorted.length && sorted[i].start < end; i++) { group.push(sorted[i]); end = Math.max(end, sorted[i].end); }
     const cols: T[][] = [];
-    for (const it of cluster) { const c = cols.findIndex((c) => c.every((x) => !overlap(x, it))); if (c < 0) cols.push([it]); else cols[c].push(it); }
-
-    const root: Group = { parent: null, members: [], slots: [], l: 0, r: 1, cols: cols.length };
-    const groups: Group[] = [root];
-    const nodes: Node[] = [];
-    const long = (n: Node) => n.it.end - n.it.start >= LONG_MS;
-    const arrange = (g: Group) => {
-      // Во вложенной группе длинные левее, остальные по началу; колонку занимают только после стоящих в ней
-      const order = g.parent
-        ? [...g.members].sort((a, b) => +long(b) - +long(a) || (long(a) && long(b) ? (b.it.end - b.it.start) - (a.it.end - a.it.start) : 0) || a.it.start - b.it.start)
-        : g.members;
-      g.slots = [];
-      for (const n of order) {
-        let s = g.slots.findIndex((col) => col.every((m) => !overlap(m.it, n.it) && (!g.parent || m.it.end <= n.it.start)));
-        if (s < 0) s = g.slots.length;
-        n.slot = s;
-        (g.slots[s] ??= []).push(n);
-      }
-    };
-    const geometry = () => {
-      for (const g of groups) {
-        if (g.parent) { g.l = Math.min(g.parent.l + INDENT, 0.85); g.r = 1; }
-        const step = (g.r - g.l) / Math.max(g.parent ? g.slots.length : Math.max(g.cols, g.slots.length), 1);
-        g.slots.forEach((col, si) => col.forEach((n) => {
-          n.l = g.l + si * step;
-          const right = g.slots.some((t, j) => j > si && t.some((m) => overlap(m.it, n.it)));
-          n.r = right ? Math.min(g.r, n.l + WIDE * step) : g.r;
-        }));
-      }
-    };
-    for (const it of cluster) {
-      const active = nodes.filter((n) => overlap(n.it, it));
-      const near = active.filter((n) => it.start - n.it.start < STACK_MS).sort((a, b) => b.it.start - a.it.start)[0];
-      let group: Group;
-      if (near || !active.length) group = near ? near.group : root;
-      else {
-        const byLeft = [...active].sort((a, b) => a.l - b.l);
-        const pool = byLeft.length > 1 ? byLeft.slice(1) : byLeft;
-        const parent = pool.sort((a, b) => b.it.end - a.it.end || b.l - a.l)[0];
-        group = groups.find((g) => g.parent === parent) ?? { parent, members: [], slots: [], l: 0, r: 1, cols: 0 };
-        if (!groups.includes(group)) groups.push(group);
-      }
-      const node: Node = { it, group, slot: 0, l: 0, r: 1 };
-      group.members.push(node);
-      nodes.push(node);
-      arrange(group);
-      geometry();
+    for (const it of [...group].sort((a, b) => a.lane - b.lane || a.start - b.start)) {
+      const c = cols.findIndex((col) => col[0].lane === it.lane && col.every((x) => !overlap(x, it)));
+      if (c < 0) cols.push([it]); else cols[c].push(it);
     }
-    [...nodes].sort((a, b) => a.l - b.l || a.it.start - b.it.start).forEach((n, z) => out.set(n.it.id, { left: n.l, width: n.r - n.l, z: z + 1 }));
+    cols.forEach((col, ci) => col.forEach((it) => {
+      let span = 1;
+      while (ci + span < cols.length && cols[ci + span].every((x) => !overlap(x, it))) span++;
+      out.set(it.id, { left: ci / cols.length, width: span / cols.length, z: ci + 1 });
+    }));
   }
   return out;
 }

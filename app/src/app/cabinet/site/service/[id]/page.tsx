@@ -13,13 +13,15 @@ export default async function ServicePage({ params }: { params: Promise<{ id: st
   if (id !== "new" && !service) notFound();
   await ensureStaff(business);
   // Посты и мастера (не стенды) — кто делает услугу: шиномонтаж только на «Пост 1», двигатель — Ромашов или Шарапов
-  const posts = await db.staff.findMany({ where: { businessId: business.id, onStand: false }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true } });
+  const staff = await db.staff.findMany({ where: { businessId: business.id }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, onStand: true } });
+  const posts = staff.filter((s) => !s.onStand);
   const categories = (await db.service.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true } })).map((c) => c.category);
   return (
     <>
       <SubHead back="/cabinet/site/services" backLabel="Услуги" title={service ? service.name : "Новая услуга"} />
       <div className="grid gap-6 px-[18px] lg:max-w-2xl lg:px-0">
-        <ServiceForm service={service} categories={categories.length ? categories : ["Шиномонтаж"]} standPosts={business.standPosts} posts={posts} />
+        <ServiceForm service={service} categories={categories.length ? categories : ["Шиномонтаж"]} standPosts={business.standPosts} posts={posts}
+          onStand={business.standPosts > 0 ? staff.filter((s) => s.onStand).map((s) => s.name) : []} />
         {service && (
           <div className="grid gap-1">
             <DeleteService id={service.id} name={service.name} />

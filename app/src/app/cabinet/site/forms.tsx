@@ -42,7 +42,9 @@ type Svc = { id: string; name: string; category: string; description: string | n
 
 const DURATIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120, 180];
 
-export function ServiceForm({ service, categories, standPosts = 0, posts = [] }: { service: Svc | null; categories: string[]; standPosts?: number; posts?: { id: string; name: string }[] }) {
+export function ServiceForm({ service, categories, standPosts = 0, posts = [], onStand = [] }: {
+  service: Svc | null; categories: string[]; standPosts?: number; posts?: { id: string; name: string }[]; onStand?: string[];
+}) {
   const [state, action, pending] = useActionState(saveService.bind(null, service?.id ?? null), null);
   const dur = service?.durationMin ?? 60;
   return (
@@ -85,6 +87,13 @@ export function ServiceForm({ service, categories, standPosts = 0, posts = [] }:
               </label>
             ))}
           </div>
+          {onStand.length > 0 && (
+            // Сергей не нашёл здесь нового мастера: у него стояла галочка «Стенд развала» (11 ноября)
+            <span className="mt-1 text-xs text-zinc-500">
+              Здесь нет {onStand.join(", ")}: в «Посты и цвета» {onStand.length > 1 ? "у них" : "у него"} отмечено «Стенд развала».
+              Если это не развал, снимите там галочку.
+            </span>
+          )}
           {service && (
             <label className="mt-2 flex cursor-pointer items-center gap-3 text-[15px]">
               <input type="checkbox" name="staffForGroup" className="size-5 accent-accent" />

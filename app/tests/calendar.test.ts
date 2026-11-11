@@ -1,7 +1,7 @@
 // Календарь кабинета (22 октября): колонки сотрудников, раскладка записей, автоназначение мастера.
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createOwnerBooking, createSiteBooking, moveBooking, updateOwnerBooking } from "@/lib/booking";
-import { assignLanes, calendarLanes, sideBySide } from "@/lib/calendar";
+import { assignLanes, calendarLanes } from "@/lib/calendar";
 import { db } from "@/lib/db";
 import { findPhone } from "@/lib/phone";
 import { ensureStaff } from "@/lib/staff";
@@ -30,14 +30,6 @@ describe("колонки и раскладка", () => {
     const lanes = calendarLanes([], 2, 1);
     const map = assignLanes([item("1", 10, 12), item("2", 11, 13), item("3", 11, 12, { onStand: true }), item("4", 12, 14)], lanes);
     expect(Object.fromEntries(map)).toEqual({ "1": "post-1", "2": "post-2", "3": "stand-1", "4": "post-1" });
-  });
-
-  it("пересекающиеся записи встают рядом, непересекающиеся — во всю ширину", () => {
-    const pos = sideBySide([item("1", 10, 12), item("2", 11, 13), item("3", 12, 13), item("4", 14, 15)]);
-    expect(pos.get("1")).toEqual({ col: 0, cols: 2 });
-    expect(pos.get("2")).toEqual({ col: 1, cols: 2 });
-    expect(pos.get("3")).toEqual({ col: 0, cols: 2 });
-    expect(pos.get("4")).toEqual({ col: 0, cols: 1 });
   });
 });
 

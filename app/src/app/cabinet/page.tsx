@@ -37,6 +37,8 @@ function DayStrip({ date, today }: { date: string; today: string }) {
   );
 }
 
+const HATCH = "bg-[repeating-linear-gradient(45deg,#c3c9d0_0_3px,transparent_3px_6px)]";
+
 const STATUS_LABEL = { cancelled: "отменена", no_show: "не приехал", done: "выполнена" } as const;
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
@@ -88,18 +90,21 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             </span>
           </div>
           <div className="grid gap-[7px]">
-            {day.lanes.map((lane, i) => (
-              <div key={i} className="grid grid-cols-[48px_1fr] items-center gap-2 text-[11.5px] text-zinc-500">
-                Пост {i + 1}
+            {day.rows.map((row) => (
+              <div key={row.id} className="grid grid-cols-[88px_1fr] items-center gap-2 text-[11.5px] text-zinc-600">
+                <span className="flex min-w-0 items-center gap-1.5" title={row.name}>
+                  <i className="size-2.5 shrink-0 rounded-full" style={{ background: row.color }} />
+                  <span className="truncate">{row.name}</span>
+                </span>
                 <div className="relative h-[22px] rounded-md bg-zinc-100">
                   {day.closedAll.map((c, j) => (
-                    <i key={`c${j}`} className="absolute inset-y-0.5 rounded-[5px] bg-[repeating-linear-gradient(45deg,#c3c9d0_0_3px,transparent_3px_6px)]" style={{ left: `${c.startPct}%`, width: `${c.widthPct}%` }} />
+                    <i key={`c${j}`} className={`absolute inset-y-0.5 rounded-[5px] ${HATCH}`} style={{ left: `${c.startPct}%`, width: `${c.widthPct}%` }} />
                   ))}
-                  {lane.map((it, j) => (
+                  {row.items.map((it, j) => (
                     <i
                       key={j}
-                      className={`absolute inset-y-0.5 rounded-[5px] ${it.kind === "site" ? "bg-accent" : it.kind === "owner" ? "bg-zinc-700" : "bg-[repeating-linear-gradient(45deg,#c3c9d0_0_3px,transparent_3px_6px)]"} ${it.overflow ? "ring-2 ring-red-500" : ""}`}
-                      style={{ left: `${it.startPct}%`, width: `${it.widthPct}%` }}
+                      className={`absolute inset-y-0.5 rounded-[5px] border border-white ${it.closed ? HATCH : ""} ${it.overflow ? "ring-2 ring-red-500" : ""}`}
+                      style={{ left: `${it.startPct}%`, width: `${it.widthPct}%`, background: it.closed ? undefined : row.color }}
                     />
                   ))}
                   {day.nowPct != null && <span className="absolute -inset-y-[5px] w-0.5 rounded-sm bg-red-500" style={{ left: `${day.nowPct}%` }} />}
@@ -107,7 +112,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
               </div>
             ))}
           </div>
-          <div className="mt-1.5 grid grid-cols-[48px_1fr] gap-2 text-[10px] text-zinc-500">
+          <div className="mt-1.5 grid grid-cols-[88px_1fr] gap-2 text-[10px] text-zinc-500">
             <span />
             <div className="relative h-3">
               {hours.map((h) => (
@@ -116,9 +121,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11.5px] text-zinc-500">
-            <span className="inline-flex items-center gap-1.5"><i className="size-3 rounded-[3px] bg-accent" />с сайта</span>
-            <span className="inline-flex items-center gap-1.5"><i className="size-3 rounded-[3px] bg-zinc-700" />по телефону</span>
-            <span className="inline-flex items-center gap-1.5"><i className="size-3 rounded-[3px] bg-[repeating-linear-gradient(45deg,#c3c9d0_0_3px,transparent_3px_6px)]" />закрыто</span>
+            <span className="inline-flex items-center gap-1.5"><i className={`size-3 rounded-[3px] ${HATCH}`} />закрыто</span>
+            <span className="inline-flex items-center gap-1.5"><i className="size-3 rounded-[3px] ring-2 ring-red-500" />две записи в одно время</span>
           </div>
         </Card>
       ) : (
@@ -169,7 +173,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                   </div>
                   <div>
                     <div className="text-[15px] font-semibold">{b.reason || "Закрыто"}</div>
-                    <div className="mt-0.5 text-[13px] text-zinc-500">{b.scope === "all" ? "Закрыт весь сервис" : "Закрыт один пост"}</div>
+                    <div className="mt-0.5 text-[13px] text-zinc-500">{b.staffId ? `${day.postOf(`x:${b.id}`)?.name ?? "Сотрудник"} не принимает` : b.scope === "all" ? "Закрыт весь сервис" : "Закрыт один пост"}</div>
                   </div>
                 </Link>
               </div>
@@ -179,10 +183,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           const s = toLocal(b.startAt.getTime(), tz);
           const isNow = b.status === "active" && b.startAt.getTime() <= nowMs && b.endAt.getTime() > nowMs;
           const past = b.endAt.getTime() <= nowMs || b.status !== "active";
+          const post = day.postOf(b.id);
           return (
             <div key={b.id} className="contents">
               {head}
-              <div className={`grid grid-cols-[56px_1fr_42px] items-center gap-2.5 rounded-[14px] border bg-white p-3 ${isNow ? "border-transparent ring-2 ring-accent" : "border-zinc-200"} ${past && !isNow ? "opacity-55" : ""}`}>
+              <div className={`relative grid grid-cols-[56px_1fr_42px] items-center gap-2.5 overflow-hidden rounded-[14px] border bg-white p-3 ${post ? "pl-4" : ""} ${isNow ? "border-transparent ring-2 ring-accent" : "border-zinc-200"} ${past && !isNow ? "opacity-55" : ""}`}>
+                {post && <i aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: post.color }} />}
                 <Link href={`/cabinet/b/${b.id}`} className="text-[16.5px] font-bold">
                   {hhmm(s.minutes)}
                   <small className="block text-[11.5px] font-medium text-zinc-500">{Math.round((b.endAt.getTime() - b.startAt.getTime()) / 60000)} мин</small>
@@ -197,6 +203,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
                     {[b.car, b.clientName || b.serviceId || b.source === "site" ? b.serviceName : null].filter(Boolean).join(", ")}
                     {b.comment ? `. «${b.comment}»` : ""}
                   </div>
+                  {post && (
+                    <div className="mt-1 flex items-center gap-1.5 text-[12.5px] font-medium text-zinc-600">
+                      <i className="size-2.5 shrink-0 rounded-full" style={{ background: post.color }} />
+                      <span className="truncate">{post.name}</span>
+                    </div>
+                  )}
                 </Link>
                 {b.clientPhone ? (
                   <a href={`tel:${b.clientPhone}`} aria-label={`Позвонить: ${b.clientName || "клиент"}`} className="grid size-[42px] place-items-center rounded-full bg-emerald-50 text-emerald-700">
