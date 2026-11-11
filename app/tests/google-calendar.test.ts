@@ -12,16 +12,17 @@ import { makeBusiness, resetDb } from "./helpers";
 
 const M = 60000;
 const ev = (id: string, from: number, to: number, lane = 0) => ({ id, start: from * M, end: to * M, lane });
-/** Плашки не закрывают друг друга: у пересекающихся по времени нет общей ширины. */
+/** Ни одна плашка не закрыта: та, что выше, начинается хотя бы на столбик правее нижней, начало с текстом видно. */
 const noCover = (evs: ReturnType<typeof ev>[], l: Map<string, Placed>) => {
   for (const a of evs) for (const b of evs) {
     if (a === b || !(a.start < b.end && b.start < a.end)) continue;
     const pa = l.get(a.id)!, pb = l.get(b.id)!;
-    expect(pa.left + pa.width <= pb.left + 1e-9 || pb.left + pb.width <= pa.left + 1e-9, `${a.id} и ${b.id} накладываются`).toBe(true);
+    if (pb.z < pa.z) continue;
+    expect(pb.left > pa.left + 1e-9 || pb.left + pb.width <= pa.left + 1e-9, `${b.id} закрывает начало ${a.id}`).toBe(true);
   }
 };
 
-describe("раскладка записей без наложений", () => {
+describe("раскладка записей: рядом, без лесенки", () => {
   it("одна запись и записи не в одно время — во всю ширину", () => {
     const l = columnLayout([ev("a", 540, 600), ev("b", 600, 660)]);
     expect(l.get("a")).toMatchObject({ left: 0, width: 1 });
@@ -38,23 +39,25 @@ describe("раскладка записей без наложений", () => {
 
   it("справа свободно — плашка шире", () => {
     const l = columnLayout([ev("a", 540, 600, 0), ev("b", 540, 720, 1), ev("c", 660, 720, 0)]);
-    expect(l.get("a")).toMatchObject({ left: 0, width: 0.5 });
-    // У поста 2 после 12:00 пусто, но столбик поста 1 занят — c остаётся в своём
-    expect(l.get("c")).toMatchObject({ left: 0, width: 0.5 });
+    // Справа соседка — заходит под неё краем, соседка выше
+    expect(l.get("a")).toMatchObject({ left: 0, width: 0.85 });
+    expect(l.get("b")).toMatchObject({ left: 0.5, width: 0.5 });
+    expect(l.get("b")!.z).toBeGreaterThan(l.get("a")!.z);
     // y — вторая запись поста 1 поверх длинной: свой столбик, и правее до 12:00 свободно (x уже кончилась)
     const free = columnLayout([ev("long", 540, 1140, 0), ev("x", 540, 600, 1), ev("y", 660, 720, 0)]);
     expect(free.get("x")).toMatchObject({ left: 2 / 3, width: 1 / 3 });
     expect(free.get("y")).toMatchObject({ left: 1 / 3, width: 2 / 3 });
+    expect(free.get("long")!.width).toBeCloseTo(1.7 / 3);
   });
 
   it("две записи одного поста в одно время — рядом, а не друг на друге", () => {
     const evs = [ev("a", 540, 660, 0), ev("b", 600, 720, 0)];
     const l = columnLayout(evs);
-    expect(l.get("a")!.width).toBe(0.5);
+    expect([l.get("a")!.left, l.get("b")!.left]).toEqual([0, 0.5]);
     noCover(evs, l);
   });
 
-  it("загруженный день клиента (17 записей, 6 постов): ни одна запись не закрыта другой", () => {
+  it("загруженный день клиента (17 записей, 6 постов): ни одна запись не закрыта другой, все в пределах колонки", () => {
     const h = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
     const day: [string, string, string][] = [
       ["грета", "09:00", "19:00"], ["к252ае", "09:00", "17:45"], ["туарег", "09:00", "12:00"], ["Солярис", "09:00", "11:00"],

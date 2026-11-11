@@ -98,11 +98,15 @@ export function assignLanes<T extends CalItem>(items: T[], lanes: Lane[]): Map<s
 export type Placed = { left: number; width: number; z: number };
 
 /**
- * Раскладка записей дня без наложений: пересекающиеся записи встают рядом столбиками, у каждого поста свой столбик
- * по порядку постов (lane — номер поста), и записи одного поста идут в нём друг под другом. Две записи одного поста
- * в одно время — ещё столбик рядом. Справа свободно — плашка шире, до первой соседки, как в Google.
+ * Раскладка записей дня как в Google, но без лесенки: пересекающиеся записи встают рядом столбиками, у каждого поста свой
+ * столбик по порядку постов (lane — номер поста), и записи одного поста идут в нём друг под другом. Две записи одного поста
+ * в одно время — ещё столбик рядом. Справа свободно — плашка шире; справа соседка — левая заходит под неё краем,
+ * своё начало с текстом всегда открыто.
  * Раньше раскладывали лесенкой, как Google при сдвинутом начале: в загруженный день записи закрывали друг друга (Сергей, 11 ноября).
  */
+/** На сколько столбика плашка заходит под соседку справа (у Google плашка в 1,7 доли). */
+const UNDER = 0.7;
+
 export function columnLayout<T extends { id: string; start: number; end: number; lane: number }>(items: T[]): Map<string, Placed> {
   const overlap = (a: T, b: T) => a.start < b.end && b.start < a.end;
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end || a.id.localeCompare(b.id));
@@ -120,7 +124,9 @@ export function columnLayout<T extends { id: string; start: number; end: number;
     cols.forEach((col, ci) => col.forEach((it) => {
       let span = 1;
       while (ci + span < cols.length && cols[ci + span].every((x) => !overlap(x, it))) span++;
-      out.set(it.id, { left: ci / cols.length, width: span / cols.length, z: ci + 1 });
+      // Как в Google: если справа соседка, плашка заходит под неё на 0,7 столбика (соседка выше), начало с текстом открыто
+      const width = ci + span < cols.length ? span + UNDER : span;
+      out.set(it.id, { left: ci / cols.length, width: width / cols.length, z: ci + 1 });
     }));
   }
   return out;
