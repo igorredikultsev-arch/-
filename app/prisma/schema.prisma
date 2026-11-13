@@ -152,6 +152,8 @@ model Staff {
   name       String
   color      String
   onStand    Boolean   @default(false)
+  /// Общий календарь (перенесён из Google, «СТО Конкурент»): записи вносят вручную, сайт и автоподбор туда не ставят
+  shared     Boolean   @default(false)
   sortOrder  Int       @default(0)
   bookings   Booking[]
   notes      CalendarNote[]
@@ -269,6 +271,8 @@ model Booking {
   endAt       DateTime
   source      BookingSource
   status      BookingStatus @default(active)
+  /// Когда нажали «Клиент у нас»: руководителям и мастеру записи ушло уведомление
+  arrivedAt   DateTime?
 
   clientName  String?
   clientPhone String?

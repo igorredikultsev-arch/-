@@ -5,7 +5,7 @@ import { requireOwner } from "@/lib/auth";
 import { NO_SHOW_LIMIT, noShowCount } from "@/lib/booking";
 import { db } from "@/lib/db";
 import { formatPhone } from "@/lib/phone";
-import { formatDateTime, toLocal } from "@/lib/time";
+import { formatDateTime, hhmm, toLocal } from "@/lib/time";
 import { Card, Notice, Tag } from "../../ui";
 import { BookingActions } from "./booking-actions";
 import { StaffSelect } from "./staff-select";
@@ -78,7 +78,8 @@ export default async function BookingCard({ params }: { params: Promise<{ id: st
       <Link href={`/cabinet/b/${b.id}/edit`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-[15px] font-semibold ring-1 ring-zinc-200">
         <PencilSimple size={18} /> Изменить
       </Link>
-      <BookingActions id={b.id} status={b.status} hasPd={!!(b.clientName || b.clientPhone || b.car || b.comment)} started={b.startAt.getTime() <= Date.now()} />
+      <BookingActions id={b.id} status={b.status} hasPd={!!(b.clientName || b.clientPhone || b.car || b.comment)} started={b.startAt.getTime() <= Date.now()}
+        today={date === toLocal(Date.now(), tz).date} arrived={b.arrivedAt ? hhmm(toLocal(b.arrivedAt.getTime(), tz).minutes) : null} />
     </div>
   );
 }

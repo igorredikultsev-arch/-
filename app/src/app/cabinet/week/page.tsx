@@ -20,7 +20,7 @@ function gmtLabel(tz: string): string {
 }
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; hide?: string; days?: string }> }) {
-  const { business, readOnly, masterStaffId } = await requireViewer();
+  const { business, readOnly } = await requireViewer();
   const tz = business.timezone;
   const sp = await searchParams;
   const view = VIEWS.find((v) => v === sp.view) ?? "week";
@@ -83,8 +83,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       scrollMin={Math.max(0, (open.length ? Math.min(...open) : 9 * 60) - 60)}
       // До какого часа видно без прокрутки: конец рабочего дня и час запаса
       scrollEndMin={Math.min(1440, (close.length ? Math.max(...close) : 20 * 60) + 60)}
-      // Мастер по умолчанию видит только свой пост; остальные можно включить галочками
-      hidden={sp.hide != null || !masterStaffId ? (sp.hide ?? "").split(",").filter(Boolean) : lanes.filter((l) => l.id !== masterStaffId).map((l) => l.id)}
+      // Видны все посты, лишние можно выключить галочками. Раньше мастер видел только свой пост,
+      // а включённые чужие пропадали после обновления (Сергей, 13 ноября: «нужно, чтобы всегда горели все»)
+      hidden={(sp.hide ?? "").split(",").filter(Boolean)}
       readOnly={readOnly}
       staff={lanes.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
       bookings={cal.bookings.map((b) => ({
@@ -99,6 +100,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         staffId: laneOf.get(b.id) ?? lanes[0]?.id ?? "",
         ownStaff: !!b.staffId,
         phone: b.clientPhone,
+        arrived: b.arrivedAt ? hhmm(toLocal(b.arrivedAt.getTime(), tz).minutes) : null,
         phoneText: b.clientPhone ? formatPhone(b.clientPhone) : null,
         author: b.source === "site" ? "Записался сам через сайт" : b.externalId ? "Перенесено из Google Календаря" : b.createdBy ? `Внёс: ${b.createdBy.name || formatPhone(b.createdBy.phone)}` : "Внесено в кабинете",
       }))}

@@ -254,7 +254,7 @@ export default async function AdminBusiness({ params, searchParams }: { params: 
               </Card>
               {owners.length > 0 && (
                 <Card title="Входы мастеров">
-                  <p className="text-[14px] text-zinc-600">Мастер видит календарь записей и ничего не может менять: ни записать, ни перенести, ни удалить. Календарь открывается на его посту.</p>
+                  <p className="text-[14px] text-zinc-600">Мастер видит календарь записей и ничего не может менять: ни записать, ни перенести, ни удалить. Видит все посты, лишние может выключить галочками.</p>
                   {masters.length > 0 && (
                     <ul className="grid gap-1.5 text-[14px]">
                       {masters.map((u) => (

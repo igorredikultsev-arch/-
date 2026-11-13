@@ -15,7 +15,8 @@ export async function freeStaff(
 ): Promise<string | null> {
   const only = onStand ? [] : (opts.only ?? []);
   const staff = await tx.staff.findMany({
-    where: { businessId, ...(only.length ? { id: { in: only } } : {}) },
+    // Общий календарь («СТО Конкурент») — не пост: туда записи вносят только вручную
+    where: { businessId, shared: false, ...(only.length ? { id: { in: only } } : {}) },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: { id: true, onStand: true, _count: { select: { services: true } } },
   });

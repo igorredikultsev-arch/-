@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { erasePersonalData, setBookingStatus } from "../../actions";
+import { clientArrived, erasePersonalData, setBookingStatus } from "../../actions";
 import { btnSecondary } from "../../ui";
 
 type Status = "active" | "cancelled" | "no_show" | "done";
 
-export function BookingActions({ id, status, hasPd, started }: { id: string; status: Status; hasPd: boolean; started: boolean }) {
+export function BookingActions({ id, status, hasPd, started, today, arrived }: { id: string; status: Status; hasPd: boolean; started: boolean; today: boolean; arrived: string | null }) {
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState<null | "cancel" | "erase">(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -55,6 +55,12 @@ export function BookingActions({ id, status, hasPd, started }: { id: string; sta
     <div className="grid gap-2">
       {status === "active" ? (
         <>
+          {/* «Клиент у нас»: руководителям и мастеру записи — уведомление (Сергей, 13 ноября) */}
+          {arrived ? (
+            <p className="py-1 text-center text-[14px] font-semibold text-emerald-700">Клиент у нас с {arrived}</p>
+          ) : today && (
+            <button type="button" disabled={pending} className={`${btnSecondary} !bg-ink !text-white`} onClick={() => run(() => clientArrived(id))}>Клиент у нас</button>
+          )}
           {/* «Выполнена» и «Не приехал» — только когда время записи наступило, чтобы случайно не освободить будущее время */}
           {started && (
             <div className="grid grid-cols-2 gap-2">

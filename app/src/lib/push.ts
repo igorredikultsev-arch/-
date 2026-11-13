@@ -32,11 +32,12 @@ function subject() {
  * Разослать уведомление. Владелец получает всё; мастер — только записи своего поста (staffId записи);
  * userId — только устройствам этого человека (проверка). Ошибки не мешают записи: только пишутся в журнал.
  */
-export async function notifyBusiness(businessId: string, msg: PushMessage, to: { staffId?: string | null; userId?: string } = {}): Promise<{ sent: number; removed: number }> {
+export async function notifyBusiness(businessId: string, msg: PushMessage, to: { staffId?: string | null; userId?: string; except?: string } = {}): Promise<{ sent: number; removed: number }> {
   const who = to.userId
     ? { userId: to.userId }
     : { OR: [{ user: { role: { not: "master" as const } } }, ...(to.staffId ? [{ user: { role: "master" as const, staffId: to.staffId } }] : [])] };
-  return send({ businessId, ...who }, msg);
+  // except — тот, кто нажал: себе уведомлять незачем
+  return send({ businessId, ...who, ...(to.except ? { NOT: { userId: to.except } } : {}) }, msg);
 }
 
 /** Только мастеру поста: запись поставил или изменил владелец, ему самому слать незачем. */
@@ -94,6 +95,16 @@ export function masterMessage(kind: "new" | "moved" | "removed" | "cancelled", b
   return {
     title: `${title}: ${when(b.startAt, tz)}`,
     body: kind === "moved" && was ? `${what}. Было ${when(was, tz)}` : what,
+    url: `/cabinet/week?date=${toLocal(b.startAt.getTime(), tz).date}`,
+  };
+}
+
+/** «Клиент у нас: 09:00» руководителям и мастеру записи. Текст своей записи не шлём: в нём бывают имя и телефон клиента. */
+export function arrivedMessage(b: { startAt: Date; serviceId: string | null; serviceName: string }, staffName: string | null, tz: string): PushMessage {
+  const what = b.serviceId ? b.serviceName : "Подробности в календаре";
+  return {
+    title: `Клиент у нас: запись на ${hhmm(toLocal(b.startAt.getTime(), tz).minutes)}`,
+    body: staffName ? `${staffName}. ${what}` : what,
     url: `/cabinet/week?date=${toLocal(b.startAt.getTime(), tz).date}`,
   };
 }

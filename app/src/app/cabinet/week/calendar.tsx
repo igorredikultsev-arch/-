@@ -8,17 +8,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  Bell, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Clock, DeviceMobile, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
+  Bell, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, CheckCircle, Clock, DeviceMobile, DotsThreeVertical, DownloadSimple, Gear, Globe, List, PencilSimple, Phone, Plus, Trash, User, X,
 } from "@phosphor-icons/react";
 import { columnLayout, isMultiWeek, MAX_RANGE_DAYS, textOn } from "@/lib/calendar";
 import { addDays, hhmm, weekdayOf } from "@/lib/time";
-import { calendarCreate, calendarEdit, calendarMove, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
+import { calendarCreate, calendarEdit, calendarMove, clientArrived, noteUpdate, setBookingStaff, setBookingStatus } from "../actions";
 
 export type CalView = "day" | "3days" | "week" | "month" | "custom";
 /** Сколько дней можно выделить в мини-календаре: больше — столбцы слишком узкие */
 export type CalBooking = {
   id: string; start: number; end: number; title: string; status: "active" | "done" | "no_show" | "cancelled"; site: boolean;
   staffId: string; ownStaff: boolean; phone: string | null; phoneText: string | null; author: string;
+  /** Когда нажали «Клиент у нас», «14:05» */
+  arrived: string | null;
   /** Своя запись одним полем (без услуги): в окне изменения меняется и текст */
   custom: boolean;
 };
@@ -187,7 +189,7 @@ export function Calendar(p: Props) {
     if (!t) return "Напишите, кого записываем";
     const tmp: CalBooking = {
       id: `tmp-${Date.now()}`, start: (p.dayStarts[c.date] ?? 0) + c.start * 60000, end: (p.dayStarts[c.date] ?? 0) + (c.start + c.dur) * 60000,
-      title: t, status: "active", site: false, staffId: c.staffId || p.staff[0]?.id || "", ownStaff: !!c.staffId, phone: null, phoneText: null, author: "", custom: true,
+      title: t, status: "active", site: false, staffId: c.staffId || p.staff[0]?.id || "", ownStaff: !!c.staffId, phone: null, phoneText: null, author: "", custom: true, arrived: null,
     };
     if (!c.allDay && p.dayStarts[c.date] != null) setTemp((x) => [...x, tmp]);
     setCreate(null);
@@ -631,7 +633,12 @@ export function Calendar(p: Props) {
         const b = bookings.find((x) => x.id === pop.id);
         if (!b) return null;
         return (
-          <EventPopover readOnly={p.readOnly} b={b} anchor={pop.anchor} staff={p.staff} color={color(b.staffId)} dayStarts={p.dayStarts} close={() => setPop(null)}
+          <EventPopover readOnly={p.readOnly} b={b} anchor={pop.anchor} staff={p.staff} color={color(b.staffId)} dayStarts={p.dayStarts} today={p.today} close={() => setPop(null)}
+            onArrived={() => startTransition(async () => {
+              const r = await clientArrived(b.id).catch(() => ({ error: "Не получилось. Проверьте интернет" }));
+              setToast({ text: r.error ?? "Отметили. Руководителям и мастеру ушло уведомление" });
+              router.refresh();
+            })}
             onDelete={() => {
               setPop(null);
               setRemoved((s) => new Set(s).add(b.id));
@@ -1006,9 +1013,9 @@ type EditData = { date: string; startMin: number; durationMin: number; staffId: 
 /** Время для выпадающего списка: шаг 15 минут и текущее значение, если оно не на шаге (запись с сайта на 12:10) */
 const timeOptions = (list: number[], cur: number) => (list.includes(cur) ? list : [...list, cur].sort((x, y) => x - y));
 
-function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onStaff, onEdit, readOnly }: {
-  readOnly?: boolean; b: CalBooking; anchor: Anchor; staff: Staff[]; color: string; dayStarts: Record<string, number>; close: () => void; onDelete: () => void;
-  onStaff: (id: string | null) => void; onEdit: (d: EditData) => void;
+function EventPopover({ b, anchor, staff, color, dayStarts, today, close, onDelete, onStaff, onEdit, onArrived, readOnly }: {
+  readOnly?: boolean; b: CalBooking; anchor: Anchor; staff: Staff[]; color: string; dayStarts: Record<string, number>; today: string; close: () => void; onDelete: () => void;
+  onStaff: (id: string | null) => void; onEdit: (d: EditData) => void; onArrived: () => void;
 }) {
   const date = Object.keys(dayStarts).find((d) => b.start >= dayStarts[d] && b.start < dayStarts[d] + 86400000) ?? Object.keys(dayStarts)[0];
   const ds = dayStarts[date];
@@ -1108,6 +1115,17 @@ function EventPopover({ b, anchor, staff, color, dayStarts, close, onDelete, onS
           <div className="flex items-center gap-4 text-[#444746]">
             {b.site ? <Globe size={20} className="shrink-0" /> : <User size={20} className="shrink-0" />} {b.author}
           </div>
+        )}
+        {b.arrived ? (
+          <div className="flex items-center gap-4 font-medium text-[#137333]">
+            <CheckCircle size={20} weight="fill" className="shrink-0" /> Клиент у нас с {b.arrived}
+          </div>
+        ) : !readOnly && b.status === "active" && date === today && (
+          // Клиент приехал: руководителям и мастеру этой записи — уведомление (Сергей, 13 ноября)
+          <button type="button" onClick={onArrived}
+            className="flex h-10 w-fit items-center gap-2 rounded-full bg-[#0b57d0] px-5 text-[14px] font-medium text-white hover:shadow-md">
+            <CheckCircle size={20} /> Клиент у нас
+          </button>
         )}
       </div>
     </Floating>

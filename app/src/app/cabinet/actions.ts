@@ -15,7 +15,7 @@ import { dayBounds } from "@/lib/slots";
 import { db } from "@/lib/db";
 import { OFFER_VERSION } from "@/lib/legal";
 import { imageMime, LOGO_MAX_BYTES } from "@/lib/logo";
-import { masterMessage, notifyBusiness, notifyMaster, pushHostOk } from "@/lib/push";
+import { arrivedMessage, masterMessage, notifyBusiness, notifyMaster, pushHostOk } from "@/lib/push";
 import { findPhone, normalizePhone } from "@/lib/phone";
 import { addDays, hhmm, isDateString, localToUtc, parseHhmm, toLocal } from "@/lib/time";
 
@@ -91,6 +91,23 @@ export async function setBookingStatus(
   tellMasters(business.id, business.timezone, booking, { ...booking, status });
   await audit("booking.status", { userId: user.id, businessId: business.id, details: { id, status } });
   revalidatePath("/cabinet", "layout");
+}
+
+/**
+ * «Клиент у нас»: администратор отмечает, что клиент приехал, — руководителям и мастеру записи уходит уведомление
+ * (Сергей, 13 ноября). Повторное нажатие ничего не шлёт.
+ */
+export async function clientArrived(id: string): Promise<{ error?: string }> {
+  const { user, business, booking } = await ownBooking(id);
+  if (booking.status !== "active") return { error: "Запись отменена или уже закрыта" };
+  const { count } = await db.booking.updateMany({ where: { id, arrivedAt: null }, data: { arrivedAt: new Date() } });
+  if (count) {
+    const staff = booking.staffId ? await db.staff.findUnique({ where: { id: booking.staffId }, select: { name: true } }) : null;
+    after(() => notifyBusiness(business.id, arrivedMessage(booking, staff?.name ?? null, business.timezone), { staffId: booking.staffId, except: user.id }));
+    await audit("booking.arrived", { userId: user.id, businessId: business.id, details: { id } });
+  }
+  revalidatePath("/cabinet", "layout");
+  return {};
 }
 
 /** Записи в интервале для предупреждения: «05.10 10:00 Иван, +7 (912) …». */
@@ -361,6 +378,7 @@ const StaffRows = z
     name: z.string().trim().min(1, "Напишите название поста").max(40, "Название не длиннее 40 знаков"),
     color: z.string().regex(/^#[0-9a-f]{6}$/i),
     onStand: z.boolean(),
+    shared: z.boolean().default(false),
   }))
   .max(30);
 
@@ -375,8 +393,8 @@ export async function saveStaff(rows: z.input<typeof StaffRows>): Promise<Action
     db.staff.deleteMany({ where: { businessId: business.id, id: { in: existing.map((e) => e.id).filter((id) => !keep.has(id)) } } }),
     ...p.data.map((r, i) =>
       r.id && existing.some((e) => e.id === r.id)
-        ? db.staff.update({ where: { id: r.id }, data: { name: r.name, color: r.color, onStand: r.onStand, sortOrder: i } })
-        : db.staff.create({ data: { businessId: business.id, name: r.name, color: r.color, onStand: r.onStand, sortOrder: i } }),
+        ? db.staff.update({ where: { id: r.id }, data: { name: r.name, color: r.color, onStand: r.onStand, shared: r.shared, sortOrder: i } })
+        : db.staff.create({ data: { businessId: business.id, name: r.name, color: r.color, onStand: r.onStand, shared: r.shared, sortOrder: i } }),
     ),
   ]);
   await audit("settings.save", { userId: user.id, businessId: business.id, details: { part: "staff" } });

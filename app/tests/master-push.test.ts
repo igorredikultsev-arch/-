@@ -12,7 +12,8 @@ vi.mock("web-push", () => ({
 }));
 
 import { db } from "@/lib/db";
-import { masterMessage, notifyBusiness, notifyMaster, ownerDevices } from "@/lib/push";
+import { arrivedMessage, masterMessage, notifyBusiness, notifyMaster, ownerDevices } from "@/lib/push";
+import { freeStaff } from "@/lib/staff";
 import { makeBusiness, resetDb } from "./helpers";
 
 const msg = { title: "Новая запись", body: "Диагностика", url: "/cabinet" };
@@ -30,7 +31,7 @@ describe("уведомления мастерам", () => {
     for (const [u, e] of [[owner, "owner"], [m3, "m3"], [m5, "m5"]] as const) {
       await db.pushSubscription.create({ data: { endpoint: `https://push.example/${e}`, p256dh: "p256dh-key-123", auth: "auth-key-1", userId: u.id, businessId: biz.id } });
     }
-    return { biz, p3, p5, m3 };
+    return { biz, p3, p5, m3, owner };
   }
 
   it("запись на пост 5: владельцу и Шарапову, Ромашову нет", async () => {
@@ -67,5 +68,41 @@ describe("уведомления мастерам", () => {
     const { biz, m3 } = await setup();
     await notifyBusiness(biz.id, msg, { userId: m3.id });
     expect(sentTo).toEqual(["https://push.example/m3"]);
+  });
+});
+
+// Сергей, 13 ноября: «Клиент у нас» — руководителям и мастеру записи; общий календарь «СТО Конкурент» — не пост
+describe("клиент у нас и общий календарь", () => {
+  beforeEach(async () => { sentTo.length = 0; await resetDb(); });
+
+  it("«Клиент у нас»: другим руководителям и мастеру записи, нажавшему и чужому мастеру нет", async () => {
+    const biz = await makeBusiness();
+    const p3 = await db.staff.create({ data: { businessId: biz.id, name: "Ромашов", color: "#039be5" } });
+    const p5 = await db.staff.create({ data: { businessId: biz.id, name: "Шарапов", color: "#33b679" } });
+    const users = {
+      admin: await db.user.create({ data: { phone: "+79990000001", passwordHash: "x", role: "owner", businessId: biz.id } }),
+      boss: await db.user.create({ data: { phone: "+79990000002", passwordHash: "x", role: "owner", businessId: biz.id } }),
+      m3: await db.user.create({ data: { phone: "+79990000003", passwordHash: "x", role: "master", businessId: biz.id, staffId: p3.id } }),
+      m5: await db.user.create({ data: { phone: "+79990000005", passwordHash: "x", role: "master", businessId: biz.id, staffId: p5.id } }),
+    };
+    for (const [e, u] of Object.entries(users)) {
+      await db.pushSubscription.create({ data: { endpoint: `https://push.example/${e}`, p256dh: "p256dh-key-123", auth: "auth-key-1", userId: u.id, businessId: biz.id } });
+    }
+    const m = arrivedMessage({ startAt: new Date("2026-11-13T06:00:00Z"), serviceId: null, serviceName: "Гранта 89200107890 утечка тока" }, "Шарапов", "Europe/Moscow");
+    expect(m.title).toBe("Клиент у нас: запись на 09:00");
+    expect(m.body).toBe("Шарапов. Подробности в календаре");
+    await notifyBusiness(biz.id, m, { staffId: p5.id, except: users.admin.id });
+    expect(sentTo.sort()).toEqual(["https://push.example/boss", "https://push.example/m5"]);
+  });
+
+  it("запись с сайта не встаёт в общий календарь, даже если он первый и свободен", async () => {
+    const biz = await makeBusiness();
+    await db.staff.create({ data: { businessId: biz.id, name: "СТО Конкурент", color: "#616161", shared: true, sortOrder: 0 } });
+    const post = await db.staff.create({ data: { businessId: biz.id, name: "Андронов", color: "#0b8043", sortOrder: 1 } });
+    const start = new Date("2026-11-20T07:00:00Z"), end = new Date("2026-11-20T08:00:00Z");
+    expect(await freeStaff(db as never, biz.id, false, start, end, 0)).toBe(post.id);
+    await db.booking.create({ data: { businessId: biz.id, staffId: post.id, serviceName: "Масло", startAt: start, endAt: end, source: "owner", cancelToken: "t-shared-1" } });
+    // Пост занят — запись остаётся без поста, а не уходит в общий календарь
+    expect(await freeStaff(db as never, biz.id, false, start, end, 0)).toBeNull();
   });
 });

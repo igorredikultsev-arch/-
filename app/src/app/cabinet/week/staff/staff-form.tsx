@@ -7,12 +7,12 @@ import { saveStaff, type ActionResult } from "../../actions";
 import { Result, SaveBar } from "../../site/result";
 import { btnSecondary, inputCls } from "../../ui";
 
-type Row = Omit<StaffRow, "id"> & { id?: string; key: string };
+type Row = Omit<StaffRow, "id"> & { id?: string; key: string; shared?: boolean };
 
 let seq = 0;
 const nextColor = (rows: Row[]) => STAFF_COLORS.find((c) => !rows.some((r) => r.color === c)) ?? STAFF_COLORS[rows.length % STAFF_COLORS.length];
 
-export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[]; posts: number; standPosts: number }) {
+export function StaffForm({ initial, posts, standPosts }: { initial: (StaffRow & { shared: boolean })[]; posts: number; standPosts: number }) {
   const [rows, setRows] = useState<Row[]>(() => initial.map((s) => ({ ...s, key: s.id })));
   const [picking, setPicking] = useState<string | null>(null);
   const [state, setState] = useState<ActionResult>(null);
@@ -35,7 +35,7 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
       className="grid gap-3"
       onSubmit={(e) => {
         e.preventDefault();
-        start(async () => setState(await saveStaff(rows.map(({ id, name, color, onStand }) => ({ id, name, color, onStand: standPosts > 0 && onStand })))));
+        start(async () => setState(await saveStaff(rows.map(({ id, name, color, onStand, shared }) => ({ id, name, color, onStand: standPosts > 0 && onStand, shared: !!shared })))));
       }}
     >
       {!rows.length && (
@@ -71,6 +71,10 @@ export function StaffForm({ initial, posts, standPosts }: { initial: StaffRow[];
               Стенд развала
             </label>
           )}
+          <label className="flex items-start gap-2.5 text-[14px] leading-snug text-zinc-700">
+            <input type="checkbox" checked={!!r.shared} onChange={(e) => patch(r.key, { shared: e.target.checked })} className="mt-px size-5 shrink-0 accent-accent" />
+            <span>Общий календарь<span className="block text-[12.5px] text-zinc-500">Не пост: запись с сайта сюда не встанет, вносите вручную</span></span>
+          </label>
         </div>
       ))}
       <button type="button" onClick={() => add()} className={btnSecondary}><Plus size={18} weight="bold" /> Добавить пост</button>

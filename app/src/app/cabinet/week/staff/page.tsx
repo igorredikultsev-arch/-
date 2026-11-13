@@ -11,7 +11,7 @@ export default async function StaffPage() {
   const staff = await db.staff.findMany({
     where: { businessId: business.id },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    select: { id: true, name: true, color: true, onStand: true },
+    select: { id: true, name: true, color: true, onStand: true, shared: true },
   });
   return (
     <>
