@@ -285,7 +285,7 @@ html.was-review:not(.review) .show-marks{display:inline-flex;align-items:center;
 .bk-aside{display:grid;gap:18px;align-content:start}
 .bk-alt{font-size:15px;color:var(--muted);display:grid;gap:4px}
 .bk-alt .tel{text-decoration:none;display:inline-flex;align-items:center;min-height:44px;color:var(--ink);font:600 24px/1.15 var(--f-display);letter-spacing:-.01em}
-.bk{scroll-margin-top:calc(var(--header-h) + 16px);background:var(--surface);border-radius:var(--r-surface);box-shadow:0 1px 0 rgba(20,48,106,.05),0 24px 60px -32px rgba(20,48,106,.28);overflow:hidden;min-width:0}
+.bk{scroll-margin-top:calc(var(--header-h) + 16px);background:var(--surface);border-radius:var(--r-surface);box-shadow:0 1px 0 rgba(20,48,106,.05),0 24px 60px -32px rgba(20,48,106,.28);min-width:0}
 .bk-prog{list-style:none;margin:0;padding:16px 20px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .bk-prog li{display:grid;gap:4px;font:400 13px/1 var(--f-body);color:var(--muted)}
 .bk-prog li::before{content:"";height:3px;border-radius:2px;background:var(--line);transition:background .3s}
@@ -310,16 +310,36 @@ html.was-review:not(.review) .show-marks{display:inline-flex;align-items:center;
 .opt input:checked+.box{border-color:var(--blue);background:var(--blue-soft)}
 .opt input:focus-visible+.box{outline:2px solid var(--blue);outline-offset:2px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-/* Keypad: one framed grid, 1px dividers, selected key filled blue. 18 series = 6x3 on phone, 9x2 on desktop. */
-.keys{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--ctl);border:1px solid var(--ctl);border-radius:12px;overflow:hidden}
-.keys .opt{position:relative;display:block;min-width:0}
-.keys .box{display:grid;place-items:center;min-height:52px;padding:0 4px;background:var(--surface);font:600 17px/1.1 var(--f-display);font-variant-numeric:tabular-nums;text-align:center;cursor:pointer;transition:background-color .15s,color .15s}
-.keys .box:hover{background:var(--paper)}
-.keys input:checked+.box{background:var(--blue);color:#fff;border-color:transparent}
-.keys input:focus-visible+.box{outline:2px solid var(--ink);outline-offset:-4px}
-.keys-body{grid-template-columns:repeat(3,minmax(0,1fr))}
-.keys-body .box{font:500 15px/1.2 var(--f-body)}
-@media (min-width:560px){.keys-ser{grid-template-columns:repeat(9,minmax(0,1fr))}}
+/* Car picker: two native selects (system wheel on iPhone, menu on Android). */
+.car-row{display:grid;gap:16px}
+@media (min-width:560px){.car-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.sel{position:relative}
+.sel::after{content:"";position:absolute;right:16px;top:50%;width:9px;height:9px;margin-top:-7px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(45deg);pointer-events:none}
+.sel select{appearance:none;-webkit-appearance:none;width:100%;min-height:52px;padding:0 44px 0 14px;border:1px solid var(--ctl);border-radius:var(--r-input);background:var(--surface);color:var(--ink);font:500 17px/1.2 var(--f-body);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.sel select:hover{border-color:var(--ink-2)}
+.sel select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(31,111,209,.18)}
+.sel select:invalid,.sel select.empty{color:var(--muted)}
+.sel select:disabled{background:var(--paper);color:var(--muted);cursor:not-allowed}
+.sel:has(select:disabled)::after{border-color:var(--line-2)}
+/* Desktop dropdown in site style (mouse/trackpad only). Touch keeps the native select: iOS wheel, Android menu. */
+.dd-native{position:absolute;inset:0;opacity:0;pointer-events:none}
+.is-dd::after{transition:transform .2s var(--ease)}
+.is-dd.open::after{transform:rotate(225deg);margin-top:-2px}
+.dd-btn{display:flex;align-items:center;width:100%;min-height:52px;padding:0 44px 0 14px;border:1px solid var(--ctl);border-radius:var(--r-input);background:var(--surface);color:var(--ink);font:500 17px/1.2 var(--f-body);text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s,box-shadow .15s}
+.dd-btn.empty{color:var(--muted)}
+.dd-btn:hover:not(:disabled){border-color:var(--ink-2)}
+.dd-btn:focus-visible,.is-dd.open .dd-btn{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(31,111,209,.18)}
+.dd-btn:disabled{background:var(--paper);color:var(--muted);cursor:not-allowed}
+.dd-pop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;max-height:340px;overflow:auto;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 22px 48px -16px rgba(20,48,106,.32);outline:none;overscroll-behavior:contain}
+@media (prefers-reduced-motion: no-preference){.dd-pop:not([hidden]){animation:ddIn .16s var(--ease)}}
+@keyframes ddIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.is-dd.up .dd-pop{top:auto;bottom:calc(100% + 6px)}
+.dd-group{padding:10px 12px 4px;font-size:13px;font-weight:500;color:var(--muted)}
+.dd-group:first-child{padding-top:4px}
+.dd-opt{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;font-size:17px;cursor:pointer}
+.dd-opt.act{background:var(--paper)}
+.dd-opt[aria-selected="true"]{color:var(--blue-press);font-weight:600}
+.dd-opt[aria-selected="true"]::after{content:"";flex:none;width:12px;height:7px;margin-top:-4px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg)}
 .chip{position:relative}
 .chip .box{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--ctl);border-radius:999px;cursor:pointer;font-weight:500;font-size:15px;font-variant-numeric:tabular-nums;transition:border-color .15s,background .15s;background:var(--surface)}
 .chip .box:hover{border-color:var(--ink-2)}
@@ -709,15 +729,17 @@ html:not(.review) span.fl{display:none}
       <form id="bkForm" novalidate>
         <fieldset class="pane" data-pane="1">
           <legend tabindex="-1">Какая у вас BMW?</legend>
-          <div class="field">
-            <span class="lbl" id="serLbl">Серия или модель</span>
-            <div class="keys keys-ser" id="serGrid" role="radiogroup" aria-labelledby="serLbl"></div>
+          <div class="car-row">
+            <div class="field">
+              <label class="lbl" for="bkSeries">Серия или модель</label>
+              <div class="sel"><select id="bkSeries" aria-describedby="err1"></select></div>
+            </div>
+            <div class="field" id="bodyBlock">
+              <label class="lbl" for="bkBody" id="bodyLbl">Кузов</label>
+              <div class="sel"><select id="bkBody" disabled aria-describedby="bodyHint err1"></select></div>
+            </div>
           </div>
-          <div class="field" id="bodyBlock" hidden>
-            <span class="lbl" id="bodyLbl">Кузов</span>
-            <div class="keys keys-body" id="bodyChips" role="radiogroup" aria-labelledby="bodyLbl"></div>
-            <span class="hint">Не уверены? Выберите «Не знаю», мастер уточнит.</span>
-          </div>
+          <span class="hint" id="bodyHint">Не уверены? Выберите «Не знаю», мастер уточнит.</span>
           <p class="err" id="err1" role="alert"></p>
         </fieldset>
 
@@ -825,7 +847,7 @@ html:not(.review) span.fl{display:none}
     <div class="ct-info">
       <h2 class="h2">Как нас найти</h2>
       <dl class="ct-list">
-        <div class="ct-row"><dt>Адрес</dt><dd>Пермь, ул. Крупской, 5<span class="small">Въезд через серые ворота под вывеской WERT&nbsp;lab. Ориентир: в 500 метрах от <span class="nw">цирка.<span class="fl" data-flag="500 м по прямой, посчитано по карте. Уточнить у владельца, как он сам объясняет клиентам дорогу (ориентиры, въезд, парковка).">уточнить</span></span></span></dd></div>
+        <div class="ct-row"><dt>Адрес</dt><dd>Пермь, ул. Крупской, 5<span class="small">В 500 метрах от <span class="nw">цирка.<span class="fl" data-flag="500 м по прямой, посчитано по карте. Уточнить у владельца, как он сам объясняет клиентам дорогу (ориентиры, въезд, парковка).">уточнить</span></span></span></dd></div>
         <div class="ct-row"><dt>Телефон</dt><dd><a class="num tel" id="phoneText" href="tel:+73422598999">+7 (342) 259-89-99</a><button class="copy" type="button" id="copyPhone">Скопировать</button></dd></div>
         <div class="ct-row"><dt>Часы работы</dt><dd>Пн–Пт 9:00–19:00<span class="fl" data-flag="Часы работы придуманы. Уточнить и синхронизировать со слотами в форме записи.">заглушка</span><span class="small">Сб 10:00–16:00, вс выходной</span></dd></div>
         <div class="ct-row" id="lounge" data-flag="Нет фото зоны ожидания. Если владелец пришлёт кадр (диваны, кофе, телевизор; горизонтально, при дневном свете), можно вернуть отдельный блок с фото."><dt>Пока ждёте</dt><dd>Зона ожидания на втором этаже<span class="small">Кофе, диваны, телевизор и wi-fi. Удобно, если работа займёт пару часов.</span></dd></div>
@@ -964,14 +986,15 @@ html:not(.review) span.fl{display:none}
   });
 
   /* ---------- Booking demo ---------- */
+  // Body codes grouped by generation: saloon, touring, coupe, convertible, GT and long versions of one platform share a key.
   var SERIES = [
-    ["1","серия",["E87","F20","F40"]],
-    ["2","серия",["F22","F44","F45/F46","G42"]],
-    ["3","серия",["E46","E90","F30","G20"]],
-    ["4","серия",["F32","F36","G22","G26"]],
-    ["5","серия",["E39","E60","F10","G30","G60"]],
-    ["6","серия",["E63","F06/F12/F13","G32"]],
-    ["7","серия",["E65","F01","G11","G70"]],
+    ["1","серия",["E81–E88","F20/F21","F40","F70"]],
+    ["2","серия",["F22/F23","F44","F45/F46","G42","U06","F74"]],
+    ["3","серия",["E36","E46","E90–E93","F30/F31/F34","G20/G21"]],
+    ["4","серия",["F32/F33/F36","G22/G23/G26"]],
+    ["5","серия",["E39","E60/E61","F10/F11/F07","G30/G31","G60/G61"]],
+    ["6","серия",["E63/E64","F06/F12/F13","G32"]],
+    ["7","серия",["E38","E65/E66","F01/F02","G11/G12","G70"]],
     ["8","серия",["G14/G15/G16"]],
     ["X1","",["E84","F48","U11"]],
     ["X2","",["F39","U10"]],
@@ -980,9 +1003,9 @@ html:not(.review) span.fl{display:none}
     ["X5","",["E53","E70","F15","G05"]],
     ["X6","",["E71","F16","G06"]],
     ["X7","",["G07"]],
-    ["Z4","родстер",["E85","E89","G29"]],
-    ["M","модели",["M2","M3","M4","M5","X5 M / X6 M","Другая M"]],
-    ["i","электро",["i3","i4","iX","i7"]]
+    ["Z4","родстер",["E85/E86","E89","G29"]],
+    ["M","модели",["M2","M3","M4","M5","M8","X3 M / X4 M","X5 M / X6 M","XM","Другая M"]],
+    ["i","электро",["i3","i4","i5","i7","iX","iX1","iX3"]]
   ];
   var SERVICES = [
     ["Компьютерная диагностика","от 2 500 ₽"],
@@ -997,28 +1020,109 @@ html:not(.review) span.fl{display:none}
   var S = { step:1, series:null, body:null, services:[], date:null, time:null };
   var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
 
-  var serChip = function(s, i){
-    var aria = /^\d$/.test(s[0]) ? s[0] + " серия" : (s[0] === "M" ? "M-модели" : s[0] === "i" ? "Электромобили i" : s[0]);
-    return '<label class="opt"><input type="radio" name="series" id="ser-' + i + '" value="' + i + '" aria-label="' + aria + '"><span class="box">' + s[0] + '</span></label>';
+  var serSel = $("#bkSeries"), bodySel = $("#bkBody");
+  var serName = function(s){ return /^\d$/.test(s[0]) ? s[0] + " серия" : s[0] === "M" ? "M-модели" : s[0] === "i" ? "i, электромобили" : s[0]; };
+  var group = function(label, test){
+    return '<optgroup label="' + label + '">' + SERIES.map(function(s, i){ return test(s[0]) ? '<option value="' + i + '">' + serName(s) + '</option>' : ""; }).join("") + '</optgroup>';
   };
-  $("#serGrid").innerHTML = SERIES.map(serChip).join("");
-  $('.pane[data-pane="1"]').addEventListener("change", function(e){
-    if (e.target.name !== "series") return;
-    S.series = +e.target.value; S.body = null;
-    var bodies = SERIES[S.series][2].concat(["Не знаю"]);
-    // "Не знаю" stretches over the cells left in its row, so the keypad never has empty holes.
-    var cols = 3, rest = (bodies.length - 1) % cols, span = cols - rest;
-    $("#bodyChips").innerHTML = bodies.map(function(b, i){
-      var last = i === bodies.length - 1;
-      return '<label class="opt"' + (last ? ' style="grid-column:span ' + span + '"' : '') + '><input type="radio" name="body" id="body-' + i + '" value="' + esc(b) + '"><span class="box">' + esc(b) + '</span></label>';
-    }).join("");
-    $("#bodyLbl").textContent = SERIES[S.series][0] === "M" || SERIES[S.series][0] === "i" ? "Модель" : "Кузов";
-    $("#bodyBlock").hidden = false;
-    $("#err1").textContent = "";
-    var bb = $("#bodyBlock").getBoundingClientRect();
-    if (bb.bottom > window.innerHeight - 16) $("#bodyBlock").scrollIntoView({behavior: reduce ? "auto" : "smooth", block: "nearest"});
+  function fillSeries(){
+    serSel.innerHTML = '<option value="" selected disabled>Выберите</option>'
+      + group("Серии", function(n){ return /^\d$/.test(n); })
+      + group("Кроссоверы X", function(n){ return /^X/.test(n); })
+      + group("Z4, M и электро", function(n){ return /^(Z4|M|i)$/.test(n); });
+    serSel.classList.add("empty");
+  }
+  function fillBody(){
+    if (S.series === null){
+      bodySel.innerHTML = '<option value="" selected>Сначала выберите серию</option>';
+      bodySel.disabled = true; bodySel.classList.add("empty"); $("#bodyLbl").textContent = "Кузов"; return;
+    }
+    var s = SERIES[S.series], isModel = s[0] === "M" || s[0] === "i";
+    $("#bodyLbl").textContent = isModel ? "Модель" : "Кузов";
+    bodySel.innerHTML = '<option value="" selected disabled>' + (isModel ? "Выберите модель" : "Выберите кузов") + '</option>'
+      + s[2].map(function(b){ return '<option value="' + esc(b) + '">' + esc(b) + '</option>'; }).join("")
+      + '<option value="Не знаю">Не знаю</option>';
+    bodySel.disabled = false; bodySel.classList.add("empty");
+  }
+  fillSeries(); fillBody();
+  function enhanceSelect(sel){
+    var wrap = sel.parentNode, lab = document.querySelector('label[for="' + sel.id + '"]');
+    var btn = document.createElement("button"), pop = document.createElement("div"), items = [], active = -1;
+    btn.type = "button"; btn.className = "dd-btn"; btn.id = sel.id + "-dd";
+    btn.setAttribute("aria-haspopup", "listbox"); btn.setAttribute("aria-expanded", "false"); btn.setAttribute("aria-controls", sel.id + "-list");
+    if (lab){ lab.id = lab.id || sel.id + "-lbl"; lab.setAttribute("for", btn.id); btn.setAttribute("aria-labelledby", lab.id + " " + btn.id); pop.setAttribute("aria-labelledby", lab.id); }
+    pop.className = "dd-pop"; pop.id = sel.id + "-list"; pop.setAttribute("role", "listbox"); pop.tabIndex = -1; pop.hidden = true;
+    sel.tabIndex = -1; sel.setAttribute("aria-hidden", "true"); sel.classList.add("dd-native"); wrap.classList.add("is-dd");
+    wrap.appendChild(btn); wrap.appendChild(pop);
+    function sync(){
+      var o = sel.options[sel.selectedIndex];
+      btn.textContent = o ? o.textContent : ""; btn.classList.toggle("empty", !sel.value); btn.disabled = sel.disabled;
+    }
+    function add(o){
+      if (!o.value) return;
+      var it = document.createElement("div"), k = items.length;
+      it.className = "dd-opt"; it.id = sel.id + "-o" + k; it.setAttribute("role", "option"); it.textContent = o.textContent;
+      it.setAttribute("aria-selected", String(sel.value === o.value));
+      it.addEventListener("click", function(){ choose(o.value); });
+      it.addEventListener("mousemove", function(){ if (active !== k) setActive(k, true); });
+      pop.appendChild(it); items.push({ el: it, value: o.value });
+    }
+    function build(){
+      pop.innerHTML = ""; items = [];
+      Array.prototype.forEach.call(sel.children, function(ch){
+        if (ch.tagName === "OPTGROUP"){ var g = document.createElement("div"); g.className = "dd-group"; g.setAttribute("role", "presentation"); g.textContent = ch.label; pop.appendChild(g); Array.prototype.forEach.call(ch.children, add); }
+        else add(ch);
+      });
+    }
+    function setActive(i, fromMouse){
+      if (i < 0 || i >= items.length) return;
+      items.forEach(function(x, k){ x.el.classList.toggle("act", k === i); });
+      active = i; pop.setAttribute("aria-activedescendant", items[i].el.id);
+      if (!fromMouse){ // keep the active row visible by scrolling the menu only, never the page
+        var el = items[i].el, top = el.offsetTop, bot = top + el.offsetHeight;
+        if (top < pop.scrollTop) pop.scrollTop = top - 6;
+        else if (bot > pop.scrollTop + pop.clientHeight) pop.scrollTop = bot - pop.clientHeight + 6;
+      }
+    }
+    function open(){
+      if (sel.disabled) return;
+      build(); pop.hidden = false; wrap.classList.add("open"); btn.setAttribute("aria-expanded", "true");
+      // Open upwards when there is not enough room below the field.
+      var r = btn.getBoundingClientRect(), need = Math.min(pop.scrollHeight, 340) + 12;
+      wrap.classList.toggle("up", window.innerHeight - r.bottom < need && r.top > window.innerHeight - r.bottom);
+      pop.focus({ preventScroll: true });
+      var cur = -1; items.forEach(function(x, k){ if (x.value === sel.value) cur = k; });
+      setActive(cur < 0 ? 0 : cur);
+    }
+    function close(focusBtn){
+      if (pop.hidden) return;
+      pop.hidden = true; wrap.classList.remove("open"); btn.setAttribute("aria-expanded", "false");
+      if (focusBtn) btn.focus();
+    }
+    function choose(v){ sel.value = v; sel.dispatchEvent(new Event("change", { bubbles: true })); sync(); close(true); }
+    btn.addEventListener("click", function(){ pop.hidden ? open() : close(true); });
+    btn.addEventListener("keydown", function(e){ if (e.key === "ArrowDown" || e.key === "ArrowUp"){ e.preventDefault(); open(); } });
+    pop.addEventListener("keydown", function(e){
+      var k = e.key;
+      if (k === "ArrowDown"){ e.preventDefault(); setActive(Math.min(active + 1, items.length - 1)); }
+      else if (k === "ArrowUp"){ e.preventDefault(); setActive(Math.max(active - 1, 0)); }
+      else if (k === "Home"){ e.preventDefault(); setActive(0); }
+      else if (k === "End"){ e.preventDefault(); setActive(items.length - 1); }
+      else if (k === "Enter" || k === " "){ e.preventDefault(); if (items[active]) choose(items[active].value); }
+      else if (k === "Escape"){ e.preventDefault(); close(true); }
+      else if (k === "Tab"){ close(false); }
+    });
+    document.addEventListener("mousedown", function(e){ if (!wrap.contains(e.target)) close(false); });
+    sel.addEventListener("change", sync);
+    new MutationObserver(sync).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+    sync();
+  }
+  if (window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches){ enhanceSelect(serSel); enhanceSelect(bodySel); }
+  serSel.addEventListener("change", function(){
+    S.series = +serSel.value; S.body = null; serSel.classList.remove("empty");
+    fillBody(); $("#err1").textContent = "";
   });
-  $("#bodyChips").addEventListener("change", function(e){ S.body = e.target.value; $("#err1").textContent = ""; });
+  bodySel.addEventListener("change", function(){ S.body = bodySel.value; bodySel.classList.remove("empty"); $("#err1").textContent = ""; });
 
   $("#svcList").innerHTML = SERVICES.map(function(s, i){
     return '<label class="svc opt"><input type="checkbox" id="svc-' + i + '" value="' + i + '"><span class="box"><span class="tick"><svg><use href="#tick"/></svg></span><span>' + s[0] + '</span><span class="p">' + s[1] + '</span></span></label>';
@@ -1172,7 +1276,7 @@ html:not(.review) span.fl{display:none}
   $("#bkAgain").addEventListener("click", function(){
     $("#bkForm").reset(); prevDigits = "";
     S = { step:1, series:null, body:null, services:[], date:null, time:null };
-    $("#bodyBlock").hidden = true; renderTimes();
+    fillSeries(); fillBody(); renderTimes();
     $$(".field.bad").forEach(function(f){ f.classList.remove("bad"); });
     $$("[aria-invalid]").forEach(function(i){ i.removeAttribute("aria-invalid"); });
     $$(".err").forEach(function(e){ e.textContent = ""; });
